@@ -1475,12 +1475,24 @@ sub TicketTitleUpdate {
 
     return 1 if defined $Ticket{Title} && $Ticket{Title} eq $Param{Title};
 
-    # db access
-    return if !$Kernel::OM->Get('Kernel::System::DB')->Do(
-        SQL => 'UPDATE ticket SET title = ?, change_time = current_timestamp, '
-            . ' change_by = ? WHERE id = ?',
-        Bind => [ \$Param{Title}, \$Param{UserID}, \$Param{TicketID} ],
-    );
+    if ($Param{Title} =~ /^Aktenzeichen=/) {
+    	# db access
+	my $CaseNumber = substr($Param{Title}, 13);
+    	return if !$Kernel::OM->Get('Kernel::System::DB')->Do(
+        	SQL => 'UPDATE ticket SET tn = ?, change_time = current_timestamp, '
+           	 . ' change_by = ? WHERE id = ?',
+        	Bind => [ \$CaseNumber, \$Param{UserID}, \$Param{TicketID} ],
+    	);
+    }
+    else
+    {
+    	# db access
+    	return if !$Kernel::OM->Get('Kernel::System::DB')->Do(
+        	SQL => 'UPDATE ticket SET title = ?, change_time = current_timestamp, '
+           	 . ' change_by = ? WHERE id = ?',
+        	Bind => [ \$Param{Title}, \$Param{UserID}, \$Param{TicketID} ],
+    	);
+    }
 
     # clear ticket cache
     $Self->_TicketCacheClear( TicketID => $Param{TicketID} );
