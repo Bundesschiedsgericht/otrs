@@ -346,7 +346,7 @@ sub TicketCheckNumber {
         HISTORYLINE:
         for my $Data ( reverse @Lines ) {
             next HISTORYLINE if $Data->{HistoryType} ne 'Merged';
-            if ( $Data->{Name} =~ /^.*\(\d+?\/(\d+?)\)$/ ) {
+            if ( $Data->{Name} =~ /^.*%%\d+?%%(\d+?)$/ ) {
                 $TicketID = $1;
                 $Count++;
                 next MERGELOOP if ( $Count <= $Limit );
@@ -358,6 +358,7 @@ sub TicketCheckNumber {
 
         return $TicketID;
     }
+    return;
 }
 
 =head2 TicketCreate()
@@ -414,11 +415,6 @@ sub TicketCreate {
             return;
         }
     }
-
-    my $DateTimeObject = $Kernel::OM->Create('Kernel::System::DateTime');
-
-    # set default values if no values are specified
-    my $Age = $DateTimeObject->ToEpoch();
 
     my $ArchiveFlag = 0;
     if ( $Param{ArchiveFlag} && $Param{ArchiveFlag} eq 'y' ) {
@@ -585,15 +581,15 @@ sub TicketCreate {
     # create db record
     return if !$Kernel::OM->Get('Kernel::System::DB')->Do(
         SQL => '
-            INSERT INTO ticket (tn, title, create_time_unix, type_id, queue_id, ticket_lock_id,
+            INSERT INTO ticket (tn, title, type_id, queue_id, ticket_lock_id,
                 user_id, responsible_user_id, ticket_priority_id, ticket_state_id,
                 escalation_time, escalation_update_time, escalation_response_time,
                 escalation_solution_time, timeout, service_id, sla_id, until_time,
                 archive_flag, create_time, create_by, change_time, change_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 0, ?, ?, 0, ?,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 0, ?, ?, 0, ?,
                 current_timestamp, ?, current_timestamp, ?)',
         Bind => [
-            \$Param{TN}, \$Param{Title}, \$Age, \$Param{TypeID}, \$Param{QueueID},
+            \$Param{TN}, \$Param{Title}, \$Param{TypeID}, \$Param{QueueID},
             \$Param{LockID},     \$Param{OwnerID}, \$Param{ResponsibleID},
             \$Param{PriorityID}, \$Param{StateID}, \$Param{ServiceID},
             \$Param{SLAID}, \$ArchiveFlag, \$Param{UserID}, \$Param{UserID},
@@ -1107,7 +1103,6 @@ Returns:
         ResponsibleID      => 123,
         Age                => 3456,
         Created            => '2010-10-27 20:15:00'
-        CreateTimeUnix     => '1231414141',
         CreateBy           => 123,
         Changed            => '2010-10-27 20:15:15',
         ChangeBy           => 123,
@@ -1232,7 +1227,7 @@ sub TicketGet {
         return if !$DBObject->Prepare(
             SQL => '
                 SELECT st.id, st.queue_id, st.ticket_state_id, st.ticket_lock_id, st.ticket_priority_id,
-                    st.create_time_unix, st.create_time, st.tn, st.customer_id, st.customer_user_id,
+                    st.create_time, st.create_time, st.tn, st.customer_id, st.customer_user_id,
                     st.user_id, st.responsible_user_id, st.until_time, st.change_time, st.title,
                     st.escalation_update_time, st.timeout, st.type_id, st.service_id, st.sla_id,
                     st.escalation_response_time, st.escalation_solution_time, st.escalation_time, st.archive_flag,
@@ -1250,7 +1245,7 @@ sub TicketGet {
             $Ticket{LockID}     = $Row[3];
             $Ticket{PriorityID} = $Row[4];
 
-            $Ticket{CreateTimeUnix} = $Row[5];
+            $Ticket{Created}        = $Row[5];
             $Ticket{TicketNumber}   = $Row[7];
             $Ticket{CustomerID}     = $Row[8];
             $Ticket{CustomerUserID} = $Row[9];
@@ -1333,14 +1328,6 @@ sub TicketGet {
         }
     }
 
-    my $TicketCreatedDTObj = $Kernel::OM->Create(
-        'Kernel::System::DateTime',
-        ObjectParams => {
-            Epoch => $Ticket{CreateTimeUnix}
-            }
-    );
-    $Ticket{Created} = $TicketCreatedDTObj->ToString();
-
     my %Queue = $Kernel::OM->Get('Kernel::System::Queue')->QueueGet(
         ID => $Ticket{QueueID},
     );
@@ -1349,9 +1336,15 @@ sub TicketGet {
     $Ticket{GroupID} = $Queue{GroupID};
 
     # fillup runtime values
-    my $CreateTimeUnixDTObj = $Kernel::OM->Create('Kernel::System::DateTime');
-    $CreateTimeUnixDTObj->Subtract( Seconds => $Ticket{CreateTimeUnix} );
-    $Ticket{Age} = $CreateTimeUnixDTObj->ToEpoch();
+    my $TicketCreatedDTObj = $Kernel::OM->Create(
+        'Kernel::System::DateTime',
+        ObjectParams => {
+            String => $Ticket{Created}
+        },
+    );
+
+    my $Delta = $TicketCreatedDTObj->Delta( DateTimeObject => $Kernel::OM->Create('Kernel::System::DateTime') );
+    $Ticket{Age} = $Delta->{AbsoluteSeconds};
 
     $Ticket{Priority} = $Kernel::OM->Get('Kernel::System::Priority')->PriorityLookup(
         PriorityID => $Ticket{PriorityID},
@@ -2119,7 +2112,7 @@ sub TicketServiceList {
     if ( !$Param{UserID} && !$Param{CustomerUserID} ) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
-            Message  => 'Need UserID, CustomerUserID or UserID and CustomerUserID is needed!',
+            Message  => 'UserID or CustomerUserID is needed!',
         );
         return;
     }
@@ -2128,28 +2121,37 @@ sub TicketServiceList {
     if ( !$Param{QueueID} && !$Param{TicketID} ) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
-            Message  => 'Need QueueID or TicketID!',
+            Message  => 'QueueID or TicketID is needed!',
         );
         return;
     }
 
-    # get service object
     my $ServiceObject = $Kernel::OM->Get('Kernel::System::Service');
 
+    # Return all Services, filtering by KeepChildren config.
+    my %AllServices = $ServiceObject->ServiceList(
+        UserID => 1,
+        KeepChildren =>
+            $Kernel::OM->Get('Kernel::Config')->Get('Ticket::Service::KeepChildren'),
+    );
+
     my %Services;
-    if ( !$Param{CustomerUserID} ) {
-        %Services = $ServiceObject->ServiceList(
-            UserID => 1,
-            KeepChildren =>
-                $Kernel::OM->Get('Kernel::Config')->Get('Ticket::Service::KeepChildren'),
-        );
-    }
-    else {
-        %Services = $ServiceObject->CustomerUserServiceMemberList(
+    if ( $Param{CustomerUserID} ) {
+
+        # Return all Services in relation with CustomerUser.
+        my %CustomerServices = $ServiceObject->CustomerUserServiceMemberList(
             Result            => 'HASH',
             CustomerUserLogin => $Param{CustomerUserID},
             UserID            => 1,
         );
+
+        # Filter Services based on relation with CustomerUser and KeepChildren config.
+        for my $ServiceID ( sort keys %AllServices ) {
+            $Services{$ServiceID} = $CustomerServices{$ServiceID};
+        }
+    }
+    else {
+        %Services = %AllServices;
     }
 
     # workflow
@@ -5577,54 +5579,27 @@ sub HistoryAdd {
         }
     }
 
-    # get QueueID
-    if ( !$Param{QueueID} ) {
-        $Param{QueueID} = $Self->TicketQueueID( TicketID => $Param{TicketID} );
+    my %Ticket;
+    if ( !$Param{QueueID} || !$Param{TypeID} || !$Param{OwnerID} || !$Param{PriorityID} || !$Param{StateID} ) {
+        %Ticket = $Self->TicketGet(
+            %Param,
+            DynamicFields => 0,
+        );
     }
 
-    my %Ticket;
-
-    # get type
+    if ( !$Param{QueueID} ) {
+        $Param{QueueID} = $Ticket{QueueID};
+    }
     if ( !$Param{TypeID} ) {
-        if ( !%Ticket ) {
-            %Ticket = $Self->TicketGet(
-                %Param,
-                DynamicFields => 0,
-            );
-        }
         $Param{TypeID} = $Ticket{TypeID};
     }
-
-    # get owner
     if ( !$Param{OwnerID} ) {
-        if ( !%Ticket ) {
-            %Ticket = $Self->TicketGet(
-                %Param,
-                DynamicFields => 0,
-            );
-        }
         $Param{OwnerID} = $Ticket{OwnerID};
     }
-
-    # get priority
     if ( !$Param{PriorityID} ) {
-        if ( !%Ticket ) {
-            %Ticket = $Self->TicketGet(
-                %Param,
-                DynamicFields => 0,
-            );
-        }
         $Param{PriorityID} = $Ticket{PriorityID};
     }
-
-    # get state
     if ( !$Param{StateID} ) {
-        if ( !%Ticket ) {
-            %Ticket = $Self->TicketGet(
-                %Param,
-                DynamicFields => 0,
-            );
-        }
         $Param{StateID} = $Ticket{StateID};
     }
 
@@ -6007,8 +5982,8 @@ sub TicketMerge {
     $Self->HistoryAdd(
         TicketID    => $Param{MergeTicketID},
         HistoryType => 'Merged',
-        Name =>
-            "Merged Ticket ($MergeTicket{TicketNumber}/$Param{MergeTicketID}) to ($MainTicket{TicketNumber}/$Param{MainTicketID})",
+        Name        => "\%\%$MergeTicket{TicketNumber}\%\%$Param{MergeTicketID}"
+            . "\%\%$MainTicket{TicketNumber}\%\%$Param{MainTicketID}",
         CreateUserID => $Param{UserID},
     );
 
@@ -6016,8 +5991,8 @@ sub TicketMerge {
     $Self->HistoryAdd(
         TicketID    => $Param{MainTicketID},
         HistoryType => 'Merged',
-        Name =>
-            "Merged Ticket ($MergeTicket{TicketNumber}/$Param{MergeTicketID}) to ($MainTicket{TicketNumber}/$Param{MainTicketID})",
+        Name        => "\%\%$MergeTicket{TicketNumber}\%\%$Param{MergeTicketID}"
+            . "\%\%$MainTicket{TicketNumber}\%\%$Param{MainTicketID}",
         CreateUserID => $Param{UserID},
     );
 
@@ -6071,6 +6046,13 @@ sub TicketMerge {
         Type         => 'ParentChild',
         State        => 'Valid',
         UserID       => $Param{UserID},
+    );
+
+    # Update change time and user ID for main ticket.
+    #   See bug#13092 for more information.
+    return if !$DBObject->Do(
+        SQL  => 'UPDATE ticket SET change_time = current_timestamp, change_by = ? WHERE id = ?',
+        Bind => [ \$Param{UserID}, \$Param{MainTicketID} ],
     );
 
     # get the list of all merged states
@@ -6938,7 +6920,6 @@ sub TicketArticleStorageSwitch {
         # read source attachments
         my %Index = $ArticleObjectSource->ArticleAttachmentIndex(
             ArticleID     => $Article->{ArticleID},
-            UserID        => $Param{UserID},
             OnlyMyBackend => 1,
         );
 
@@ -6962,7 +6943,6 @@ sub TicketArticleStorageSwitch {
             my %Attachment = $ArticleObjectSource->ArticleAttachment(
                 ArticleID     => $Article->{ArticleID},
                 FileID        => $FileID,
-                UserID        => $Param{UserID},
                 OnlyMyBackend => 1,
                 Force         => 1,
             );
@@ -6995,7 +6975,6 @@ sub TicketArticleStorageSwitch {
         # read destination attachments
         %Index = $ArticleObjectDestination->ArticleAttachmentIndex(
             ArticleID     => $Article->{ArticleID},
-            UserID        => $Param{UserID},
             OnlyMyBackend => 1,
         );
 
@@ -7050,7 +7029,6 @@ sub TicketArticleStorageSwitch {
             # verify destination attachments
             %Index = $ArticleObjectDestination->ArticleAttachmentIndex(
                 ArticleID     => $Article->{ArticleID},
-                UserID        => $Param{UserID},
                 OnlyMyBackend => 1,
             );
         }
@@ -7059,7 +7037,6 @@ sub TicketArticleStorageSwitch {
             my %Attachment = $ArticleObjectDestination->ArticleAttachment(
                 ArticleID     => $Article->{ArticleID},
                 FileID        => $FileID,
-                UserID        => $Param{UserID},
                 OnlyMyBackend => 1,
                 Force         => 1,
             );
@@ -7160,7 +7137,6 @@ sub TicketArticleStorageSwitch {
         # read source attachments
         %Index = $ArticleObjectSource->ArticleAttachmentIndex(
             ArticleID     => $Article->{ArticleID},
-            UserID        => $Param{UserID},
             OnlyMyBackend => 1,
         );
 
@@ -7222,6 +7198,8 @@ sub TicketCheckForProcessType {
 
     # return 1 if we got process ticket
     return 1 if $Ticket{$DynamicFieldName};
+
+    return;
 }
 
 =head2 TicketCalendarGet()
@@ -7379,105 +7357,105 @@ sub DESTROY {
 # COMPAT: to OTRS 1.x and 2.x (can be removed later)
 
 sub CustomerPermission {
-    my $Self = shift;
+    my ( $Self, %Param ) = @_;
 
-    return $Self->TicketCustomerPermission(@_);
+    return $Self->TicketCustomerPermission(%Param);
 }
 
 sub InvolvedAgents {
-    my $Self = shift;
+    my ( $Self, %Param ) = @_;
 
-    return $Self->TicketInvolvedAgentsList(@_);
+    return $Self->TicketInvolvedAgentsList(%Param);
 }
 
 sub LockIsTicketLocked {
-    my $Self = shift;
+    my ( $Self, %Param ) = @_;
 
-    return $Self->TicketLockGet(@_);
+    return $Self->TicketLockGet(%Param);
 }
 
 sub LockSet {
-    my $Self = shift;
+    my ( $Self, %Param ) = @_;
 
-    return $Self->TicketLockSet(@_);
+    return $Self->TicketLockSet(%Param);
 }
 
 sub MoveList {
-    my $Self = shift;
+    my ( $Self, %Param ) = @_;
 
-    return $Self->TicketMoveList(@_);
+    return $Self->TicketMoveList(%Param);
 }
 
 sub MoveTicket {
-    my $Self = shift;
+    my ( $Self, %Param ) = @_;
 
-    return $Self->TicketQueueSet(@_);
+    return $Self->TicketQueueSet(%Param);
 }
 
 sub MoveQueueList {
-    my $Self = shift;
+    my ( $Self, %Param ) = @_;
 
-    return $Self->TicketMoveQueueList(@_);
+    return $Self->TicketMoveQueueList(%Param);
 }
 
 sub OwnerList {
-    my $Self = shift;
+    my ( $Self, %Param ) = @_;
 
-    return $Self->TicketOwnerList(@_);
+    return $Self->TicketOwnerList(%Param);
 }
 
 sub OwnerSet {
-    my $Self = shift;
+    my ( $Self, %Param ) = @_;
 
-    return $Self->TicketOwnerSet(@_);
+    return $Self->TicketOwnerSet(%Param);
 }
 
 sub Permission {
-    my $Self = shift;
+    my ( $Self, %Param ) = @_;
 
-    return $Self->TicketPermission(@_);
+    return $Self->TicketPermission(%Param);
 }
 
 sub PriorityList {
-    my $Self = shift;
+    my ( $Self, %Param ) = @_;
 
-    return $Self->TicketPriorityList(@_);
+    return $Self->TicketPriorityList(%Param);
 }
 
 sub PrioritySet {
-    my $Self = shift;
+    my ( $Self, %Param ) = @_;
 
-    return $Self->TicketPrioritySet(@_);
+    return $Self->TicketPrioritySet(%Param);
 }
 
 sub ResponsibleList {
-    my $Self = shift;
+    my ( $Self, %Param ) = @_;
 
-    return $Self->TicketResponsibleList(@_);
+    return $Self->TicketResponsibleList(%Param);
 }
 
 sub ResponsibleSet {
-    my $Self = shift;
+    my ( $Self, %Param ) = @_;
 
-    return $Self->TicketResponsibleSet(@_);
+    return $Self->TicketResponsibleSet(%Param);
 }
 
 sub SetCustomerData {
-    my $Self = shift;
+    my ( $Self, %Param ) = @_;
 
-    return $Self->TicketCustomerSet(@_);
+    return $Self->TicketCustomerSet(%Param);
 }
 
 sub StateList {
-    my $Self = shift;
+    my ( $Self, %Param ) = @_;
 
-    return $Self->TicketStateList(@_);
+    return $Self->TicketStateList(%Param);
 }
 
 sub StateSet {
-    my $Self = shift;
+    my ( $Self, %Param ) = @_;
 
-    return $Self->TicketStateSet(@_);
+    return $Self->TicketStateSet(%Param);
 }
 
 =head1 PRIVATE FUNCTIONS

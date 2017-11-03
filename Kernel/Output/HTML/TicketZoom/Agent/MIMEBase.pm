@@ -14,15 +14,17 @@ use strict;
 use warnings;
 
 use Kernel::System::VariableCheck qw(IsPositiveInteger);
+use Kernel::Language qw(Translatable);
 
 our @ObjectDependencies = (
     'Kernel::Config',
+    'Kernel::Output::HTML::Article::MIMEBase',
     'Kernel::Output::HTML::Layout',
     'Kernel::System::CommunicationChannel',
     'Kernel::System::Main',
     'Kernel::System::Log',
     'Kernel::System::Ticket::Article',
-    'Kernel::Output::HTML::Article::MIMEBase',
+    'Kernel::System::User',
 );
 
 =head2 ArticleRender()
@@ -30,11 +32,11 @@ our @ObjectDependencies = (
 Returns article html.
 
     my $HTML = $ArticleBaseObject->ArticleRender(
-        TicketID                    => 123,         # (required)
-        ArticleID                   => 123,         # (required)
-        UserID                      => 123,         # (required)
-        ShowBrowserLinkMessage      => 1,           # (optional) Default: 0.
-        ArticleActions              => [],          # (optional)
+        TicketID               => 123,         # (required)
+        ArticleID              => 123,         # (required)
+        ShowBrowserLinkMessage => 1,           # (optional) Default: 0.
+        ArticleActions         => [],          # (optional)
+        UserID                 => 123,         # (optional)
     );
 
 Result:
@@ -46,7 +48,7 @@ sub ArticleRender {
     my ( $Self, %Param ) = @_;
 
     # Check needed stuff.
-    for my $Needed (qw(TicketID ArticleID UserID)) {
+    for my $Needed (qw(TicketID ArticleID)) {
         if ( !$Param{$Needed} ) {
             $Kernel::OM->Get('Kernel::System::Log')->Log(
                 Priority => 'error',
@@ -82,24 +84,61 @@ sub ArticleRender {
     # Get data from modules like Google CVE search
     my @ArticleModuleMeta = $Self->_ArticleModuleMeta(%Param);
 
+    # Show created by string, if creator is different from admin user.
+    if ( $Article{CreateBy} > 1 ) {
+        $Article{CreateByUser} = $Kernel::OM->Get('Kernel::System::User')->UserName( UserID => $Article{CreateBy} );
+    }
+
     my $RichTextEnabled = $ConfigObject->Get('Ticket::Frontend::ZoomRichTextForce')
         || $LayoutObject->{BrowserRichText}
         || 0;
 
+    # Show HTML if RichText is enabled and HTML attachment isn't missing.
+    my $ShowHTML         = $RichTextEnabled;
+    my $HTMLBodyAttachID = $Kernel::OM->Get('Kernel::Output::HTML::Article::MIMEBase')->HTMLBodyAttachmentIDGet(
+        %Param,
+    );
+    if ( $ShowHTML && !$HTMLBodyAttachID ) {
+        $ShowHTML = 0;
+    }
+
     # Get attachment index (excluding body attachments).
     my %AtmIndex = $ArticleBackendObject->ArticleAttachmentIndex(
         ArticleID        => $Param{ArticleID},
-        UserID           => $Param{UserID},
         ExcludePlainText => 1,
         ExcludeHTMLBody  => $RichTextEnabled,
         ExcludeInline    => $RichTextEnabled,
     );
 
+    # Skip the images that are referenced in the body (bug #12987).
+    if ( $ShowHTML && %AtmIndex ) {
+        my %BodyAttachment = $ArticleBackendObject->ArticleAttachment(
+            ArticleID => $Param{ArticleID},
+            FileID    => $HTMLBodyAttachID,
+        );
+
+        my $Body = $BodyAttachment{Content};
+
+        ATTACHMENT:
+        for my $FileID ( sort keys %AtmIndex ) {
+            my %File = %{ $AtmIndex{$FileID} };
+
+            next ATTACHMENT if $File{ContentType} !~ m/image/i;
+            next ATTACHMENT if !$File{ContentID};
+
+            my ($ImageID) = ( $File{ContentID} =~ m/^<(.*)>$/i );
+
+            # Search in the article body if there is any reference to it.
+            if ( $Body =~ m/<img.+src="cid:$ImageID".*>/is ) {
+                delete $AtmIndex{$FileID};
+            }
+        }
+    }
+
     my @ArticleAttachments;
 
     # Add block for attachments.
     if (%AtmIndex) {
-
         my $Config = $ConfigObject->Get('Ticket::Frontend::ArticleAttachmentModule');
 
         ATTACHMENT:
@@ -121,7 +160,7 @@ sub ArticleRender {
                     %{$Self},
                     TicketID  => $Param{TicketID},
                     ArticleID => $Param{ArticleID},
-                    UserID    => $Param{UserID},
+                    UserID    => $Param{UserID} || 1,
                 );
 
                 # run module
@@ -164,16 +203,6 @@ sub ArticleRender {
         }
     }
 
-    # Check if HTML should be displayed.
-    my $ShowHTML = $ConfigObject->Get('Ticket::Frontend::ZoomRichTextForce')
-        || $LayoutObject->{BrowserRichText}
-        || 0;
-
-    # Check if HTML attachment is missing.
-    if ( $ShowHTML && !$Kernel::OM->Get('Kernel::Output::HTML::Article::MIMEBase')->HTMLBodyAttachmentIDGet(%Param) ) {
-        $ShowHTML = 0;
-    }
-
     my $ArticleContent;
 
     if ($ShowHTML) {
@@ -203,6 +232,18 @@ sub ArticleRender {
         ChannelID => $Article{CommunicationChannelID},
     );
 
+    if ( $CommunicationChannel{ChannelName} eq 'Email' ) {
+        my $TransmissionStatus = $ArticleBackendObject->ArticleTransmissionStatus(
+            ArticleID => $Article{ArticleID},
+        );
+        if ($TransmissionStatus) {
+            $LayoutObject->Block(
+                Name => 'TransmissionStatusMessage',
+                Data => $TransmissionStatus,
+            );
+        }
+    }
+
     my $Content = $LayoutObject->Output(
         TemplateFile => 'AgentTicketZoom/ArticleRender/MIMEBase',
         Data         => {
@@ -218,9 +259,10 @@ sub ArticleRender {
             ChannelIcon          => $CommunicationChannel{DisplayIcon},
             SenderImage          => $Self->_ArticleSenderImage(
                 Sender => $Article{From},
+                UserID => $Param{UserID},
             ),
-            SenderInitials => $Self->_ArticleSenderInitials(
-                Sender => $Article{FromRealname},
+            SenderInitials => $LayoutObject->UserInitialsGet(
+                Fullname => $Article{FromRealname},
             ),
         },
     );

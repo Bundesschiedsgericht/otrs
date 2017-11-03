@@ -408,8 +408,8 @@ for my $Test (@Tests) {
         Result  => 'ARRAY',
     );
 
-    # sort result
-    @ReturnedTicketIDs = sort @ReturnedTicketIDs;
+    @ReturnedTicketIDs = sort { $a <=> $b } @ReturnedTicketIDs;
+    @{ $Test->{Result} } = sort { $a <=> $b } @{ $Test->{Result} };
 
     $Self->IsDeeply(
         \@ReturnedTicketIDs,

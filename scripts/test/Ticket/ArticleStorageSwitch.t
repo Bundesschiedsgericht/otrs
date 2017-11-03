@@ -63,8 +63,18 @@ for my $SourceBackend (qw(ArticleStorageDB ArticleStorageFS)) {
         );
         my @Content = @{$ContentRef};
 
+        my $CommunicationLogObject = $Kernel::OM->Create(
+            'Kernel::System::CommunicationLog',
+            ObjectParams => {
+                Transport => 'Email',
+                Direction => 'Incoming',
+            },
+        );
+        $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
+
         my $PostMasterObject = Kernel::System::PostMaster->new(
-            Email => \@Content,
+            CommunicationLogObject => $CommunicationLogObject,
+            Email                  => \@Content,
         );
 
         my @Return = $PostMasterObject->Run();
@@ -78,6 +88,14 @@ for my $SourceBackend (qw(ArticleStorageDB ArticleStorageFS)) {
             $NamePrefix . " Run() - NewTicket/TicketID:$Return[1]",
         );
 
+        $CommunicationLogObject->ObjectLogStop(
+            ObjectLogType => 'Message',
+            Status        => 'Successful',
+        );
+        $CommunicationLogObject->CommunicationStop(
+            Status => 'Successful',
+        );
+
         # remember created tickets
         push @TicketIDs, $Return[1];
 
@@ -89,7 +107,6 @@ for my $SourceBackend (qw(ArticleStorageDB ArticleStorageFS)) {
         for my $Article (@Articles) {
             my %AttachmentIndex = $ArticleBackendObject->ArticleAttachmentIndex(
                 ArticleID => $Article->{ArticleID},
-                UserID    => 1,
             );
             $ArticleIDs{ $Article->{ArticleID} } = \%AttachmentIndex;
         }
@@ -111,7 +128,6 @@ for my $SourceBackend (qw(ArticleStorageDB ArticleStorageFS)) {
         for my $ArticleID ( sort keys %ArticleIDs ) {
             my %Index = $ArticleBackendObject->ArticleAttachmentIndex(
                 ArticleID => $ArticleID,
-                UserID    => 1,
             );
 
             # check file attributes
@@ -155,7 +171,6 @@ for my $SourceBackend (qw(ArticleStorageDB ArticleStorageFS)) {
         for my $ArticleID ( sort keys %ArticleIDs ) {
             my %Index = $ArticleBackendObject->ArticleAttachmentIndex(
                 ArticleID => $ArticleID,
-                UserID    => 1,
             );
 
             # check file attributes

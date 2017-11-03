@@ -79,7 +79,8 @@ sub new {
     }
 
     # Get pid directory.
-    $Self->{PIDDir}  = $Self->{ConfigObject}->Get('Home') . '/var/run/Daemon/Scheduler/';
+    my $BaseDir = $Self->{ConfigObject}->Get('Daemon::PID::Path') || $Self->{ConfigObject}->Get('Home') . '/var/run/';
+    $Self->{PIDDir}  = $BaseDir . 'Daemon/Scheduler/';
     $Self->{PIDFile} = $Self->{PIDDir} . "Worker-NodeID-$Self->{NodeID}.pid";
 
     # Check pid hash and pid file.
@@ -148,23 +149,8 @@ sub Run {
         # At the child, execute task.
         if ( !$PID ) {
 
-            # Define the ZZZ files.
-            my @ZZZFiles = (
-                'ZZZAAuto.pm',
-                'ZZZAuto.pm',
-            );
-
-            # Reload the ZZZ files.
-            for my $ZZZFile (@ZZZFiles) {
-
-                PREFIX:
-                for my $Prefix (@INC) {
-                    my $File = $Prefix . '/Kernel/Config/Files/' . $ZZZFile;
-                    next PREFIX if !-f $File;
-                    do $File;
-                    last PREFIX;
-                }
-            }
+            # Remove the ZZZAAuto.pm from %INC to force reloading it.
+            delete $INC{'Kernel/Config/Files/ZZZAAuto.pm'};
 
             # Destroy objects.
             $Kernel::OM->ObjectsDiscard(
@@ -290,10 +276,6 @@ sub PostRun {
 
     $Self->{DiscardCount}--;
 
-    if ( $Self->{Debug} ) {
-        print "  $Self->{DaemonName} Discard Count: $Self->{DiscardCount}\n";
-    }
-
     # Update task locks and remove expired each 60 seconds.
     if ( !int $Self->{DiscardCount} % ( 60 / $Self->{SleepPost} ) ) {
 
@@ -314,6 +296,10 @@ sub PostRun {
     # Remove obsolete tasks before destroy.
     if ( $Self->{DiscardCount} == 0 ) {
         $Self->{SchedulerDBObject}->TaskCleanup();
+
+        if ( $Self->{Debug} ) {
+            print "  $Self->{DaemonName} will be stopped and set for restart!\n";
+        }
     }
 
     return if $Self->{DiscardCount} <= 0;

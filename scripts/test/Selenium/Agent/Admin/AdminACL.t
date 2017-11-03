@@ -86,7 +86,7 @@ $Selenium->RunTest(
         # check client side validation
         my $Element = $Selenium->find_element( "#Name", 'css' );
         $Element->send_keys("");
-        $Element->VerifiedSubmit();
+        $Selenium->find_element( "#Submit", 'css' )->VerifiedClick();
 
         $Self->Is(
             $Selenium->execute_script(
@@ -110,11 +110,15 @@ $Selenium->RunTest(
         $Selenium->find_element( "#Description",    'css' )->send_keys('Selenium Test ACL');
         $Selenium->find_element( "#StopAfterMatch", 'css' )->VerifiedClick();
         $Selenium->execute_script("\$('#ValidID').val('1').trigger('redraw.InputField').trigger('change');");
-        $Selenium->find_element( "#Name", 'css' )->VerifiedSubmit();
+        $Selenium->find_element( "#Submit", 'css' )->VerifiedClick();
 
         # check breadcrumb on Edit screen
         $Count = 1;
-        for my $BreadcrumbText ( $SecondBreadcrumbText, 'Edit ACL: ' . $TestACLNames[0] ) {
+        for my $BreadcrumbText (
+            $SecondBreadcrumbText,
+            $LanguageObject->Translate('Edit ACL') . ': ' . $TestACLNames[0]
+            )
+        {
             $Self->Is(
                 $Selenium->execute_script("return \$('.BreadCrumb li:eq($Count)').text().trim()"),
                 $BreadcrumbText,
@@ -125,11 +129,16 @@ $Selenium->RunTest(
         }
 
         # the next screen should be the edit screen for this ACL
-        # which means that there should be dropdowns present for Match/Change settings
+        # which means that there should be modernize fields present for Match/Change settings
         $Self->Is(
-            $Selenium->find_element( '.ItemAddLevel1', 'css' )->is_displayed(),
+            $Selenium->find_element( '#ItemAddLevel1Match_Search', 'css' )->is_displayed(),
             '1',
-            'Check if dropdown elements are present as expected',
+            'Check if modernize Match element is present as expected',
+        );
+        $Self->Is(
+            $Selenium->find_element( '#ItemAddLevel1Change_Search', 'css' )->is_displayed(),
+            '1',
+            'Check if modernize Change element is present as expected',
         );
 
         # lets check for the correct values
@@ -161,14 +170,14 @@ $Selenium->RunTest(
 
         # now lets play around with the match & change settings
         $Selenium->execute_script(
-            "\$('.ItemAddLevel1').val('Properties').trigger('redraw.InputField').trigger('change');"
+            "\$('#ACLMatch').siblings('.ItemAddLevel1').val('Properties').trigger('redraw.InputField').trigger('change');"
         );
 
         # after clicking an ItemAddLevel1 element, there should be now a new .ItemAdd element
         $Self->Is(
-            $Selenium->find_element( '#ACLMatch .ItemAdd', 'css' )->is_displayed(),
+            $Selenium->find_element( '#ACLMatch #Properties_Search', 'css' )->is_displayed(),
             '1',
-            'Check for .ItemAdd element',
+            'Check for .ItemAdd element - modernize element #Properties_Search is visible',
         );
 
         my $CheckAlertJS = <<"JAVASCRIPT";
@@ -189,7 +198,7 @@ JAVASCRIPT
 
         # now we should not be able to add the same element again, an alert box should appear
         $Selenium->execute_script(
-            "\$('.ItemAddLevel1').val('Properties').trigger('redraw.InputField').trigger('change');"
+            "\$('#ACLMatch').siblings('.ItemAddLevel1').val('Properties').trigger('redraw.InputField').trigger('change');"
         );
 
         $Self->Is(
@@ -199,7 +208,9 @@ JAVASCRIPT
         );
 
         # now lets add the CustomerUser element on level 2
-        $Selenium->find_element( "#ACLMatch .ItemAdd option[value='CustomerUser']", 'css' )->VerifiedClick();
+        $Selenium->execute_script(
+            "\$('#ACLMatch .ItemAdd').val('CustomerUser').trigger('redraw.InputField').trigger('change');"
+        );
 
         # now there should be a new .DataItem element with an input element
         $Self->Is(
@@ -235,12 +246,14 @@ JAVASCRIPT
             'Check for .NewDataItem element',
         );
 
-        # now lets add the DynamicField element on level 2, which should create a new dropdown
+        # now lets add the DynamicField element on level 2, which should create a new modernize
         # element containing dynamic fields and an 'Add all' button
-        $Selenium->find_element( "#ACLMatch .ItemAdd option[value='DynamicField']", 'css' )->VerifiedClick();
+        $Selenium->execute_script(
+            "\$('#ACLMatch .ItemAdd').val('DynamicField').trigger('redraw.InputField').trigger('change');"
+        );
 
         $Self->Is(
-            $Selenium->find_element( '#ACLMatch .DataItem .NewDataKeyDropdown', 'css' )->is_displayed(),
+            $Selenium->execute_script("return \$('#ACLMatch .DataItem .NewDataKeyDropdown').length;"),
             '1',
             'Check for .NewDataKeyDropdown element',
         );
@@ -280,6 +293,10 @@ JAVASCRIPT
 
         # wait until the new for has been loaded and the "normal" Save button shows up
         $Selenium->WaitFor( JavaScript => "return typeof(\$) === 'function' && \$('#SubmitAndContinue').length" );
+        $Selenium->WaitFor(
+            JavaScript =>
+                'return typeof(Core) == "object" && typeof(Core.App) == "object" && Core.App.PageLoadComplete'
+        );
 
         # click 'Save and Finish'
         $Selenium->find_element( "#Submit", 'css' )->VerifiedClick();
@@ -322,22 +339,46 @@ JAVASCRIPT
             "ACL $TestACLNames[1] is found",
         );
 
-        # delete test ACLs from the database
+        # Refresh screen.
+        $Selenium->VerifiedRefresh();
+
+        # Create copy of the first ACL.
         my $ACLObject = $Kernel::OM->Get('Kernel::System::ACL::DB::ACL');
-        my $UserID    = $Kernel::OM->Get('Kernel::System::User')->UserLookup(
-            UserLogin => $TestUserLogin,
+        my $ACLID     = $ACLObject->ACLGet(
+            Name   => $TestACLNames[0],
+            UserID => 1,
+        )->{ID};
+        $Selenium->find_element("//a[contains(\@href, 'Action=AdminACL;Subaction=ACLCopy;ID=$ACLID;' )]")
+            ->VerifiedClick();
+
+        # Create another copy of the same ACL, see bug#13204 (https://bugs.otrs.org/show_bug.cgi?id=13204).
+        $Selenium->find_element("//a[contains(\@href, 'Action=AdminACL;Subaction=ACLCopy;ID=$ACLID;' )]")
+            ->VerifiedClick();
+
+        # Verify there are both copied ACL's.
+        my $Copy = $LanguageObject->Translate('Copy');
+        push @TestACLNames, "$TestACLNames[0] ($Copy) 1", "$TestACLNames[0] ($Copy) 2";
+
+        $Self->True(
+            index( $Selenium->get_page_source(), $TestACLNames[2] ) > -1,
+            "First copied ACL '$TestACLNames[2]' found on screen",
+        );
+        $Self->True(
+            index( $Selenium->get_page_source(), $TestACLNames[3] ) > -1,
+            "Second copied ACL '$TestACLNames[3]' found on screen",
         );
 
+        # delete test ACLs from the database
         for my $TestACLName (@TestACLNames) {
 
-            my $ACLID = $ACLObject->ACLGet(
+            $ACLID = $ACLObject->ACLGet(
                 Name   => $TestACLName,
-                UserID => $UserID,
+                UserID => 1,
             )->{ID};
 
             my $Success = $ACLObject->ACLDelete(
                 ID     => $ACLID,
-                UserID => $UserID,
+                UserID => 1,
             );
             $Self->True(
                 $Success,

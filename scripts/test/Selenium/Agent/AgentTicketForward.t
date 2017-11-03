@@ -152,11 +152,11 @@ $Selenium->RunTest(
         $Selenium->find_element( "#ToCustomer", 'css' )->send_keys($TestCustomer);
 
         $Selenium->WaitFor( JavaScript => 'return typeof($) === "function" && $("li.ui-menu-item:visible").length' );
+        $Selenium->execute_script("\$('li.ui-menu-item:contains($TestCustomer)').click()");
 
-        $Selenium->find_element("//*[text()='$TestCustomer']")->VerifiedClick();
         $Selenium->execute_script("\$('#ComposeStateID').val('4').trigger('redraw.InputField').trigger('change');");
 
-        $Selenium->find_element( "#ToCustomer", 'css' )->submit();
+        $Selenium->find_element( "#submitRichText", 'css' )->click();
 
         # return back to AgentTicketZoom
         $Selenium->WaitFor( WindowCount => 1 );
@@ -176,6 +176,15 @@ $Selenium->RunTest(
             TicketID => $TicketID,
             UserID   => 1,
         );
+
+        # Ticket deletion could fail if apache still writes to ticket history. Try again in this case.
+        if ( !$Success ) {
+            sleep 3;
+            $Success = $TicketObject->TicketDelete(
+                TicketID => $TicketID,
+                UserID   => 1,
+            );
+        }
         $Self->True(
             $Success,
             "Ticket with ticket ID $TicketID is deleted"

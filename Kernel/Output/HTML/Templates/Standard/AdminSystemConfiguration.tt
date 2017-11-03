@@ -13,7 +13,7 @@
 
 <div class="MainBox ARIARoleMain LayoutFixedSidebar SidebarFirst">
 
-    <h1>[% Translate("System configuration") | html %]</h1>
+    <h1 class="InvisibleText">[% Translate("System configuration") | html %]</h1>
 
     [% BreadcrumbPath = [
             {
@@ -38,6 +38,7 @@
         [% INCLUDE "SystemConfiguration/Sidebar/Navigation.tt" %]
         [% END %]
         [% INCLUDE "SystemConfiguration/Sidebar/Help.tt" %]
+        [% INCLUDE "SystemConfiguration/Sidebar/OTRSBusinessTeaser.tt" %]
         [% INCLUDE "SystemConfiguration/Sidebar/DynamicActions.tt" %]
     </div>
 
@@ -61,7 +62,7 @@
                     <li>
                         <i class="fa fa-lightbulb-o"></i>
                         <p>
-                            [% Translate("Find out how to use the system configuration by reading the %s.", DocumentationLink) %]
+                            [% Translate("Find out how to use the system configuration by reading the %s.") | html | ReplacePlaceholders(DocumentationLink) %]
                         </p>
                     </li>
                 </ul>

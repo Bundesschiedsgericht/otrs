@@ -7,6 +7,7 @@
 # --
 
 package Kernel::System::SysConfig::ValueType::Textarea;
+## nofilter(TidyAll::Plugin::OTRS::Perl::LayoutObject)
 
 use strict;
 use warnings;
@@ -124,7 +125,7 @@ sub SettingRender {
 
     my $HTML = "<div class='SettingContent'>\n";
     $HTML
-        .= "<textarea rows='15' cols='100' class=\"$Param{Class}\" type=\"text\" name=\"$Name\"" .
+        .= "<textarea rows='15' cols='50' class=\"$Param{Class}\" type=\"text\" name=\"$Name\"" .
         " id=\"$Param{Name}$Param{IDSuffix}\"";
 
     if ( !$Param{RW} ) {
@@ -176,7 +177,7 @@ Generate HTML for new array/hash item.
 
 Returns:
 
-    $HTML = '<textarea rows=\'15\' cols=\'100\' class="" type="text" name="SettingName">
+    $HTML = '<textarea rows=\'15\' cols=\'50\' class="" type="text" name="SettingName">
         ...
         </textarea>';
 

@@ -18,8 +18,8 @@
 <table class="DataTable">
     <thead>
         <tr>
-            <th>[% Translate("Customer login") | html %]</th>
-            <th>[% Translate("Customer information") | html %]</th>
+            <th>[% Translate("Customer User ID") | html %]</th>
+            <th>[% Translate("Customer user information") | html %]</th>
             <th>[% Translate("Open") | html %]</th>
             <th>[% Translate("Closed") | html %]</th>
 [% RenderBlockStart("OverviewResultNewAgentTicketPhone") %]
@@ -50,7 +50,7 @@
                 </a>
 [% RenderBlockStart("ContentLargeCustomerUserListRowChatIcons") %]
                 <span class="UserChatIcons Hidden">
-                    <a href="#" title="[% Translate("Start chat") %]" type="button" class="UserChatStart" data-user-type="Customer" data-user-id="[% Data.UserID | html %]" data-user-fullname="[% Data.UserFullname | html %]">
+                    <a href="#" title="[% Translate("Start chat") | html %]" type="button" class="UserChatStart" data-user-type="Customer" data-user-id="[% Data.UserID | html %]" data-user-fullname="[% Data.UserFullname | html %]">
                         <i class="fa fa-comments"></i>
                     </a>
                     [% IF Data.VideoChatEnabled %]

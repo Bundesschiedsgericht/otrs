@@ -206,7 +206,7 @@ $Selenium->RunTest(
         $Selenium->find_element("//a[contains(\@title, \'Queue, filter not active' )]")->click();
         $Selenium->WaitFor(
             JavaScript =>
-                "return typeof(\$) === 'function' && \$(\"#ColumnFilterQueue0120-TicketNew option[value='$QueueID']:visible\").length"
+                "return typeof(\$) === 'function' && \$(\"#ColumnFilterQueue0120-TicketNew option[value='$QueueID']\").length"
         );
 
         $Selenium->find_element( "#ColumnFilterQueue0120-TicketNew option[value='$QueueID']", 'css' )->click();
@@ -288,6 +288,15 @@ $Selenium->RunTest(
                 TicketID => $Ticket,
                 UserID   => 1,
             );
+
+            # Ticket deletion could fail if apache still writes to ticket history. Try again in this case.
+            if ( !$Success ) {
+                sleep 3;
+                $Success = $TicketObject->TicketDelete(
+                    TicketID => $Ticket,
+                    UserID   => 1,
+                );
+            }
             $Self->True(
                 $Success,
                 "Ticket ID $Ticket is deleted"

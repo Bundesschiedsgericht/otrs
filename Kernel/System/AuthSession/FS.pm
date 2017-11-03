@@ -35,6 +35,15 @@ sub new {
     $Self->{SessionSpool} = $ConfigObject->Get('SessionDir');
     $Self->{SystemID}     = $ConfigObject->Get('SystemID');
 
+    if ( !-e $Self->{SessionSpool} ) {
+        if ( !mkdir( $Self->{SessionSpool}, 0770 ) ) {    ## no critic
+            $Kernel::OM->Get('Kernel::System::Log')->Log(
+                Priority => 'error',
+                Message  => "Can't create directory '$Self->{SessionSpool}': $!",
+            );
+        }
+    }
+
     return $Self;
 }
 
@@ -249,8 +258,13 @@ sub CreateSessionID {
     my $UserLogin        = $Self->{Cache}->{$SessionID}->{UserLogin}        || '';
     my $UserSessionStart = $Self->{Cache}->{$SessionID}->{UserSessionStart} || '';
     my $UserLastRequest  = $Self->{Cache}->{$SessionID}->{UserLastRequest}  || '';
+    my $SessionSource    = $Self->{Cache}->{$SessionID}->{SessionSource}    || '';
 
     my $StateContent = $UserType . '####' . $UserLogin . '####' . $UserSessionStart . '####' . $UserLastRequest;
+
+    if ($SessionSource) {
+        $StateContent .= '####' . $SessionSource;
+    }
 
     # write state file
     $MainObject->FileWrite(
@@ -395,6 +409,10 @@ sub GetActiveSessions {
         my $UserType        = $SessionData[0] || '';
         my $UserLogin       = $SessionData[1] || '';
         my $UserLastRequest = $SessionData[3] || $TimeNow;
+        my $SessionSource   = $SessionData[4] || '';
+
+        # Don't count sessions from source 'GenericInterface'.
+        next SESSIONID if $SessionSource eq 'GenericInterface';
 
         next SESSIONID if $UserType ne $Param{UserType};
 
@@ -544,11 +562,16 @@ sub DESTROY {
         my $UserLogin        = $Self->{Cache}->{$SessionID}->{UserLogin}        || '';
         my $UserSessionStart = $Self->{Cache}->{$SessionID}->{UserSessionStart} || '';
         my $UserLastRequest  = $Self->{Cache}->{$SessionID}->{UserLastRequest}  || '';
+        my $SessionSource    = $Self->{Cache}->{$SessionID}->{SessionSource}    || '';
 
         my $StateContent = $UserType . '####'
             . $UserLogin . '####'
             . $UserSessionStart . '####'
             . $UserLastRequest;
+
+        if ($SessionSource) {
+            $StateContent .= '####' . $SessionSource;
+        }
 
         # write state file
         $MainObject->FileWrite(

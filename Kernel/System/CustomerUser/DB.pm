@@ -1259,19 +1259,26 @@ sub CustomerUserDataGet {
         return;
     }
 
+    my $CustomerUserListFieldsMap = $Self->{CustomerUserMap}->{CustomerUserListFields};
+    if ( !IsArrayRefWithData($CustomerUserListFieldsMap) ) {
+        $CustomerUserListFieldsMap = [ 'first_name', 'last_name', 'email', ];
+    }
+
     # to build the UserMailString
-    my %LookupCustomerUserListFields = map { $_ => 1 } @{ $Self->{CustomerUserMap}->{CustomerUserListFields} };
+    my %LookupCustomerUserListFields = map { $_ => 1 } @{$CustomerUserListFieldsMap};
     my @CustomerUserListFields
         = map { $_->[0] } grep { $LookupCustomerUserListFields{ $_->[2] } } @{ $Self->{CustomerUserMap}->{Map} };
 
     my $UserMailString = '';
+    my @UserMailStringParts;
 
     FIELD:
     for my $Field (@CustomerUserListFields) {
         next FIELD if !$Data{$Field};
 
-        $UserMailString .= $Data{$Field} . ' ';
+        push @UserMailStringParts, $Data{$Field};
     }
+    $UserMailString = join ' ', @UserMailStringParts;
     $UserMailString =~ s/^(.*)\s(.+?\@.+?\..+?)(\s|)$/"$1" <$2>/;
 
     # add the UserMailString to the data hash
@@ -1677,8 +1684,9 @@ sub SetPassword {
     }
     my $CryptedPw = '';
 
-    # get crypt type
-    my $CryptType = $Kernel::OM->Get('Kernel::Config')->Get('Customer::AuthModule::DB::CryptType') || 'sha2';
+    my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
+
+    my $CryptType = $ConfigObject->Get('Customer::AuthModule::DB::CryptType') || 'sha2';
 
     # get encode object
     my $EncodeObject = $Kernel::OM->Get('Kernel::System::Encode');
@@ -1753,7 +1761,14 @@ sub SetPassword {
             return;
         }
 
-        my $Cost = 9;
+        my $Cost = $ConfigObject->Get('Customer::AuthModule::DB::bcryptCost') // 12;
+
+        # Don't allow values smaller than 9 for security.
+        $Cost = 9 if $Cost < 9;
+
+        # Current Crypt::Eksblowfish::Bcrypt limit is 31.
+        $Cost = 31 if $Cost > 31;
+
         my $Salt = $MainObject->GenerateRandomString( Length => 16 );
 
         # remove UTF8 flag, required by Crypt::Eksblowfish::Bcrypt
@@ -1763,7 +1778,7 @@ sub SetPassword {
         my $Octets = Crypt::Eksblowfish::Bcrypt::bcrypt_hash(
             {
                 key_nul => 1,
-                cost    => 9,
+                cost    => $Cost,
                 salt    => $Salt,
             },
             $Pw

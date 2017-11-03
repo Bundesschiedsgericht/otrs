@@ -353,6 +353,7 @@ sub Run {
             %UserData,
             UserLastRequest => $SessionDTObject->ToEpoch(),
             UserType        => 'Customer',
+            SessionSource   => 'CustomerInterface',
         );
 
         # show error message if no session id has been created
@@ -632,7 +633,7 @@ sub Run {
                 MimeType => 'text/plain',
                 Body     => $Body
             );
-            if ( !$Sent ) {
+            if ( !$Sent->{Success} ) {
                 $LayoutObject->FatalError(
                     Comment => Translatable('Please contact the administrator.'),
                 );
@@ -702,7 +703,7 @@ sub Run {
             MimeType => 'text/plain',
             Body     => $Body
         );
-        if ( !$Sent ) {
+        if ( !$Sent->{Success} ) {
             $LayoutObject->CustomerFatalError(
                 Comment => Translatable('Please contact the administrator.')
             );
@@ -899,7 +900,7 @@ sub Run {
             MimeType => 'text/plain',
             Body     => $Body
         );
-        if ( !$Sent ) {
+        if ( !$Sent->{Success} ) {
             my $Output = $LayoutObject->CustomerHeader(
                 Area  => 'Core',
                 Title => 'Error'

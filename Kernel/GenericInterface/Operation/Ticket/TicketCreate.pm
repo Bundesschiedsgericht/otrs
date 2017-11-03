@@ -203,7 +203,6 @@ perform TicketCreate Operation. This will return the created ticket number.
                     ResponsibleID      => 123,
                     Age                => 3456,
                     Created            => '2010-10-27 20:15:00'
-                    CreateTimeUnix     => '1231414141',
                     CreateBy           => 123,
                     Changed            => '2010-10-27 20:15:15',
                     ChangeBy           => 123,
@@ -1587,7 +1586,7 @@ sub _TicketCreate {
             }
     }
 
-    # get webservice configuration
+    # get web service configuration
     my $Webservice = $Kernel::OM->Get('Kernel::System::GenericInterface::Webservice')->WebserviceGet(
         ID => $Self->{WebserviceID},
     );
@@ -1634,7 +1633,6 @@ sub _TicketCreate {
         TicketID      => $TicketID,
         ArticleID     => $ArticleID,
         DynamicFields => 1,
-        UserID        => $Param{UserID},
     );
 
     # prepare Article DynamicFields
@@ -1664,7 +1662,6 @@ sub _TicketCreate {
     if ( IsArrayRefWithData($AttachmentList) ) {
         my %AttachmentIndex = $ArticleBackendObject->ArticleAttachmentIndex(
             ArticleID => $ArticleID,
-            UserID    => $Param{UserID},
         );
 
         my @Attachments;
@@ -1675,7 +1672,6 @@ sub _TicketCreate {
             my %Attachment = $ArticleBackendObject->ArticleAttachment(
                 ArticleID => $ArticleID,
                 FileID    => $FileID,
-                UserID    => $Param{UserID},
             );
 
             next ATTACHMENT if !IsHashRefWithData( \%Attachment );

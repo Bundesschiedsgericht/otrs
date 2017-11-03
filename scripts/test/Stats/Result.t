@@ -356,6 +356,10 @@ my %StateList = $Kernel::OM->Get('Kernel::System::State')->StateList(
 my %LookupStateList = map { $StateList{$_} => $_ } sort keys %StateList;
 
 # set the language to 'en' before the StatsRun
+$Kernel::OM->ObjectsDiscard(
+    Objects => ['Kernel::Language'],
+);
+
 $Kernel::OM->ObjectParamAdd(
     'Kernel::Language' => {
         UserLanguage => 'en',
@@ -3484,7 +3488,7 @@ my @Tests = (
                 'Title for result tests 2015-08-08 00:00:00-2015-08-14 23:59:59',
             ],
             [
-                'Number',    # TODO ad the moment Number is not translatable
+                'Nummer',
                 'Ticket#',
                 'Titel',
                 'Erstellt',
@@ -3879,6 +3883,13 @@ for my $Test (@Tests) {
             'Kernel::Language' => {
                 UserLanguage => $Test->{Language},
             },
+        );
+
+        my $LanguageObject = $Kernel::OM->Get('Kernel::Language');
+
+        $Self->True(
+            1,
+            "Test $TestCount: Set the language to '$Test->{Language}'.",
         );
     }
 

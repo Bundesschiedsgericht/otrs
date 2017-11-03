@@ -7,6 +7,7 @@
 # --
 
 package Kernel::System::ObjectManager;
+## nofilter(TidyAll::Plugin::OTRS::Perl::LayoutObject)
 ## nofilter(TidyAll::Plugin::OTRS::Perl::PodSpelling)
 ## nofilter(TidyAll::Plugin::OTRS::Perl::Require)
 ## nofilter(TidyAll::Plugin::OTRS::Perl::SyntaxCheck)
@@ -183,7 +184,7 @@ Retrieves a singleton object, and if it not yet exists, implicitly creates one f
 
 =cut
 
-sub Get {
+sub Get {    ## no critic
 
     # No param unpacking for increased performance
     if ( $_[1] && $_[0]->{Objects}->{ $_[1] } ) {
@@ -641,6 +642,8 @@ sub DESTROY {
     # Make sure $Kernel::OM is still available in the destructor
     local $Kernel::OM = $Self;
     $Self->ObjectsDiscard();
+
+    return;
 }
 
 =head1 TERMS AND CONDITIONS

@@ -603,7 +603,7 @@ $Selenium->RunTest(
                         $Element->is_displayed();
                     }
 
-                    for my $FieldName ( @{ $AgentCustomerUserAddressBookConfig->{DefaultFields} } ) {
+                    for my $FieldName ( @{ $AgentCustomerUserAddressBookConfig->{DefaultFields}->{Email} } ) {
                         my $Element = $Selenium->find_element( $FieldName, 'name' );
                         $Element->is_enabled();
                         $Element->is_displayed();
@@ -613,7 +613,7 @@ $Selenium->RunTest(
                 # Check the default fields for the initial address book screen.
                 if ( $SubTest->{RemoveDefaultFields} ) {
 
-                    for my $FieldName ( @{ $AgentCustomerUserAddressBookConfig->{DefaultFields} } ) {
+                    for my $FieldName ( @{ $AgentCustomerUserAddressBookConfig->{DefaultFields}->{Email} } ) {
 
                         $Selenium->find_element( "input[name='$FieldName'] + .RemoveButton", 'css' )->click();
 
@@ -733,7 +733,7 @@ $Selenium->RunTest(
                     for my $CustomerUserLogin ( @{ $SubTest->{ExcludeSearchResultCustomerUser} } ) {
 
                         $Self->True(
-                            $Selenium->execute_script("return \$('input[value=\"$CustomerUserLogin\"]:disabled');"),
+                            $Selenium->execute_script("return \$('input[value=\"$CustomerUserLogin\"]:disabled').length;"),
                             "CustomerUser $CustomerUserLogin is disabled on result page",
                         );
                     }

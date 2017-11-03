@@ -279,12 +279,30 @@ my $RunTest = sub {
 
     my @Return;
     {
+        my $CommunicationLogObject = $Kernel::OM->Create(
+            'Kernel::System::CommunicationLog',
+            ObjectParams => {
+                Transport => 'Email',
+                Direction => 'Incoming',
+            },
+        );
+        $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
+
         my $PostMasterObject = Kernel::System::PostMaster->new(
-            Email => \$Test->{Email},
-            Debug => 2,
+            CommunicationLogObject => $CommunicationLogObject,
+            Email                  => \$Test->{Email},
+            Debug                  => 2,
         );
 
         @Return = $PostMasterObject->Run();
+
+        $CommunicationLogObject->ObjectLogStop(
+            ObjectLogType => 'Message',
+            Status        => 'Successful',
+        );
+        $CommunicationLogObject->CommunicationStop(
+            Status => 'Successful',
+        );
     }
     $Self->Is(
         $Return[0] || 0,
@@ -309,10 +327,7 @@ my $RunTest = sub {
         "$Test->{Name} - old articles unchanged"
     );
 
-    my %Article = $ArticleBackendObject->ArticleGet(
-        %{$NewMetaArticle},
-        UserID => 1,
-    );
+    my %Article = $ArticleBackendObject->ArticleGet( %{$NewMetaArticle} );
 
     for my $Key ( sort keys %{ $Test->{Check} } ) {
         $Self->Is(

@@ -228,7 +228,7 @@ $Selenium->RunTest(
 
             # select customer company
             $Selenium->execute_script(
-                "return \$('#CustomerIDs').val('$CustomerIDs[$Count]').trigger('redraw.InputField').trigger('change');"
+                "\$('#CustomerIDs').val('$CustomerIDs[$Count]').trigger('redraw.InputField').trigger('change');"
             );
 
             # wait until new screen has loaded
@@ -254,6 +254,15 @@ $Selenium->RunTest(
                 TicketID => $TicketID,
                 UserID   => 1,
             );
+
+            # Ticket deletion could fail if apache still writes to ticket history. Try again in this case.
+            if ( !$Success ) {
+                sleep 3;
+                $Success = $TicketObject->TicketDelete(
+                    TicketID => $TicketID,
+                    UserID   => 1,
+                );
+            }
             $Self->True(
                 $Success,
                 "Ticket with ticket ID $TicketID is deleted",

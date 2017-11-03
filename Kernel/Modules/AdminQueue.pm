@@ -596,7 +596,7 @@ sub _Edit {
             }
             $ParentQueue .= $Queue[$i];
         }
-        $Param{Name} = $Queue[$#Queue];
+        $Param{Name} = $Queue[-1];
     }
 
     my $QueueObject = $Kernel::OM->Get('Kernel::System::Queue');
@@ -887,7 +887,7 @@ sub _Edit {
 
     my @IsQueueInSysConfig = $SysConfigObject->ConfigurationEntityCheck(
         EntityType => 'Queue',
-        EntityName => $QueueName,
+        EntityName => $QueueName // '',
     );
 
     if (@IsQueueInSysConfig) {

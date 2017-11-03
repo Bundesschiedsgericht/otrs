@@ -51,15 +51,28 @@ To do this, you need a running C<selenium> or C<phantomjs> server.
 
 Specify the connection details in C<Config.pm>, like this:
 
+    # For testing with Firefox until v. 47 (testing with recent FF and marionette is currently not supported):
     $Self->{'SeleniumTestsConfig'} = {
         remote_server_addr  => 'localhost',
         port                => '4444',
-        browser_name        => 'phantomjs',
         platform            => 'ANY',
-        window_height       => 1200,    # optional, default 1000
-        window_width        => 1600,    # optional, default 1200
+        browser_name        => 'firefox',
         extra_capabilities => {
             marionette     => \0,   # Required to run FF 47 or older on Selenium 3+.
+        },
+    };
+
+    # For testing with Chrome/Chromium (requires installed geckodriver):
+    $Self->{'SeleniumTestsConfig'} = {
+        remote_server_addr  => 'localhost',
+        port                => '4444',
+        platform            => 'ANY',
+        browser_name        => 'chrome',
+        extra_capabilities => {
+            chromeOptions => {
+                # disable-infobars makes sure window size calculations are ok
+                args => [ "disable-infobars" ],
+            },
         },
     };
 
@@ -165,8 +178,8 @@ sub _execute_command {    ## no critic
     my $TestName = 'Selenium command success: ';
     $TestName .= $Kernel::OM->Get('Kernel::System::Main')->Dump(
         {
-            %{ $Res    || {} },
-            %{ $Params || {} },
+            %{ $Res    || {} },    ## no critic
+            %{ $Params || {} },    ## no critic
         }
     );
 
@@ -200,6 +213,28 @@ sub get {    ## no critic
     $Self->SUPER::get($URL);
 
     return;
+}
+
+=head2 get_alert_text()
+
+Override get_alert_text() method of base class to return alert text as string.
+
+    my $AlertText = $SeleniumObject->get_alert_text();
+
+returns
+
+    my $AlertText = 'Some alert text!'
+
+=cut
+
+sub get_alert_text {    ## no critic
+    my ($Self) = @_;
+
+    my $AlertText = $Self->SUPER::get_alert_text();
+
+    die "Alert dialog is not present" if ref $AlertText eq 'HASH';    # Chrome returns HASH when there is no alert text.
+
+    return $AlertText;
 }
 
 =head2 VerifiedGet()
@@ -510,6 +545,8 @@ sub HandleError {
         Filename => $Filename,
         Content  => $Data
     );
+
+    return;
 }
 
 =head2 DEMOLISH()
@@ -558,6 +595,8 @@ sub DEMOLISH {
 
         $AuthSessionObject->RemoveSessionID( SessionID => $SessionID );
     }
+
+    return;
 }
 
 1;

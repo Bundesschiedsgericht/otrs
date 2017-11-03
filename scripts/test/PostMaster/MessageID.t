@@ -65,11 +65,29 @@ for my $File (qw(1 2 3 5 6 11 21)) {
     );
 
     {
+        my $CommunicationLogObject = $Kernel::OM->Create(
+            'Kernel::System::CommunicationLog',
+            ObjectParams => {
+                Transport => 'Email',
+                Direction => 'Incoming',
+            },
+        );
+        $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
+
         my $PostMasterObject = Kernel::System::PostMaster->new(
-            Email => \@Content,
+            CommunicationLogObject => $CommunicationLogObject,
+            Email                  => \@Content,
         );
 
         @Return = $PostMasterObject->Run();
+
+        $CommunicationLogObject->ObjectLogStop(
+            ObjectLogType => 'Message',
+            Status        => 'Successful',
+        );
+        $CommunicationLogObject->CommunicationStop(
+            Status => 'Successful',
+        );
     }
 
     $Self->Is(
@@ -80,7 +98,6 @@ for my $File (qw(1 2 3 5 6 11 21)) {
 
     my %Article = $ArticleBackendObject->ArticleGetByMessageID(
         MessageID => $MessageID,
-        UserID    => 1,
     );
 
     $Self->Is(

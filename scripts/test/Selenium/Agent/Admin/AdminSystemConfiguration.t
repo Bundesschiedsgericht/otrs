@@ -13,7 +13,6 @@ use utf8;
 
 use vars (qw($Self));
 
-# get selenium object
 my $Selenium = $Kernel::OM->Get('Kernel::System::UnitTest::Selenium');
 
 my @Tests = (
@@ -654,7 +653,10 @@ my @Tests = (
                 Click => '.Update',
             },
             {
-                Select => 'select',
+                Select => '.ArrayItem:nth-of-type(2) select',
+            },
+            {
+                ElementValue => 'option-2',
             },
         ],
         ExpectedResult => [
@@ -2263,7 +2265,10 @@ my @Tests = (
                 Click => '.Update',
             },
             {
-                Select => 'input',
+                Select => 'select',
+            },
+            {
+                ElementValue => 'female',
             },
         ],
         ExpectedResult => {
@@ -2315,7 +2320,10 @@ my @Tests = (
                 Click => '.Update',
             },
             {
-                Select => 'input',
+                Select => 'select',
+            },
+            {
+                ElementValue => 'male',
             },
         ],
         ExpectedResult => {
@@ -2658,6 +2666,9 @@ my @Tests = (
             },
             {
                 Select => 'select',
+            },
+            {
+                ElementValue => 'option-2',
             },
         ],
         ExpectedResult => 'option-2',
@@ -3132,12 +3143,58 @@ my @Tests = (
             ],
         },
     },
+    {
+        # This test checks if disabled settings work properly.
+        Name     => 'ZZZExampleStringDisabled',
+        Index    => 53,
+        Commands => [
+            {
+                # Edit button is not visible.
+                ElementMissing => '.SettingEdit:visible',
+            },
+            {
+                # Expand setting bar.
+                Click => '.Header',
+            },
+            {
+                # Edit alias button is not visible.
+                ElementMissing => '.EditAlias:visible',
+            },
+            {
+                # Enable setting.
+                Click => '.SettingDisabled',
+            },
+            {
+                # wait and edit
+                Click => '.EditAlias',
+            },
+            {
+                Select => 'input#ZZZExampleStringDisabled',
+            },
+            {
+                Clear => 1,
+            },
+            {
+                Write => 'abc',
+            },
+            {
+                Click => '.SaveAlias',
+            },
+            {
+                ElementMissing => '.SaveAlias:visible',
+            },
+            {
+                # Disable the setting.
+                Click => '.SettingEnabled',
+            },
+        ],
+        ExpectedResult => 'abc',
+    },
 );
 
 $Selenium->RunTest(
     sub {
 
-        # get helper object
         my $Helper          = $Kernel::OM->Get('Kernel::System::UnitTest::Helper');
         my $SysConfigObject = $Kernel::OM->Get('Kernel::System::SysConfig');
 
@@ -3145,7 +3202,7 @@ $Selenium->RunTest(
         my $CommandObject = $Kernel::OM->Get('Kernel::System::Console::Command::Maint::Config::Rebuild');
         my $ExitCode      = $CommandObject->Execute('--cleanup');
 
-        # create test user and login
+        # Create test user and login.
         my $TestUserLogin = $Helper->TestUserCreate(
             Groups => ['admin'],
         ) || die "Did not get test user";
@@ -3184,10 +3241,25 @@ $Selenium->RunTest(
             Password => $TestUserLogin,
         );
 
-        # get script alias
         my $ScriptAlias = $Kernel::OM->Get('Kernel::Config')->Get('ScriptAlias');
 
-        # navigate to AdminSysConfig screen
+        $Selenium->VerifiedGet("${ScriptAlias}index.pl?Action=AdminSystemConfiguration");
+
+        my $OTRSBusinessIsInstalled = $Kernel::OM->Get('Kernel::System::OTRSBusiness')->OTRSBusinessIsInstalled();
+        my $OBTeaserFound = index( $Selenium->get_page_source(), 'supports versioning, rollback and' ) > -1;
+        if ( !$OTRSBusinessIsInstalled ) {
+            $Self->True(
+                $OBTeaserFound,
+                "OTRSBusiness teaser found on page",
+            );
+        }
+        else {
+            $Self->False(
+                $OBTeaserFound,
+                "OTRSBusiness teaser not found on page",
+            );
+        }
+
         $Selenium->VerifiedGet("${ScriptAlias}index.pl?Action=AdminSystemConfigurationGroup;RootNavigation=Sample;");
 
         my $SelectedItem;
@@ -3209,12 +3281,14 @@ $Selenium->RunTest(
                         JavaScript => 'return $("' . "$Prefix $Value" . '").length',
                     );
                     $Selenium->WaitFor(
-                        JavaScript => 'return $("' . $Prefix . '").hasClass("HasOverlay")==0',
+                        JavaScript => 'return $("' . $Prefix . '").hasClass("HasOverlay") == 0',
                     );
 
-                    $Selenium->find_element( "$Prefix $Value", "css" )->VerifiedClick();
+                    $Selenium->find_element( "$Prefix $Value", "css" )->click();
 
-                    # TODO: Review - VerifiedClick doesn't work with overlay loader
+                    $Selenium->WaitFor(
+                        JavaScript => 'return $("' . $Prefix . '").hasClass("HasOverlay") == 0',
+                    );
                 }
                 elsif ( $CommandType eq 'Clear' ) {
                     $SelectedItem->clear();
@@ -3227,7 +3301,7 @@ $Selenium->RunTest(
                         JavaScript => 'return $("' . "$Prefix $Value" . ':visible").length',
                     );
                     $Selenium->WaitFor(
-                        JavaScript => 'return $("' . $Prefix . '").hasClass("HasOverlay")==0',
+                        JavaScript => 'return $("' . $Prefix . '").hasClass("HasOverlay") == 0',
                     );
                 }
                 elsif ( $CommandType eq 'Alert' ) {
@@ -3235,14 +3309,14 @@ $Selenium->RunTest(
                         AlertPresent => 1,
                     );
 
-                    # verify alert message
+                    # Verify alert message.
                     $Self->Is(
                         $Value,
                         $Selenium->get_alert_text(),
-                        "Check alert text - $Value",
+                        "$Test->{Name} - Check alert text - $Value",
                     );
 
-                    # accept alert
+                    # Accept alert.
                     $Selenium->accept_alert();
                 }
                 elsif ( $CommandType eq 'Write' ) {
@@ -3254,7 +3328,7 @@ $Selenium->RunTest(
                     $Self->Is(
                         $SelectedItem->get_value(),
                         $Value,
-                        "Check if element value is OK.",
+                        "$Test->{Name} - Check if element value is OK.",
                     );
                 }
                 elsif ( $CommandType eq 'ElementMissing' ) {
@@ -3266,7 +3340,7 @@ $Selenium->RunTest(
                 elsif ( $CommandType eq 'Select' ) {
 
                     $Selenium->WaitFor(
-                        JavaScript => 'return $("' . $Prefix . '").hasClass("HasOverlay")==0',
+                        JavaScript => 'return $("' . $Prefix . '").hasClass("HasOverlay") == 0',
                     );
 
                     $Selenium->WaitFor(
@@ -3279,16 +3353,17 @@ $Selenium->RunTest(
 
                     # Wait for any tasks to complete.
                     $Selenium->WaitFor(
-                        JavaScript => 'return $("' . $Prefix . '").hasClass("HasOverlay")==0',
+                        JavaScript => 'return $("' . $Prefix . '").hasClass("HasOverlay") == 0',
                     );
 
                     $Selenium->execute_script(
                         $Command->{JS},
                     );
+                    sleep 1;
                 }
             }
 
-            # compare results
+            # Compare results.
             my %Setting = $SysConfigObject->SettingGet(
                 Name => $Test->{Name},
             );
@@ -3302,19 +3377,38 @@ $Selenium->RunTest(
             }
         }
 
-        # reload page
+        # Reload page.
         $Selenium->VerifiedGet("${ScriptAlias}index.pl?Action=AdminSystemConfigurationGroup;RootNavigation=Sample;");
 
-        # check if there is notification
+        # Check if there is notification.
         $Self->True(
             index( $Selenium->get_page_source(), 'You have undeployed settings, would you like to deploy them?' ) > -1,
             "Notification shown for undeployed settings."
         );
 
+        $Selenium->WaitFor(
+            JavaScript => 'return $("#CloudService:visible").length',
+        );
+
+        $Selenium->find_element( 'li#CloudService i', 'css' )->click();
+        $Selenium->WaitFor(
+            JavaScript => 'return $("#ConfigTree ul > li:first > ul > li:first:visible").length',
+        );
+
+        # Check navigation for disabled nodes.
+        my $NodeDisabled = $Selenium->execute_script(
+            'return $("#ConfigTree ul > li:first > ul > li:first a").hasClass("jstree-disabled");',
+        );
+
+        $Self->True(
+            $NodeDisabled,
+            'Check if CloudService::Admin node is disabled.',
+        );
+
         # Enable this block if you want to test it multiple times.
         my @TestNames;
 
-        # Reset settings to Default
+        # Reset settings to Default.
         for my $Test (@Tests) {
             if ( !grep { $_ eq $Test->{Name} } @TestNames ) {
                 my %Setting = $SysConfigObject->SettingGet(

@@ -1125,7 +1125,6 @@ CREATE TABLE ticket (
     escalation_response_time NUMBER (12, 0) NOT NULL,
     escalation_solution_time NUMBER (12, 0) NOT NULL,
     archive_flag NUMBER (5, 0) DEFAULT 0 NOT NULL,
-    create_time_unix NUMBER (20, 0) NOT NULL,
     create_time DATE NOT NULL,
     create_by NUMBER (12, 0) NOT NULL,
     change_time DATE NOT NULL,
@@ -1180,14 +1179,6 @@ END;
 ;
 BEGIN
     EXECUTE IMMEDIATE 'CREATE INDEX ticket_create_time ON ticket (create_time)';
-EXCEPTION
-  WHEN OTHERS THEN NULL;
-END;
-/
---
-;
-BEGIN
-    EXECUTE IMMEDIATE 'CREATE INDEX ticket_create_time_unix ON ticket (create_time_unix)';
 EXCEPTION
   WHEN OTHERS THEN NULL;
 END;
@@ -1583,7 +1574,7 @@ CREATE TABLE ticket_index (
     group_id NUMBER (12, 0) NOT NULL,
     s_lock VARCHAR2 (200) NOT NULL,
     s_state VARCHAR2 (200) NOT NULL,
-    create_time_unix NUMBER (20, 0) NOT NULL
+    create_time DATE NOT NULL
 );
 BEGIN
     EXECUTE IMMEDIATE 'CREATE INDEX ticket_index_group_id ON ticket_index (group_id)';
@@ -1874,6 +1865,7 @@ CREATE TABLE article_data_mime (
     a_reply_to CLOB NULL,
     a_to CLOB NULL,
     a_cc CLOB NULL,
+    a_bcc CLOB NULL,
     a_subject VARCHAR2 (3800) NULL,
     a_message_id VARCHAR2 (3800) NULL,
     a_message_id_md5 VARCHAR2 (32) NULL,
@@ -2114,6 +2106,70 @@ END;
 ;
 BEGIN
     EXECUTE IMMEDIATE 'CREATE INDEX article_data_mime_attachmentcb ON article_data_mime_attachment (article_id)';
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+-- ----------------------------------------------------------
+--  create table article_data_mime_send_error
+-- ----------------------------------------------------------
+CREATE TABLE article_data_mime_send_error (
+    id NUMBER (20, 0) NOT NULL,
+    article_id NUMBER (20, 0) NOT NULL,
+    message_id VARCHAR2 (200) NULL,
+    log_message CLOB NULL,
+    create_time DATE NOT NULL
+);
+ALTER TABLE article_data_mime_send_error ADD CONSTRAINT PK_article_data_mime_send_erb5 PRIMARY KEY (id);
+BEGIN
+    EXECUTE IMMEDIATE 'DROP SEQUENCE SE_article_data_mime_send_97';
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+CREATE SEQUENCE SE_article_data_mime_send_97
+INCREMENT BY 1
+START WITH 1
+NOMAXVALUE
+NOCYCLE
+CACHE 20
+ORDER
+;
+BEGIN
+    EXECUTE IMMEDIATE 'DROP TRIGGER SE_article_data_mime_send_97_t';
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+CREATE OR REPLACE TRIGGER SE_article_data_mime_send_97_t
+BEFORE INSERT ON article_data_mime_send_error
+FOR EACH ROW
+BEGIN
+    IF :new.id IS NULL THEN
+        SELECT SE_article_data_mime_send_97.nextval
+        INTO :new.id
+        FROM DUAL;
+    END IF;
+END;
+/
+--
+;
+BEGIN
+    EXECUTE IMMEDIATE 'CREATE INDEX article_data_mime_transmissi0b ON article_data_mime_send_error (article_id)';
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+BEGIN
+    EXECUTE IMMEDIATE 'CREATE INDEX article_data_mime_transmissi4d ON article_data_mime_send_error (message_id)';
 EXCEPTION
   WHEN OTHERS THEN NULL;
 END;
@@ -4010,7 +4066,7 @@ CREATE TABLE dynamic_field (
     label VARCHAR2 (200) NOT NULL,
     field_order NUMBER (12, 0) NOT NULL,
     field_type VARCHAR2 (200) NOT NULL,
-    object_type VARCHAR2 (200) NOT NULL,
+    object_type VARCHAR2 (100) NOT NULL,
     config CLOB NULL,
     valid_id NUMBER (5, 0) NOT NULL,
     create_time DATE NOT NULL,
@@ -4063,7 +4119,7 @@ END;
 CREATE TABLE dynamic_field_obj_id_name (
     object_id NUMBER (12, 0) NOT NULL,
     object_name VARCHAR2 (200) NOT NULL,
-    object_type VARCHAR2 (200) NOT NULL,
+    object_type VARCHAR2 (100) NOT NULL,
     CONSTRAINT dynamic_field_object_name UNIQUE (object_name, object_type)
 );
 ALTER TABLE dynamic_field_obj_id_name ADD CONSTRAINT PK_dynamic_field_obj_id_name PRIMARY KEY (object_id);
@@ -4772,6 +4828,14 @@ END;
 /
 --
 ;
+BEGIN
+    EXECUTE IMMEDIATE 'CREATE INDEX scfv_sysconfig_default_id_name ON sysconfig_default_version (sysconfig_default_id, name)';
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
 -- ----------------------------------------------------------
 --  create table sysconfig_modified
 -- ----------------------------------------------------------
@@ -5202,6 +5266,385 @@ END;
 ;
 BEGIN
     EXECUTE IMMEDIATE 'CREATE INDEX ticket_number_counter_create71 ON ticket_number_counter (create_time)';
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+-- ----------------------------------------------------------
+--  create table mail_queue
+-- ----------------------------------------------------------
+CREATE TABLE mail_queue (
+    id NUMBER (20, 0) NOT NULL,
+    insert_fingerprint VARCHAR2 (64) NULL,
+    article_id NUMBER (20, 0) NULL,
+    attempts NUMBER (12, 0) NOT NULL,
+    sender VARCHAR2 (200) NULL,
+    recipient CLOB NOT NULL,
+    raw_message CLOB NOT NULL,
+    due_time DATE NULL,
+    last_smtp_code NUMBER (12, 0) NULL,
+    last_smtp_message CLOB NULL,
+    create_time DATE NOT NULL,
+    CONSTRAINT mail_queue_article_id UNIQUE (article_id),
+    CONSTRAINT mail_queue_insert_fingerprint UNIQUE (insert_fingerprint)
+);
+ALTER TABLE mail_queue ADD CONSTRAINT PK_mail_queue PRIMARY KEY (id);
+BEGIN
+    EXECUTE IMMEDIATE 'DROP SEQUENCE SE_mail_queue';
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+CREATE SEQUENCE SE_mail_queue
+INCREMENT BY 1
+START WITH 1
+NOMAXVALUE
+NOCYCLE
+CACHE 20
+ORDER
+;
+BEGIN
+    EXECUTE IMMEDIATE 'DROP TRIGGER SE_mail_queue_t';
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+CREATE OR REPLACE TRIGGER SE_mail_queue_t
+BEFORE INSERT ON mail_queue
+FOR EACH ROW
+BEGIN
+    IF :new.id IS NULL THEN
+        SELECT SE_mail_queue.nextval
+        INTO :new.id
+        FROM DUAL;
+    END IF;
+END;
+/
+--
+;
+BEGIN
+    EXECUTE IMMEDIATE 'CREATE INDEX mail_queue_attempts ON mail_queue (attempts)';
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+-- ----------------------------------------------------------
+--  create table communication_log
+-- ----------------------------------------------------------
+CREATE TABLE communication_log (
+    id NUMBER (20, 0) NOT NULL,
+    insert_fingerprint VARCHAR2 (64) NULL,
+    transport VARCHAR2 (200) NOT NULL,
+    direction VARCHAR2 (200) NOT NULL,
+    status VARCHAR2 (200) NOT NULL,
+    account_type VARCHAR2 (200) NULL,
+    account_id VARCHAR2 (200) NULL,
+    start_time DATE NOT NULL,
+    end_time DATE NULL
+);
+ALTER TABLE communication_log ADD CONSTRAINT PK_communication_log PRIMARY KEY (id);
+BEGIN
+    EXECUTE IMMEDIATE 'DROP SEQUENCE SE_communication_log';
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+CREATE SEQUENCE SE_communication_log
+INCREMENT BY 1
+START WITH 1
+NOMAXVALUE
+NOCYCLE
+CACHE 20
+ORDER
+;
+BEGIN
+    EXECUTE IMMEDIATE 'DROP TRIGGER SE_communication_log_t';
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+CREATE OR REPLACE TRIGGER SE_communication_log_t
+BEFORE INSERT ON communication_log
+FOR EACH ROW
+BEGIN
+    IF :new.id IS NULL THEN
+        SELECT SE_communication_log.nextval
+        INTO :new.id
+        FROM DUAL;
+    END IF;
+END;
+/
+--
+;
+BEGIN
+    EXECUTE IMMEDIATE 'CREATE INDEX communication_direction ON communication_log (direction)';
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+BEGIN
+    EXECUTE IMMEDIATE 'CREATE INDEX communication_status ON communication_log (status)';
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+BEGIN
+    EXECUTE IMMEDIATE 'CREATE INDEX communication_transport ON communication_log (transport)';
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+-- ----------------------------------------------------------
+--  create table communication_log_object
+-- ----------------------------------------------------------
+CREATE TABLE communication_log_object (
+    id NUMBER (20, 0) NOT NULL,
+    insert_fingerprint VARCHAR2 (64) NULL,
+    communication_id NUMBER (20, 0) NOT NULL,
+    object_type VARCHAR2 (50) NOT NULL,
+    status VARCHAR2 (200) NOT NULL,
+    start_time DATE NOT NULL,
+    end_time DATE NULL
+);
+ALTER TABLE communication_log_object ADD CONSTRAINT PK_communication_log_object PRIMARY KEY (id);
+BEGIN
+    EXECUTE IMMEDIATE 'DROP SEQUENCE SE_communication_log_object';
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+CREATE SEQUENCE SE_communication_log_object
+INCREMENT BY 1
+START WITH 1
+NOMAXVALUE
+NOCYCLE
+CACHE 20
+ORDER
+;
+BEGIN
+    EXECUTE IMMEDIATE 'DROP TRIGGER SE_communication_log_object_t';
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+CREATE OR REPLACE TRIGGER SE_communication_log_object_t
+BEFORE INSERT ON communication_log_object
+FOR EACH ROW
+BEGIN
+    IF :new.id IS NULL THEN
+        SELECT SE_communication_log_object.nextval
+        INTO :new.id
+        FROM DUAL;
+    END IF;
+END;
+/
+--
+;
+BEGIN
+    EXECUTE IMMEDIATE 'CREATE INDEX communication_log_object_obje4 ON communication_log_object (object_type)';
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+BEGIN
+    EXECUTE IMMEDIATE 'CREATE INDEX communication_log_object_sta5a ON communication_log_object (status)';
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+-- ----------------------------------------------------------
+--  create table communication_log_object_entry
+-- ----------------------------------------------------------
+CREATE TABLE communication_log_object_entry (
+    id NUMBER (20, 0) NOT NULL,
+    communication_log_object_id NUMBER (20, 0) NOT NULL,
+    log_key VARCHAR2 (200) NOT NULL,
+    log_value CLOB NOT NULL,
+    priority VARCHAR2 (50) NOT NULL,
+    create_time DATE NOT NULL
+);
+ALTER TABLE communication_log_object_entry ADD CONSTRAINT PK_communication_log_object_a3 PRIMARY KEY (id);
+BEGIN
+    EXECUTE IMMEDIATE 'DROP SEQUENCE SE_communication_log_objecd3';
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+CREATE SEQUENCE SE_communication_log_objecd3
+INCREMENT BY 1
+START WITH 1
+NOMAXVALUE
+NOCYCLE
+CACHE 20
+ORDER
+;
+BEGIN
+    EXECUTE IMMEDIATE 'DROP TRIGGER SE_communication_log_objecd3_t';
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+CREATE OR REPLACE TRIGGER SE_communication_log_objecd3_t
+BEFORE INSERT ON communication_log_object_entry
+FOR EACH ROW
+BEGIN
+    IF :new.id IS NULL THEN
+        SELECT SE_communication_log_objecd3.nextval
+        INTO :new.id
+        FROM DUAL;
+    END IF;
+END;
+/
+--
+;
+BEGIN
+    EXECUTE IMMEDIATE 'CREATE INDEX communication_log_object_entec ON communication_log_object_entry (log_key)';
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+-- ----------------------------------------------------------
+--  create table communication_log_obj_lookup
+-- ----------------------------------------------------------
+CREATE TABLE communication_log_obj_lookup (
+    id NUMBER (20, 0) NOT NULL,
+    communication_log_object_id NUMBER (20, 0) NOT NULL,
+    object_type VARCHAR2 (200) NOT NULL,
+    object_id NUMBER (20, 0) NOT NULL
+);
+ALTER TABLE communication_log_obj_lookup ADD CONSTRAINT PK_communication_log_obj_loo00 PRIMARY KEY (id);
+BEGIN
+    EXECUTE IMMEDIATE 'DROP SEQUENCE SE_communication_log_obj_le6';
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+CREATE SEQUENCE SE_communication_log_obj_le6
+INCREMENT BY 1
+START WITH 1
+NOMAXVALUE
+NOCYCLE
+CACHE 20
+ORDER
+;
+BEGIN
+    EXECUTE IMMEDIATE 'DROP TRIGGER SE_communication_log_obj_le6_t';
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+CREATE OR REPLACE TRIGGER SE_communication_log_obj_le6_t
+BEFORE INSERT ON communication_log_obj_lookup
+FOR EACH ROW
+BEGIN
+    IF :new.id IS NULL THEN
+        SELECT SE_communication_log_obj_le6.nextval
+        INTO :new.id
+        FROM DUAL;
+    END IF;
+END;
+/
+--
+;
+BEGIN
+    EXECUTE IMMEDIATE 'CREATE INDEX communication_log_obj_lookup8d ON communication_log_obj_lookup (object_type, object_id)';
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+-- ----------------------------------------------------------
+--  create table form_draft
+-- ----------------------------------------------------------
+CREATE TABLE form_draft (
+    id NUMBER (12, 0) NOT NULL,
+    object_type VARCHAR2 (100) NOT NULL,
+    object_id NUMBER (12, 0) NOT NULL,
+    action VARCHAR2 (200) NOT NULL,
+    title VARCHAR2 (255) NULL,
+    content CLOB NOT NULL,
+    create_time DATE NOT NULL,
+    create_by NUMBER (12, 0) NOT NULL,
+    change_time DATE NOT NULL,
+    change_by NUMBER (12, 0) NOT NULL
+);
+ALTER TABLE form_draft ADD CONSTRAINT PK_form_draft PRIMARY KEY (id);
+BEGIN
+    EXECUTE IMMEDIATE 'DROP SEQUENCE SE_form_draft';
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+CREATE SEQUENCE SE_form_draft
+INCREMENT BY 1
+START WITH 1
+NOMAXVALUE
+NOCYCLE
+CACHE 20
+ORDER
+;
+BEGIN
+    EXECUTE IMMEDIATE 'DROP TRIGGER SE_form_draft_t';
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END;
+/
+--
+;
+CREATE OR REPLACE TRIGGER SE_form_draft_t
+BEFORE INSERT ON form_draft
+FOR EACH ROW
+BEGIN
+    IF :new.id IS NULL THEN
+        SELECT SE_form_draft.nextval
+        INTO :new.id
+        FROM DUAL;
+    END IF;
+END;
+/
+--
+;
+BEGIN
+    EXECUTE IMMEDIATE 'CREATE INDEX form_draft_object_type_objecaf ON form_draft (object_type, object_id, action)';
 EXCEPTION
   WHEN OTHERS THEN NULL;
 END;

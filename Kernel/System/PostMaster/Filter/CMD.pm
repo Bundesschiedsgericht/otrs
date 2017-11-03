@@ -26,6 +26,9 @@ sub new {
     # get parser object
     $Self->{ParserObject} = $Param{ParserObject} || die "Got no ParserObject!";
 
+    # Get communication log object.
+    $Self->{CommunicationLogObject} = $Param{CommunicationLogObject} || die "Got no CommunicationLogObject!";
+
     return $Self;
 }
 
@@ -44,9 +47,11 @@ sub Run {
 
     # check CMD config param
     if ( !$Config{CMD} ) {
-        $Kernel::OM->Get('Kernel::System::Log')->Log(
-            Priority => 'error',
-            Message  => 'Need CMD config option in PostMaster::PreFilterModule job!',
+        $Self->{CommunicationLogObject}->ObjectLog(
+            ObjectLogType => 'Message',
+            Priority      => 'Error',
+            Key           => 'Kernel::System::PostMaster::Filter::CMD',
+            Value         => "Need CMD config option in PostMaster::PreFilterModule job!",
         );
         return;
     }
@@ -72,10 +77,13 @@ sub Run {
             my $Value = $SetItem->{Value};
 
             $Param{GetParam}->{$Key} = $Value;
-            $Kernel::OM->Get('Kernel::System::Log')->Log(
-                Priority => 'notice',
-                Message =>
-                    "Set param '$Key' to '$Value' because of '$Ret' (Message-ID: $Param{GetParam}->{'Message-ID'}) ",
+
+            $Self->{CommunicationLogObject}->ObjectLog(
+                ObjectLogType => 'Message',
+                Priority      => 'Notice',
+                Key           => 'Kernel::System::PostMaster::Filter::CMD',
+                Value =>
+                    "Set param '$Key' to '$Value' because of '$Ret' (Message-ID: $Param{GetParam}->{'Message-ID'})",
             );
         }
     }

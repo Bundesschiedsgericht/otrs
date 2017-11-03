@@ -65,7 +65,6 @@ sub ArticleFields {
     # Return backend response.
     return $BackendObject->ArticleFields(
         %Param,
-        UserID => $Self->{UserID},
     );
 }
 
@@ -105,7 +104,6 @@ sub ArticlePreview {
     # Return backend response.
     return $BackendObject->ArticlePreview(
         %Param,
-        UserID => $Self->{UserID},
     );
 }
 
@@ -168,6 +166,47 @@ sub ArticleActions {
     );
 }
 
+=head2 ArticleCustomerRecipientsGet()
+
+Get customer users from an article to use as recipients.
+
+    my @CustomerUserIDs = $LayoutObject->ArticleCustomerRecipientsGet(
+        TicketID  => 123,     # (required)
+        ArticleID => 123,     # (required)
+    );
+
+Returns array of customer user IDs who should receive a message:
+
+    @CustomerUserIDs = (
+        'customer-1',
+        'customer-2',
+        ...
+    );
+
+=cut
+
+sub ArticleCustomerRecipientsGet {
+    my ( $Self, %Param ) = @_;
+
+    for my $Needed (qw(TicketID ArticleID)) {
+        if ( !$Param{$Needed} ) {
+            $Kernel::OM->Get('Kernel::System::Log')->Log(
+                Priority => 'error',
+                Message  => "Need $Needed!",
+            );
+            return;
+        }
+    }
+
+    my $BackendObject = $Self->_BackendGet(%Param);
+
+    # Return backend response.
+    return $BackendObject->ArticleCustomerRecipientsGet(
+        %Param,
+        UserID => $Self->{UserID},
+    );
+}
+
 =head2 ArticleQuote()
 
 get body and attach e. g. inline documents and/or attach all attachments to
@@ -224,7 +263,6 @@ sub ArticleQuote {
         my %QuoteArticle = $ArticleBackendObject->ArticleGet(
             TicketID      => $Param{TicketID},
             ArticleID     => $Param{ArticleID},
-            UserID        => $Self->{UserID},
             DynamicFields => 0,
         );
 
@@ -232,7 +270,6 @@ sub ArticleQuote {
         $QuoteArticle{Atms} = {
             $ArticleBackendObject->ArticleAttachmentIndex(
                 ArticleID        => $Param{ArticleID},
-                UserID           => $Self->{UserID},
                 ExcludePlainText => 1,
                 ExcludeHTMLBody  => 1,
                 )
@@ -241,7 +278,6 @@ sub ArticleQuote {
         # Check if there is HTML body attachment.
         my %AttachmentIndexHTMLBody = $ArticleBackendObject->ArticleAttachmentIndex(
             ArticleID    => $Param{ArticleID},
-            UserID       => $Self->{UserID},
             OnlyHTMLBody => 1,
         );
         my ($HTMLBodyAttachmentID) = sort keys %AttachmentIndexHTMLBody;
@@ -251,7 +287,6 @@ sub ArticleQuote {
                 TicketID  => $QuoteArticle{TicketID},
                 ArticleID => $QuoteArticle{ArticleID},
                 FileID    => $HTMLBodyAttachmentID,
-                UserID    => $Self->{UserID},
             );
             my $Charset = $AttachmentHTML{ContentType} || '';
             $Charset =~ s/.+?charset=("|'|)(\w+)/$2/gi;
@@ -323,7 +358,6 @@ sub ArticleQuote {
                         TicketID => $Param{TicketID},
                         ArticleID => $Param{ArticleID},
                         FileID    => $AttachmentID,
-                        UserID    => $Self->{UserID},
                     );
 
                     # content id cleanup
@@ -364,7 +398,6 @@ sub ArticleQuote {
                     TicketID  => $Param{TicketID},
                     ArticleID => $Param{ArticleID},
                     FileID    => $AttachmentID,
-                    UserID    => $Self->{UserID},
                 );
 
                 # content id cleanup
@@ -417,7 +450,6 @@ sub ArticleQuote {
                     TicketID  => $Param{TicketID},
                     ArticleID => $Param{ArticleID},
                     FileID    => $AttachmentID,
-                    UserID    => $Self->{UserID},
                 );
 
                 # add attachment
@@ -428,6 +460,15 @@ sub ArticleQuote {
                 );
             }
         }
+
+        # Fallback for non-MIMEBase articles: get article HTML content if it exists.
+        if ( !$Body ) {
+            $Body = $Self->ArticlePreview(
+                TicketID  => $Param{TicketID},
+                ArticleID => $Param{ArticleID},
+            );
+        }
+
         return $Body if $Body;
     }
 
@@ -436,7 +477,6 @@ sub ArticleQuote {
         TicketID      => $Param{TicketID},
         ArticleID     => $Param{ArticleID},
         DynamicFields => 0,
-        UserID        => $Self->{UserID},
     );
 
     # check if original content isn't text/plain or text/html, don't use it
@@ -459,7 +499,6 @@ sub ArticleQuote {
     if ( $Param{AttachmentsInclude} ) {
         my %ArticleIndex = $ArticleBackendObject->ArticleAttachmentIndex(
             ArticleID        => $Param{ArticleID},
-            UserID           => $Self->{UserID},
             ExcludePlainText => 1,
             ExcludeHTMLBody  => 1,
         );
@@ -468,7 +507,6 @@ sub ArticleQuote {
                 TicketID  => $Param{TicketID},
                 ArticleID => $Param{ArticleID},
                 FileID    => $Index,
-                UserID    => $Self->{UserID},
             );
 
             # add attachment

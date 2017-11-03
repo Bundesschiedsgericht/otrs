@@ -27,6 +27,7 @@ our @ObjectDependencies = (
     'Kernel::System::Service',
     'Kernel::System::SLA',
     'Kernel::System::State',
+    'Kernel::System::Stats',
     'Kernel::System::Ticket',
     'Kernel::System::DateTime',
     'Kernel::System::Type',
@@ -445,7 +446,7 @@ sub GetObjectAttributes {
         }
 
         my %ObjectAttribute = (
-            Name             => Translatable('CustomerID'),
+            Name             => Translatable('Customer ID'),
             UseAsXvalue      => 1,
             UseAsValueSeries => 1,
             UseAsRestriction => 1,
@@ -842,15 +843,21 @@ sub GetStatElement {
             DynamicFields => 0,
         );
 
-        my $DateTimeObject = $Kernel::OM->Create(
+        my $CreatedDateTimeObject = $Kernel::OM->Create(
+            'Kernel::System::DateTime',
+            ObjectParams => {
+                String => $Ticket{Created}
+            },
+        );
+        my $ClosedDateTimeObject = $Kernel::OM->Create(
             'Kernel::System::DateTime',
             ObjectParams => {
                 String => $Ticket{Closed}
-                }
+            },
         );
 
-        $DateTimeObject->Subtract( Seconds => $Ticket{CreateTimeUnix} );
-        $SolutionAllOver{$TicketID} = $DateTimeObject->ToEpoch();
+        my $Delta = $ClosedDateTimeObject->Delta( DateTimeObject => $CreatedDateTimeObject );
+        $SolutionAllOver{$TicketID} = $Delta->{AbsoluteSeconds};
 
         next TICKET if !defined $Ticket{SolutionInMin};
 
@@ -861,10 +868,15 @@ sub GetStatElement {
 
         if ( $Ticket{FirstResponse} ) {
 
-            $DateTimeObject->Set( String => $Ticket{FirstResponse} );
-            $DateTimeObject->Subtract( Seconds => $Ticket{CreateTimeUnix} );
+            my $FirstResponseDateTimeObject = $Kernel::OM->Create(
+                'Kernel::System::DateTime',
+                ObjectParams => {
+                    String => $Ticket{FirstResponse}
+                },
+            );
 
-            $Response{$TicketID}            = $DateTimeObject->ToEpoch();
+            my $Delta = $FirstResponseDateTimeObject->Delta( DateTimeObject => $CreatedDateTimeObject );
+            $Response{$TicketID}            = $Delta->{AbsoluteSeconds};
             $ResponseWorkingTime{$TicketID} = $Ticket{FirstResponseInMin};
         }
         else {
@@ -1031,9 +1043,9 @@ sub GetStatElement {
 
     # Convert min in hh:mm.
     if ( $SelectedKindOfReporting ne 'NumberOfTickets' && $SelectedKindOfReporting ne 'NumberOfTicketsAllOver' ) {
-        my $Hours   = int( $Reporting / 60 );
-        my $Minutes = int( $Reporting % 60 );
-        $Reporting = $Hours . 'h ' . $Minutes . 'm';
+        $Reporting = $Kernel::OM->Get('Kernel::System::Stats')->_HumanReadableAgeGet(
+            Age => $Reporting * 60,
+        );
     }
 
     return $Reporting;

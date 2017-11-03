@@ -20,8 +20,8 @@ our @ObjectDependencies = ();
 
 sub new {
     my ( $Class, %Param ) = @_;
-
     bless \%Param, $Class;
+    return \%Param;
 }
 
 1;

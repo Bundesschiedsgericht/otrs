@@ -38,7 +38,7 @@ $Helper->ConfigSettingChange(
 $Helper->ConfigSettingChange(
     Key   => 'TimeWorkingHours::Calendar1',
     Value => {
-        map { $_ => [ 0 .. 23 ], } qw( Mon Tue Wed Thu Fri Sat Sun ),
+        map { $_ => [ 0 .. 23 ] } qw( Mon Tue Wed Thu Fri Sat Sun ),
     },
 );
 
@@ -200,39 +200,39 @@ for my $Item ( 1 .. 5 ) {
 my @Tests = (
     {
         KindsOfReporting => 'SolutionAverageAllOver',
-        ExpectedResult   => '0h 9m',
+        ExpectedResult   => '9 m',
     },
     {
         KindsOfReporting => 'SolutionMinTimeAllOver',
-        ExpectedResult   => '0h 3m',
+        ExpectedResult   => '3 m',
     },
     {
         KindsOfReporting => 'SolutionMaxTimeAllOver',
-        ExpectedResult   => '0h 15m',
+        ExpectedResult   => '15 m',
     },
     {
         KindsOfReporting => 'SolutionAverage',
-        ExpectedResult   => '0h 9m',
+        ExpectedResult   => '9 m',
     },
     {
         KindsOfReporting => 'SolutionMinTime',
-        ExpectedResult   => '0h 3m',
+        ExpectedResult   => '3 m',
     },
     {
         KindsOfReporting => 'SolutionMaxTime',
-        ExpectedResult   => '0h 15m',
+        ExpectedResult   => '15 m',
     },
     {
         KindsOfReporting => 'SolutionWorkingTimeAverage',
-        ExpectedResult   => '0h 9m',
+        ExpectedResult   => '9 m',
     },
     {
         KindsOfReporting => 'SolutionMinWorkingTime',
-        ExpectedResult   => '0h 3m',
+        ExpectedResult   => '3 m',
     },
     {
         KindsOfReporting => 'SolutionMaxWorkingTime',
-        ExpectedResult   => '0h 15m',
+        ExpectedResult   => '15 m',
     },
     {
         KindsOfReporting => 'NumberOfTickets',
@@ -240,23 +240,23 @@ my @Tests = (
     },
     {
         KindsOfReporting => 'ResponseAverage',
-        ExpectedResult   => '0h 6m',
+        ExpectedResult   => '6 m',
     },
     {
         KindsOfReporting => 'ResponseMinTime',
-        ExpectedResult   => '0h 2m',
+        ExpectedResult   => '2 m',
     },
     {
         KindsOfReporting => 'ResponseWorkingTimeAverage',
-        ExpectedResult   => '0h 6m',
+        ExpectedResult   => '6 m',
     },
     {
         KindsOfReporting => 'ResponseMinWorkingTime',
-        ExpectedResult   => '0h 2m',
+        ExpectedResult   => '2 m',
     },
     {
         KindsOfReporting => 'ResponseMaxWorkingTime',
-        ExpectedResult   => '0h 10m',
+        ExpectedResult   => '10 m',
     },
 );
 

@@ -15,6 +15,7 @@ use Kernel::System::VariableCheck qw( :all );
 use parent qw(Kernel::System::SysConfig::Base::Framework);
 
 our @ObjectDependencies = (
+    'Kernel::Config',
     'Kernel::Language',
     'Kernel::Output::HTML::Layout',
     'Kernel::System::SysConfig',
@@ -91,12 +92,20 @@ sub SettingRender {
         );
     }
 
+    my %Setting = %{ $Param{Setting} };
+
+    my $RW = $Param{RW};
+    if ( $Setting{OverriddenFileName} ) {
+        $RW = 0;
+    }
+
     my $Result = $Self->_SettingRender(
-        %{ $Param{Setting} },
-        Value                   => $Param{Setting}->{XMLContentParsed}->{Value},
-        RW                      => $Param{RW},
+        %Setting,
+        Value                   => $Setting{XMLContentParsed}->{Value},
+        RW                      => $RW,
         IsAjax                  => $Param{IsAjax},
         SkipEffectiveValueCheck => $Param{SkipEffectiveValueCheck},
+        EffectiveValue          => $Setting{EffectiveValue},
         UserID                  => $Param{UserID},
     );
 
@@ -106,7 +115,7 @@ sub SettingRender {
                         </div>
 EOF
 
-    if ( $Param{RW} ) {
+    if ($RW) {
         my $LanguageObject = $Kernel::OM->Get('Kernel::Language');
 
         my $SaveText   = $LanguageObject->Translate('Save this setting');
@@ -462,9 +471,9 @@ Recursive helper for SettingRender().
 
     my $HTMLStr = $SysConfigObject->_SettingRender(
         Name             => 'Setting Name',
-        Value            => $XMLParsedToPerlValue,
-        EffectiveValue   => "Product 6",            # or a complex structure (optional)
-        DefaultValue     => "Product 5",            # or a complex structure (optional)
+        Value            => $XMLParsedToPerlValue,  # (required)
+        EffectiveValue   => "Product 6",            # (required) or a complex structure
+        DefaultValue     => "Product 5",            # (optional) or a complex structure
         ValueType        => "String",               # (optional)
         IsAjax           => 1,                      # (optional) Default 0.
         # ...
@@ -486,7 +495,7 @@ Returns:
 sub _SettingRender {
     my ( $Self, %Param ) = @_;
 
-    for my $Needed (qw(Value UserID)) {
+    for my $Needed (qw(Value EffectiveValue UserID)) {
         if ( !defined $Param{$Needed} ) {
             $Kernel::OM->Get('Kernel::System::Log')->Log(
                 Priority => 'error',
@@ -589,23 +598,28 @@ sub _SettingRender {
 
             $Index++;
 
-            # check attributes
+            # Add attributes that are defined in the XML file to the corresponding ModifiedXMLParsed items.
             if ( $Param{Value}->[0]->{Hash}->[0]->{Item} ) {
 
                 my ($HashItem) = grep { defined $_->{Key} && $_->{Key} eq $Item->{Key} }
                     @{ $Param{Value}->[0]->{Hash}->[0]->{Item} };
 
                 if ($HashItem) {
+
                     ATTRIBUTE:
                     for my $Attribute ( sort keys %{$HashItem} ) {
-                        next ATTRIBUTE if grep { $Attribute eq $_ } qw(Content DefaultItem Hash Array Key);
+
+                        # Do not override core attributes.
+                        next ATTRIBUTE if grep { $Attribute eq $_ } qw(Content DefaultItem Hash Array Key SelectedID);
 
                         if ( $Attribute eq 'Item' ) {
+
                             if (
                                 !$HashItem->{Item}->[0]->{ValueType}
                                 || $HashItem->{Item}->[0]->{ValueType} ne 'Option'
                                 )
                             {
+                                # Skip Items that contain Options (they can't be modified).
                                 next ATTRIBUTE;
                             }
                         }

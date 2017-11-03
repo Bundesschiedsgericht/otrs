@@ -72,7 +72,7 @@ sub Configure {
     );
     $Self->AddOption(
         Name        => 'separator',
-        Description => "Defines the separator in case of CSV as target format (defaults to ';').",
+        Description => "Define the separator in case of CSV as target format (defaults to ';').",
         Required    => 0,
         HasValue    => 1,
         ValueRegex  => qr/.*/smx,
@@ -80,7 +80,7 @@ sub Configure {
     $Self->AddOption(
         Name => 'with-header',
         Description =>
-            "Adds a heading line consisting of statistics title and creation date in case of Excel or CSV as output format.",
+            "Add a heading line consisting of statistics title and creation date in case of Excel or CSV as output format.",
         Required   => 0,
         HasValue   => 0,
         ValueRegex => qr/.*/smx,
@@ -257,7 +257,7 @@ sub Run {
             StatID   => $Self->{StatID},
             GetParam => \%GetParam,
             UserID   => 1,
-        ),
+            )
     };
 
     # generate output
@@ -399,7 +399,7 @@ sub Run {
             next RECIPIENT;
         }
 
-        $Kernel::OM->Get('Kernel::System::Email')->Send(
+        my $Result = $Kernel::OM->Get('Kernel::System::Email')->Send(
             From       => $Self->GetOption('mail-sender'),
             To         => $Recipient,
             Subject    => "[Stats - $CountStatArray Records] $Title; Created: $Time",
@@ -407,7 +407,13 @@ sub Run {
             Charset    => 'utf-8',
             Attachment => [ {%Attachment}, ],
         );
-        $Self->Print("<yellow>Email sent to '$Recipient'.</yellow>\n");
+        if ( $Result->{Success} ) {
+            $Self->Print("<yellow>Email sent to '$Recipient'.</yellow>\n");
+        }
+        else {
+            $Self->Print("<red>Email sending to '$Recipient' has failed.</red>\n");
+        }
+
     }
 
     $Self->Print("<green>Done.</green>\n");

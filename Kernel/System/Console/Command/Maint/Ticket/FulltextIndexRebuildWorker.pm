@@ -30,20 +30,26 @@ our @ObjectDependencies = (
 sub Configure {
     my ( $Self, %Param ) = @_;
 
-    $Self->Description('Rebuilds the article search index for needed articles.');
+    $Self->Description('Rebuild the article search index for needed articles.');
     $Self->AddOption(
         Name        => 'children',
-        Description => "Specify the number of child processes to be used for indexing (Default: 4, Maximum: 20).",
+        Description => "Specify the number of child processes to be used for indexing (default: 4, maximum: 20).",
         Required    => 0,
         HasValue    => 1,
         ValueRegex  => qr/^\d+$/smx,
     );
     $Self->AddOption(
         Name        => 'limit',
-        Description => "Maximum number of ArticleIDs to process (Default: 20000).",
+        Description => "Maximum number of ArticleIDs to process (default: 20000).",
         Required    => 0,
         HasValue    => 1,
         ValueRegex  => qr/^\d+$/smx,
+    );
+    $Self->AddOption(
+        Name        => 'force-pid',
+        Description => "Start even if another process is still registered in the database.",
+        Required    => 0,
+        HasValue    => 0,
     );
 
     return;
@@ -58,6 +64,27 @@ sub PreRun {
         die "The allowed maximum amount of child processes is 20!\n";
     }
 
+    my $ForcePID = $Self->GetOption('force-pid');
+
+    my $PIDObject = $Kernel::OM->Get('Kernel::System::PID');
+
+    my %PID = $PIDObject->PIDGet(
+        Name => 'ArticleSearchIndexRebuild',
+    );
+
+    if ( %PID && !$ForcePID ) {
+        die "Active indexing process already running! Skipping...\n";
+    }
+
+    my $Success = $PIDObject->PIDCreate(
+        Name  => 'ArticleSearchIndexRebuild',
+        Force => $Self->GetOption('force-pid'),
+    );
+
+    if ( !$Success ) {
+        die "Unable to register indexing process! Skipping...\n";
+    }
+
     return;
 }
 
@@ -66,26 +93,6 @@ sub Run {
 
     my $Children = $Self->GetOption('children') // 4;
     my $Limit    = $Self->GetOption('limit')    // 20000;
-
-    my $PIDObject = $Kernel::OM->Get('Kernel::System::PID');
-
-    my %PID = $PIDObject->PIDGet(
-        Name => 'ArticleSearchIndexRebuild',
-    );
-
-    if (%PID) {
-        $Self->Print("<yellow>Active indexing process already running! Skipping...</yellow>\n");
-        return $Self->ExitCodeOk();
-    }
-
-    my $Success = $PIDObject->PIDCreate(
-        Name => 'ArticleSearchIndexRebuild',
-    );
-
-    if ( !$Success ) {
-        $Self->PrintError("Unable to register indexing process! Skipping...\n");
-        return $Self->ExitCodeError();
-    }
 
     my %ArticleTicketIDs = $Kernel::OM->Get('Kernel::System::Ticket::Article')->ArticleSearchIndexRebuildFlagList(
         Value => 1,
@@ -101,15 +108,6 @@ sub Run {
     }
     else {
         $Self->Print("<yellow>No indexing needed! Skipping...</yellow>\n");
-    }
-
-    $Success = $PIDObject->PIDDelete(
-        Name => 'ArticleSearchIndexRebuild',
-    );
-
-    if ( !$Success ) {
-        $Self->PrintError("Unable to unregister indexing process! Skipping...\n");
-        return $Self->ExitCodeError();
     }
 
     $Self->Print("<green>Done.</green>\n");
@@ -240,6 +238,21 @@ sub ArticleIndexRebuild {
     }
 
     return 1;
+}
+
+sub PostRun {
+    my ($Self) = @_;
+
+    my $Success = $Kernel::OM->Get('Kernel::System::PID')->PIDDelete(
+        Name => 'ArticleSearchIndexRebuild',
+    );
+
+    if ( !$Success ) {
+        $Self->PrintError("Unable to unregister indexing process! Skipping...\n");
+        return $Self->ExitCodeError();
+    }
+
+    return $Success;
 }
 
 1;

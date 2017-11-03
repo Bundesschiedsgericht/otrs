@@ -63,8 +63,8 @@ $Selenium->RunTest(
         }
 
         # check client side validation
-        $Selenium->find_element( "#Name", 'css' )->clear();
-        $Selenium->find_element( "#Name", 'css' )->VerifiedSubmit();
+        $Selenium->find_element( "#Name",   'css' )->clear();
+        $Selenium->find_element( "#Submit", 'css' )->VerifiedClick();
         $Self->Is(
             $Selenium->execute_script(
                 "return \$('#Name').hasClass('Error')"
@@ -90,7 +90,7 @@ $Selenium->RunTest(
         $Selenium->find_element( "#Name",    'css' )->send_keys($TemplateRandomID);
         $Selenium->find_element( "#Comment", 'css' )->send_keys("Selenium template test");
         $Selenium->execute_script("\$('#ValidID').val('1').trigger('redraw.InputField').trigger('change');");
-        $Selenium->find_element( "#Name", 'css' )->VerifiedSubmit();
+        $Selenium->find_element( "#Submit", 'css' )->VerifiedClick();
 
         # check overview screen for test template
         $Self->True(
@@ -101,6 +101,9 @@ $Selenium->RunTest(
         # test search filter
         $Selenium->find_element( "#Filter", 'css' )->clear();
         $Selenium->find_element( "#Filter", 'css' )->send_keys($TemplateRandomID);
+
+        # Wait for filter to kick in.
+        sleep 1;
 
         $Self->True(
             $Selenium->find_element( $TemplateRandomID, 'link_text' )->is_displayed(),
@@ -147,7 +150,7 @@ $Selenium->RunTest(
         $Selenium->find_element( "#Comment", 'css' )->clear();
         $Selenium->execute_script("\$('#TemplateType').val('Create').trigger('redraw.InputField').trigger('change');");
         $Selenium->execute_script("\$('#ValidID').val('2').trigger('redraw.InputField').trigger('change');");
-        $Selenium->find_element( "#Name", 'css' )->VerifiedSubmit();
+        $Selenium->find_element( "#Submit", 'css' )->VerifiedClick();
 
         #check is there notification after template is updated
         my $Notification = 'Template updated!';
@@ -159,6 +162,9 @@ $Selenium->RunTest(
         # test search filter
         $Selenium->find_element( "#Filter", 'css' )->clear();
         $Selenium->find_element( "#Filter", 'css' )->send_keys($TemplateRandomID);
+
+        # Wait for filter to kick in.
+        sleep 1;
 
         # check class of invalid Template in the overview table
         $Self->True(

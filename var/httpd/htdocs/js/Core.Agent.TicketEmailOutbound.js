@@ -29,9 +29,7 @@ Core.Agent.TicketEmailOutbound = (function (TargetNS) {
      */
     TargetNS.Init = function () {
 
-        var $Form,
-            FieldID,
-            ArticleComposeOptions = Core.Config.Get('ArticleComposeOptions'),
+        var ArticleComposeOptions = Core.Config.Get('ArticleComposeOptions'),
             DynamicFieldNames = Core.Config.Get('DynamicFieldNames');
 
         // remove customers
@@ -46,22 +44,6 @@ Core.Agent.TicketEmailOutbound = (function (TargetNS) {
                 Core.AJAX.FormUpdate($('#Compose'), 'AJAXUpdateTemplate', 'StandardTemplateID', ['RichTextField']);
             });
             return false;
-        });
-
-        // delete attachment
-        $('button[id*=AttachmentDeleteButton]').on('click', function () {
-            $Form = $(this).closest('form');
-            FieldID = $(this).attr('id').split('AttachmentDeleteButton')[1];
-            $('#AttachmentDelete' + FieldID).val(1);
-            Core.Form.Validate.DisableValidation($Form);
-            $Form.trigger('submit');
-        });
-
-        // choose attachment
-        $('#FileUpload').on('change', function () {
-            $Form = $('#FileUpload').closest('form');
-            Core.Form.Validate.DisableValidation($Form);
-            $Form.find('#AttachmentUpload').val('1').end().submit();
         });
 
         // update dynamic fields in form

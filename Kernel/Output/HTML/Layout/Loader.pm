@@ -528,6 +528,7 @@ sub LoaderCreateJavaScriptTranslationData {
         DateInputFormatLong => $LanguageObject->{DateInputFormatLong},
         Completeness        => $LanguageObject->{Completeness},
         Separator           => $LanguageObject->{Separator},
+        DecimalSeparator    => $LanguageObject->{DecimalSeparator},
     );
 
     my $LanguageMetaDataJSON = $Kernel::OM->Get('Kernel::System::JSON')->Encode(
@@ -737,6 +738,7 @@ sub LoaderCreateCustomerJSCalls {
     }
 
     #print STDERR "Time: " . Time::HiRes::tv_interval([$t0]);
+    return;
 }
 
 sub _HandleCSSList {

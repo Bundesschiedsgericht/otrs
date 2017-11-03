@@ -47,6 +47,40 @@ Core.Agent = (function (TargetNS) {
 
     /**
      * @private
+     * @name InitAvatarFlyout
+     * @memberof Core.Agent
+     * @function
+     * @description
+     *      This function initializes the flyout when the avatar on the top left is clicked.
+     */
+    function InitAvatarFlyout() {
+
+        var Timeout,
+            TimeoutDuration = 700;
+
+        // init the avatar toggle
+        $('#ToolBar .UserAvatar > a').off('click.UserAvatar').on('click.UserAvatar', function() {
+            $(this).next('div').fadeToggle('fast');
+            $(this).toggleClass('Active');
+            return false;
+        });
+
+        $('#ToolBar .UserAvatar > div').off('mouseenter.UserAvatar').on('mouseenter.UserAvatar', function() {
+            if (Timeout && $(this).css('opacity') == 1) {
+                clearTimeout(Timeout);
+            }
+        });
+
+        $('#ToolBar .UserAvatar > div').off('mouseleave.UserAvatar').on('mouseleave.UserAvatar', function() {
+            Timeout = setTimeout(function() {
+                $('#ToolBar .UserAvatar > div').fadeOut('fast');
+                $('#ToolBar .UserAvatar > div').prev('a').removeClass('Active');
+            }, TimeoutDuration);
+        });
+    }
+
+    /**
+     * @private
      * @name InitNavigation
      * @memberof Core.Agent
      * @function
@@ -188,6 +222,9 @@ Core.Agent = (function (TargetNS) {
                     // Set Timeout for closing nav
                     CreateSubnavCloseTimeout($Element, function () {
                         $Element.removeClass('Active').attr('aria-expanded', false);
+
+                        // Remove z-index=5500.
+                        $Element.parent().parent().removeClass('NavContainerZIndex');
                         if (!$('#Navigation > li.Active').length) {
                             $('#NavigationContainer').css('height', InitialNavigationContainerHeight);
                         }
@@ -228,6 +265,8 @@ Core.Agent = (function (TargetNS) {
 
                 if ($Element.hasClass('Active')) {
                     $Element.removeClass('Active').attr('aria-expanded', false);
+                    // Remove z-index=5500.
+                    $Element.parent().parent().removeClass('NavContainerZIndex');
 
                     if ($('body').hasClass('Visible-ScreenXL')) {
                         // restore initial container height
@@ -245,6 +284,9 @@ Core.Agent = (function (TargetNS) {
 
                         // If Timeout is set for this nav element, clear it
                         ClearSubnavCloseTimeout($Element);
+
+                        // Add z-index=5500.
+                        $Element.parent().parent().addClass('NavContainerZIndex');
                     }
                 }
 
@@ -654,7 +696,7 @@ Core.Agent = (function (TargetNS) {
         Core.App.Responsive.CheckIfTouchDevice();
 
         InitNavigation();
-
+        InitAvatarFlyout();
         InitSubmitAndContinue();
 
         // Initialize pagination
@@ -772,38 +814,42 @@ Core.Agent = (function (TargetNS) {
      * @memberof Core.Agent
      * @function
      * @description
-     *      Initialize OTRSBusinessRequired dialog on click
+     *      Initialize OTRSBusiness upgrade dialog on all clicks coming from anchor with OTRSBusinessRequired class.
      */
     function InitOTRSBusinessRequiredDialog () {
-        var OTRSBusinessLabel = '<strong>OTRS Business Solution</strong>™';
-
         $('body').on('click', 'a.OTRSBusinessRequired', function() {
-            Core.UI.Dialog.ShowContentDialog(
-                '<div class="OTRSBusinessRequiredDialog">' + Core.Language.Translate('This feature is part of the %s.  Please contact us at %s for an upgrade.', OTRSBusinessLabel, 'sales@otrs.com') + '<a class="Hidden" href="http://www.otrs.com/solutions/" target="_blank"><span></span></a></div>',
-                '',
-                '240px',
-                'Center',
-                true,
-                [
-                   {
-                       Label: Core.Language.Translate('Close dialog'),
-                       Class: 'Primary',
-                       Function: function () {
-                           Core.UI.Dialog.CloseDialog($('.OTRSBusinessRequiredDialog'));
-                       }
-                   },
-                   {
-                       Label: Core.Language.Translate('Find out more about the %s', 'OTRS Business Solution™'),
-                       Class: 'Primary',
-                       Function: function () {
-                           $('.OTRSBusinessRequiredDialog').find('a span').trigger('click');
-                       }
-                   }
-                ]
-            );
+            TargetNS.ShowOTRSBusinessRequiredDialog();
             return false;
         });
     }
+
+    /**
+     * @name ShowOTRSBusinessRequiredDialog
+     * @memberof Core.Agent
+     * @function
+     * @description
+     *      This function shows OTRSBusiness upgrade dialog.
+     */
+    TargetNS.ShowOTRSBusinessRequiredDialog = function() {
+        var OTRSBusinessLabel = '<strong>OTRS Business Solution</strong>™';
+
+        Core.UI.Dialog.ShowContentDialog(
+            '<div class="OTRSBusinessRequiredDialog">' + Core.Language.Translate('This feature is part of the %s.  Please contact us at %s for an upgrade.', OTRSBusinessLabel, 'sales@otrs.com') + '<a class="Hidden" href="http://www.otrs.com/solutions/" target="_blank"><span></span></a></div>',
+            '',
+            '240px',
+            'Center',
+            true,
+            [
+                {
+                    Label: Core.Language.Translate('Find out more'),
+                    Class: 'Primary',
+                    Function: function () {
+                        $('.OTRSBusinessRequiredDialog').find('a span').trigger('click');
+                    }
+                }
+            ]
+        );
+    };
 
     /**
      * @private

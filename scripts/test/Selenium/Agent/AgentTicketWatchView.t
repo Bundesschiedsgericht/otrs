@@ -81,7 +81,7 @@ $Selenium->RunTest(
             $Selenium->VerifiedGet("${ScriptAlias}index.pl?Action=AgentTicketZoom;TicketID=$TicketID");
 
             # check watcher feature - subscribe ticket to watch it
-            $Selenium->find_element("//a[contains(\@href, \'Action=AgentTicketWatcher\' )]")->VerifiedClick(),
+            $Selenium->find_element("//a[contains(\@href, \'Action=AgentTicketWatcher\' )]")->VerifiedClick();
 
         }
 
@@ -128,6 +128,15 @@ $Selenium->RunTest(
                 TicketID => $TicketID,
                 UserID   => 1,
             );
+
+            # Ticket deletion could fail if apache still writes to ticket history. Try again in this case.
+            if ( !$Success ) {
+                sleep 3;
+                $Success = $TicketObject->TicketDelete(
+                    TicketID => $TicketID,
+                    UserID   => 1,
+                );
+            }
             $Self->True(
                 $Success,
                 "Ticket is deleted - ID $TicketID"

@@ -156,7 +156,7 @@ sub ACLAdd {
     if ($ACLExists) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
-            Message  => "The Name:$Param{Name} already exists for an ACL!"
+            Message  => "An ACL with the name '$Param{Name}' already exists.",
         );
         return;
     }
@@ -493,7 +493,7 @@ sub ACLUpdate {
     if ($ACLExists) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
-            Message  => "The Name:$Param{Name} already exists for a different ACL!",
+            Message  => "An ACL with the name '$Param{Name}' already exists.",
         );
         return;
     }
@@ -934,7 +934,7 @@ sub ACLDump {
 package Kernel::Config::Files::ZZZACL;
 use strict;
 use warnings;
-no warnings 'redefine';
+no warnings 'redefine'; ## no critic
 use utf8;
 sub Load {
     my ($File, $Self) = @_;
@@ -942,6 +942,7 @@ sub Load {
 EOF
 
     my $FileEnd = <<'EOF';
+    return;
 }
 1;
 EOF

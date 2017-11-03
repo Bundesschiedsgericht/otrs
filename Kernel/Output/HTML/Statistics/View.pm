@@ -224,9 +224,13 @@ sub StatsParamsWidget {
 
         # load static module
         my $Params = $Kernel::OM->Get('Kernel::System::Stats')->GetParams( StatID => $StatID );
+
+        return if !$Params;
+
         $LayoutObject->Block(
             Name => 'Static',
         );
+
         PARAMITEM:
         for my $ParamItem ( @{$Params} ) {
             $LayoutObject->Block(
@@ -284,12 +288,15 @@ sub StatsParamsWidget {
                     my @Values = keys( %{ $ObjectAttribute->{Values} } );
                     $ObjectAttribute->{SelectedValues} = \@Values;
                 }
-                for ( @{ $ObjectAttribute->{SelectedValues} } ) {
+
+                VALUE:
+                for my $Value ( @{ $ObjectAttribute->{SelectedValues} } ) {
                     if ( $ObjectAttribute->{Values} ) {
-                        $ValueHash{$_} = $ObjectAttribute->{Values}->{$_};
+                        next VALUE if !defined $ObjectAttribute->{Values}->{$Value};
+                        $ValueHash{$Value} = $ObjectAttribute->{Values}->{$Value};
                     }
                     else {
-                        $ValueHash{Value} = $_;
+                        $ValueHash{Value} = $Value;
                     }
                 }
 
@@ -347,11 +354,15 @@ sub StatsParamsWidget {
 
                         my @FixedAttributes;
 
-                        for (@Sorted) {
-                            my $Value = $ValueHash{$_};
+                        ELEMENT:
+                        for my $Element (@Sorted) {
+                            my $Value = $ValueHash{$Element};
                             if ( $ObjectAttribute->{Translation} ) {
-                                $Value = $LayoutObject->{LanguageObject}->Translate( $ValueHash{$_} );
+                                $Value = $LayoutObject->{LanguageObject}->Translate( $ValueHash{$Element} );
                             }
+
+                            next ELEMENT if !defined $Value;
+
                             push @FixedAttributes, $Value;
                         }
 
@@ -403,7 +414,7 @@ sub StatsParamsWidget {
                             TreeView       => $ObjectAttribute->{TreeView} || 0,
                             Sort           => scalar $ObjectAttribute->{Sort},
                             SortIndividual => scalar $ObjectAttribute->{SortIndividual},
-                            SelectedID     => [ $LocalGetArray->( Param => $ElementName ) ],
+                            SelectedID     => $LocalGetParam->( Param => $ElementName ),
                             Class          => 'Modernize',
                         );
                         $LayoutObject->Block(
@@ -820,7 +831,7 @@ sub GeneralSpecificationsWidget {
         );
     }
 
-    my $Output .= $LayoutObject->Output(
+    my $Output = $LayoutObject->Output(
         TemplateFile => 'Statistics/GeneralSpecificationsWidget',
         Data         => {
             %Frontend,
@@ -931,7 +942,7 @@ sub XAxisWidget {
         Value => \@XAxisElements,
     );
 
-    my $Output .= $LayoutObject->Output(
+    my $Output = $LayoutObject->Output(
         TemplateFile => 'Statistics/XAxisWidget',
         Data         => {
             %{$Stat},
@@ -1037,7 +1048,7 @@ sub YAxisWidget {
         Value => \@YAxisElements,
     );
 
-    my $Output .= $LayoutObject->Output(
+    my $Output = $LayoutObject->Output(
         TemplateFile => 'Statistics/YAxisWidget',
         Data         => {
             %{$Stat},
@@ -1146,7 +1157,7 @@ sub RestrictionsWidget {
         Value => \@RestrictionElements,
     );
 
-    my $Output .= $LayoutObject->Output(
+    my $Output = $LayoutObject->Output(
         TemplateFile => 'Statistics/RestrictionsWidget',
         Data         => {
             %{$Stat},
@@ -1186,7 +1197,7 @@ sub PreviewWidget {
         Value => $Frontend{PreviewResult},
     );
 
-    my $Output .= $LayoutObject->Output(
+    my $Output = $LayoutObject->Output(
         TemplateFile => 'Statistics/PreviewWidget',
         Data         => {
             %{$Stat},
@@ -1588,7 +1599,7 @@ sub StatsResultRender {
             );
             $UserCSVSeparator = $UserData{UserCSVSeparator} if $UserData{UserCSVSeparator};
         }
-        my $Output .= $CSVObject->Array2CSV(
+        my $Output = $CSVObject->Array2CSV(
             Head      => $HeadArrayRef,
             Data      => \@StatArray,
             Separator => $UserCSVSeparator,
@@ -1603,7 +1614,7 @@ sub StatsResultRender {
 
     # generate excel output
     elsif ( $Param{Format} eq 'Excel' ) {
-        my $Output .= $CSVObject->Array2CSV(
+        my $Output = $CSVObject->Array2CSV(
             Head   => $HeadArrayRef,
             Data   => \@StatArray,
             Format => 'Excel',

@@ -21,6 +21,7 @@ our @ObjectDependencies = (
     'Kernel::System::CommunicationChannel',
     'Kernel::System::Log',
     'Kernel::System::Ticket::Article',
+    'Kernel::System::User',
 );
 
 =head2 ArticleRender()
@@ -28,10 +29,10 @@ our @ObjectDependencies = (
 Returns article html.
 
     my $HTML = $ArticleBaseObject->ArticleRender(
-        TicketID        => 123,   # (required)
-        ArticleID       => 123,   # (required)
-        UserID          => 123,   # (required)
-        ArticleActions  => [],    # (optional)
+        TicketID       => 123,   # (required)
+        ArticleID      => 123,   # (required)
+        ArticleActions => [],    # (optional)
+        UserID         => 123,   # (optional)
     );
 
 Result:
@@ -43,7 +44,7 @@ sub ArticleRender {
     my ( $Self, %Param ) = @_;
 
     # Check needed stuff.
-    for my $Needed (qw(TicketID ArticleID UserID)) {
+    for my $Needed (qw(TicketID ArticleID)) {
         if ( !$Param{$Needed} ) {
             $Kernel::OM->Get('Kernel::System::Log')->Log(
                 Priority => 'error',
@@ -79,6 +80,11 @@ sub ArticleRender {
 
     # Get data from modules like Google CVE search
     my @ArticleModuleMeta = $Self->_ArticleModuleMeta(%Param);
+
+    # Show created by string, if creator is different from admin user.
+    if ( $Article{CreateBy} > 1 ) {
+        $Article{CreateByUser} = $Kernel::OM->Get('Kernel::System::User')->UserName( UserID => $Article{CreateBy} );
+    }
 
     my $ArticleContent = $LayoutObject->ArticlePreview(
         TicketID   => $Param{TicketID},
@@ -116,9 +122,10 @@ sub ArticleRender {
             ChannelIcon          => $CommunicationChannel{DisplayIcon},
             SenderImage          => $Self->_ArticleSenderImage(
                 Sender => $ArticleFields{Sender}->{Value},
+                UserID => $Param{UserID},
             ),
-            SenderInitials => $Self->_ArticleSenderInitials(
-                Sender => $ArticleFields{Sender}->{Realname},
+            SenderInitials => $LayoutObject->UserInitialsGet(
+                Fullname => $ArticleFields{Sender}->{Realname},
             ),
         },
     );

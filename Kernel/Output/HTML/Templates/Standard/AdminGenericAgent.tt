@@ -7,7 +7,7 @@
 # --
 <!-- start form -->
 <div class="MainBox ARIARoleMain LayoutFixedSidebar SidebarFirst">
-    <h1>[% Translate("Generic Agent") | html %]</h1>
+    <h1 class="InvisibleText">[% Translate("Generic Agent") | html %]</h1>
 
     [% BreadcrumbPath = [
             {
@@ -216,12 +216,12 @@
 
                         <label for="EventsTable">[% Translate("Event Triggers") | html %]:</label>
                         <div class="Field W50pc">
-                            <table class="DataTable" id="EventsTable" summary="[% Translate("List of all configured events") | html %]">
+                            <table class="DataTable ClearNone SpacingBottomSmall" id="EventsTable" summary="[% Translate("List of all configured events") | html %]">
                                 <thead>
                                     <tr>
                                         <th>[% Translate("Type") | html %]</th>
                                         <th>[% Translate("Event") | html %]</th>
-                                        <th>[% Translate("Delete") | html %]</th>
+                                        <th class="Center">[% Translate("Delete") | html %]</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -276,17 +276,17 @@
                         <label class="HideOnChange" for="EventType">[% Translate("Add Event Trigger") | html %]:</label>
                         <div class="Field HideOnChange">
 [% RenderBlockStart("EventTypeStrg") %]
-                            [% Data.EventTypeStrg %]
+                            <span>
+                                [% Data.EventTypeStrg %]
+                            </span>
 [% RenderBlockEnd("EventTypeStrg") %]
 [% RenderBlockStart("EventAdd") %]
-                            [% Data.EventStrg %]
+                            <span class="EventTypeName">
+                                [% Data.EventStrg %]
+                            </span>
 [% RenderBlockEnd("EventAdd") %]
-                            <a href="#" id="AddEvent" class="AddEvent">
-                                <i class="fa fa-plus-square-o"></i>
-                                <span class="InvisibleText">[% Translate("Add Event") | html %]</span>
-                            </a>
                             <p class="FieldExplanation">
-                                [% Translate("To add a new event select the event object and event name and click on the \"+\" button") | html %].
+                                [% Translate("To add a new event select the event object and event name") | html %].
                             </p>
                         </div>
                         <div class="Clear"></div>
@@ -327,7 +327,7 @@
                         </div>
                         <div class="Clear"></div>
 
-                        <label for="CustomerUserLogin">[% Translate("Customer user") | html %]:</label>
+                        <label for="CustomerUserLogin">[% Translate("Customer user ID") | html %]:</label>
                         <div class="Field">
                             <input type="text" name="CustomerUserLogin" id="CustomerUserLogin" class="W33pc" value="[% Data.CustomerUserLogin | html %]"/>
                             <p class="FieldExplanation">
@@ -710,7 +710,7 @@
                         </div>
                         <div class="Clear"></div>
 
-                        <label for="NewCustomerUserLogin">[% Translate("New customer user") | html %]:</label>
+                        <label for="NewCustomerUserLogin">[% Translate("New customer user ID") | html %]:</label>
                         <div class="Field">
                             <input type="text" name="NewCustomerUserLogin" id="NewCustomerUserLogin" value="[% Data.NewCustomerUserLogin | html %]" class="W33pc"/>
                         </div>

@@ -19,8 +19,9 @@ a:hover {
     text-decoration: none;
 }
 
-.WidgetSimple {
-    border: 1px solid #333;
+.WidgetSimple,
+div.DnDUpload {
+    border: 1px solid #000;
 }
 
 .WidgetSimple > .Header,
@@ -32,7 +33,14 @@ a:hover {
 .WidgetAction:hover i,
 .WidgetAction a:focus i,
 .MessageBox.Error p, .MessageBox.Error a,
-#Navigation > li > a {
+#Navigation > li > a,
+.WidgetSimple > .Header h2,
+.WidgetSimple > .Header h3,
+.DataTable thead th a,
+.DataTable thead .SortAscendingLarge a,
+.DataTable thead .SortDescendingLarge a,
+.TableSmall thead .SortAscendingLarge a,
+.TableSmall thead .SortDescendingLarge a  {
     color: #fff;
 }
 
@@ -40,6 +48,22 @@ a:hover {
 #ToolBar a,
 #Navigation > .Active > ul > li > a {
     color: #fff !important;
+}
+
+#Navigation > li > a:after,
+.DataTable tr:nth-child(even) td,
+.TableSmall tr:nth-child(even) td,
+.LayoutPopup > .Header {
+    background: #fff;
+}
+
+#ToolBar a {
+    text-decoration: none;
+}
+
+#ToolBar .Extended input[type=text] {
+    background: #fff;
+    color: #000;
 }
 
 .DataTable,
@@ -55,7 +79,10 @@ textarea,
 select[multiple=multiple],
 #cke_RichText,
 ul.Tablelike,
-.FilterInputContainer {
+.FilterInputContainer,
+.Actions li a:hover,
+.Actions li span:hover,
+.OverviewZoom a:hover {
     border-color: #333 !important;
 }
 
@@ -69,9 +96,9 @@ ul.Tablelike,
     border-bottom: 0px;
 }
 
-.DataTable tr:nth-child(even) td,
-.TableSmall tr:nth-child(even) td {
-    background-color: #ddd;
+.DataTable thead th {
+    background: #000;
+    color: #fff;
 }
 
 .MessageBox p,
@@ -86,7 +113,8 @@ a,
 .AsteriskExplanation,
 #Footer a,
 .OverviewMedium table.Infos td label,
-.OverviewLarge .Infos table td label {
+.OverviewLarge .Infos table td label,
+.DnDUpload span.ReadyForUpload {
     color: #000;
 }
 
@@ -99,12 +127,6 @@ a,
     color: #000 !important;
 }
 
-.Tab.Actions li.Selected a,
-form label.Mandatory,
-a {
-    text-decoration: underline;
-}
-
 form label.Mandatory span {
     text-decoration: none;
 }
@@ -113,8 +135,11 @@ form label.Mandatory span {
 .TableSmall tbody tr:hover td,
 .DataTable tbody tr:active td.Clickable,
 .TableSmall tbody tr:active td.Clickable,
-.DataTable tr:nth-child(even):hover td.Highlight {
+.DataTable tr:nth-child(even):hover td.Highlight,
+body #ConfigTree .jstree-hovered,
+body #ConfigTree .jstree-wholerow-hovered {
     background: #000 !important;
+    color: #fff;
 }
 
 .DataTable tbody tr:hover td *,
@@ -136,7 +161,8 @@ form label.Mandatory span {
 .CallForAction:active,
 .CallForAction:hover,
 .CallForAction:focus,
-#Navigation > .Active > ul > li:hover {
+#Navigation > .Active > ul > li:hover,
+.WidgetSimple {
     background: #fff;
 }
 
@@ -144,6 +170,11 @@ form label.Mandatory span {
 .CallForAction:hover span,
 .CallForAction:focus span {
     color: #000;
+}
+
+.GettingStarted li {
+    background: #fff !important;
+    color: #000 !important;
 }
 
 .CallForAction span,
@@ -167,8 +198,63 @@ div.InputField_Selection div.Text,
     text-decoration: line-through;
 }
 
+fieldset.TableLike.FixedLabelSmall > label,
+fieldset.TableLike.FixedLabelSmall > .Row > label,
+fieldset.TableLike > label,
+fieldset.TableLike > .Row > label {
+    font-weight: bold;
+}
+
 .SettingsWidget label.Checked {
     text-decoration: none;
+}
+
+.ItemListGrid.WithIcons > li > a {
+    background: #fff;
+    border-color: #000;
+    transition: none;
+}
+
+.ItemListGrid > li > a:not(.Disabled):hover,
+.ItemListGrid > li > a:not(.Disabled):active,
+.ItemListGrid > li > a:not(.Disabled):focus,
+.ItemListGrid > li > a.Active {
+    background: #000;
+    color: #fff;
+}
+
+.ItemListGrid > li > a:not(.Disabled):hover span.Description,
+.ItemListGrid > li > a:not(.Disabled):active span.Description,
+.ItemListGrid > li > a:not(.Disabled):focus span.Description,
+.ItemListGrid > li > a.Active span.Description {
+    color: #fff;
+}
+
+.MessageBox {
+    background: #fff !important;
+    border-top: 1px solid #000;
+    border-bottom: 1px solid #000;
+}
+
+.MessageBox + .MessageBox {
+    border-top: 0px;
+}
+
+.MessageBox p,
+.MessageBox p a {
+    color: #000 !important;
+}
+
+.MessageBox.Error {
+    border-left: 15px solid red;
+}
+
+.MessageBox.Notice {
+    border-left: 15px solid yellow;
+}
+
+.MessageBox.Info {
+    border-left: 15px solid blue;
 }
 
 } /* end @media */

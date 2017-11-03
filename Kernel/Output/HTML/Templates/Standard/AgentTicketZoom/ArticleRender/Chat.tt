@@ -10,13 +10,16 @@
     <a name="Article[% Data.ArticleID | html %]"></a>
     <div class="WidgetSimple Expanded [% Data.SenderType | html %] [% IF Data.SenderType == 'customer' %]Incoming[% ELSE %]Outgoing[% END %] [% IF Data.IsVisibleForCustomer %]VisibleForCustomer[% ELSE %]NotVisibleForCustomer[% END %]">
         <div class="Header">
+            <div class="WidgetAction Toggle">
+                <a href="#" title="[% Translate("Show or hide the content") | html %]"><i class="fa fa-caret-right"></i><i class="fa fa-caret-down"></i></a>
+            </div>
             <h2>
                 [% Translate("#%s", Data.ArticleNumber) | html %] &ndash; [% Data.ArticleFields.Subject.Value | html %]
                 &ndash; <span class="[% Data.ArticleFields.Sender.ValueHidden | html %]">[% Data.ArticleFields.Sender.Value | html %]</span> <span class="[% Data.ArticleFields.Sender.RealnameHidden | html %]">[% Data.ArticleFields.Sender.Realname | html %]</span>
-                &ndash; <span title="[% Translate("Created") %]: [% Data.CreateTime | Localize("TimeShort") %]">[% Data.CreateTime | Localize("RelativeTime") %]</span> [% Translate("via %s", Translate(Data.CommunicationChannel)) %]
-[% RenderBlockStart("ArticleCreatedBy") %]
+                &ndash; <span title="[% Translate("Created") | html %]: [% Data.CreateTime | Localize("TimeShort") %]">[% Data.CreateTime | Localize("TimeShort") %]</span> [% Translate("via %s", Translate(Data.CommunicationChannel)) | html %]
+[% IF Data.CreateByUser %]
                 [% Translate("by %s", Data.CreateByUser) | html %]
-[% RenderBlockEnd("ArticleCreatedBy") %]
+[% END %]
             </h2>
             <div class="ActionMenu Visible">
                 <div class="WidgetAction Expand">
@@ -69,26 +72,20 @@
                 [% PROCESS ArticleActionMenu.tt %]
 
                 <div class="Avatar">
-[% IF Config("Ticket::Frontend::AgentTicketZoom").SenderDisplay == 'SenderImage' && Data.SenderImage %]
+[% IF Config("Frontend::AvatarEngine") == 'Gravatar' && Data.SenderImage %]
                     <div class="ArticleSenderImage">
-                        <img src="[% Data.SenderImage | url %]" title="[% Data.From | html %]" />
-                        <i class="ArticleSenderChannelIcon fa [% Data.ChannelIcon | url %]"></i>
+                        <img src="[% Data.SenderImage | url %]" title="[% Data.ArticleFields.Sender.Value | html %]" />
                     </div>
 [% ELSE %]
                     <div class="ArticleSenderInitials">
                         <span>[% Data.SenderInitials | html %]</span>
-                        <i class="ArticleSenderChannelIcon fa [% Data.ChannelIcon | url %]"></i>
                     </div>
 [% END %]
                 </div>
 
-[% IF !Data.HTML %]
-                <div class="ArticleChat">
-[% END %]
+                <div class="[% IF Data.HTML %]ArticleHTML[% ELSE %]ArticleBody[% END %] ArticleChat">
 [% Data.Body %]
-[% IF !Data.HTML %]
                 </div>
-[% END %]
 
                 [% IF Data.ArticleModuleMeta && Data.ArticleModuleMeta.size() %]
                 <div class="ArticleMeta">

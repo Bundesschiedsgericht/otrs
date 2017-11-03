@@ -23,7 +23,9 @@ our @ObjectDependencies = (
 sub Configure {
     my ( $Self, %Param ) = @_;
 
-    $Self->Description('Lists available commands.');
+    $Self->Description('List available commands.');
+
+    return;
 }
 
 sub Run {

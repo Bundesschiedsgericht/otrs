@@ -26,6 +26,8 @@ our @ObjectDependencies = (
     'Kernel::System::Encode',
     'Kernel::System::HTMLUtils',
     'Kernel::System::Log',
+    'Kernel::System::MailQueue',
+    'Kernel::System::CommunicationLog',
 );
 
 =head1 NAME
@@ -131,10 +133,10 @@ To send an email without already created header:
     );
 
     if ($Sent) {
-        print "Email sent!\n";
+        print "Email queued!\n";
     }
     else {
-        print "Email not sent!\n";
+        print "Email not queued!\n";
     }
 
 =cut
@@ -142,22 +144,79 @@ To send an email without already created header:
 sub Send {
     my ( $Self, %Param ) = @_;
 
+    # determine backend name
+    my $BackendName = '';
+    if ( ref( $Self->{Backend} ) =~ m{::([^:]+)$}xms ) {
+        $BackendName = $1;
+    }
+
+    # start a new outgoing communication
+    my $CommunicationLogObject = $Kernel::OM->Create(
+        'Kernel::System::CommunicationLog',
+        ObjectParams => {
+            Transport   => 'Email',
+            Direction   => 'Outgoing',
+            AccountType => $BackendName,
+        },
+    );
+
+    $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
+
+    $CommunicationLogObject->ObjectLog(
+        ObjectLogType => 'Message',
+        Priority      => 'Debug',
+        Key           => 'Kernel::System::Email',
+        Value         => 'Building message for delivery.',
+    );
+
+    my $SendSuccess = sub {
+        return {
+            Success => 1,
+            @_,
+        };
+    };
+
+    my $SendError = sub {
+        my %Param = @_;
+
+        $CommunicationLogObject->ObjectLog(
+            ObjectLogType => 'Message',
+            Priority      => 'Error',
+            Key           => 'Kernel::System::Email',
+            Value         => "Errors occurred during message sending: $Param{ErrorMessage}",
+        );
+
+        $CommunicationLogObject->ObjectLogStop(
+            ObjectLogType => 'Message',
+            Status        => 'Failed',
+        );
+
+        $CommunicationLogObject->CommunicationStop( Status => 'Failed' );
+
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => $Param{ErrorMessage},
+        );
+
+        return {
+            Success => 0,
+            %Param,
+        };
+    };
+
     # Check needed stuff.
     for my $Needed (qw(Body Charset)) {
         if ( !$Param{$Needed} ) {
-            $Kernel::OM->Get('Kernel::System::Log')->Log(
-                Priority => 'error',
-                Message  => "Need $Needed!",
+            return $SendError->(
+                ErrorMessage => "Need $Needed!",
             );
-            return;
         }
     }
+
     if ( !$Param{To} && !$Param{Cc} && !$Param{Bcc} ) {
-        $Kernel::OM->Get('Kernel::System::Log')->Log(
-            Priority => 'error',
-            Message  => 'Need To, Cc or Bcc!'
+        return $SendError->(
+            ErrorMessage => "Need To, Cc or Bcc!",
         );
-        return;
     }
 
     # Sign and Encrypt backwards compatibility.
@@ -182,55 +241,41 @@ sub Send {
     # Check EmailSecurity options.
     if ( $Param{EmailSecurity} ) {
         if ( ref $Param{EmailSecurity} ne 'HASH' ) {
-            $Kernel::OM->Get('Kernel::System::Log')->Log(
-                Priority => 'error',
-                Message  => "EmailSecurity format is invalid!",
+            return $SendError->(
+                ErrorMessage => 'EmailSecurity format is invalid!',
             );
-
-            return;
         }
-        elsif ( !$Param{EmailSecurity}->{Backend} ) {
-            $Kernel::OM->Get('Kernel::System::Log')->Log(
-                Priority => 'error',
-                Message  => "Need EmailSecurity Backend!",
-            );
 
-            return;
+        if ( !$Param{EmailSecurity}->{Backend} ) {
+            return $SendError->(
+                ErrorMessage => 'Need EmailSecurity Backend!',
+            );
         }
-        elsif ( $Param{EmailSecurity}->{Backend} ne 'PGP' && $Param{EmailSecurity}->{Backend} ne 'SMIME' ) {
-            $Kernel::OM->Get('Kernel::System::Log')->Log(
-                Priority => 'error',
-                Message  => "EmailSecurity Backend is invalid!",
-            );
 
-            return;
+        if ( $Param{EmailSecurity}->{Backend} ne 'PGP' && $Param{EmailSecurity}->{Backend} ne 'SMIME' ) {
+            return $SendError->(
+                ErrorMessage => 'EmailSecurity Backend is invalid!',
+            );
         }
 
         $Param{EmailSecurity}->{Method} ||= 'Detached';
 
         if ( $Param{EmailSecurity}->{Method} ne 'Detached' && $Param{EmailSecurity}->{Method} ne 'Inline' ) {
-            $Kernel::OM->Get('Kernel::System::Log')->Log(
-                Priority => 'error',
-                Message  => "EmailSecurity Method is invalid!",
+            return $SendError->(
+                ErrorMessage => 'EmailSecurity Method is invalid!',
             );
-
-            return;
         }
-        elsif ( $Param{EmailSecurity}->{SignKey} && !IsStringWithData( $Param{EmailSecurity}->{SignKey} ) ) {
-            $Kernel::OM->Get('Kernel::System::Log')->Log(
-                Priority => 'error',
-                Message  => "EmailSecurity SignKey is invalid!",
-            );
 
-            return;
+        if ( $Param{EmailSecurity}->{SignKey} && !IsStringWithData( $Param{EmailSecurity}->{SignKey} ) ) {
+            return $SendError->(
+                ErrorMessage => 'EmailSecurity SignKey is invalid!',
+            );
         }
-        elsif ( $Param{EmailSecurity}->{EncryptKeys} && !IsArrayRefWithData( $Param{EmailSecurity}->{EncryptKeys} ) ) {
-            $Kernel::OM->Get('Kernel::System::Log')->Log(
-                Priority => 'error',
-                Message  => "EmailSecurity EncryptKeys is invalid!",
-            );
 
-            return;
+        if ( $Param{EmailSecurity}->{EncryptKeys} && !IsArrayRefWithData( $Param{EmailSecurity}->{EncryptKeys} ) ) {
+            return $SendError->(
+                ErrorMessage => 'EmailSecurity EncryptKeys are invalid!',
+            );
         }
     }
 
@@ -265,17 +310,21 @@ sub Send {
         $EncryptObject = $Kernel::OM->Get( 'Kernel::System::Crypt::' . $Param{EmailSecurity}->{Backend} );
 
         if ( !$EncryptObject ) {
-            $Kernel::OM->Get('Kernel::System::Log')->Log(
-                Priority => 'error',
-                Message  => 'Not possible to create encrypt object',
+            return $SendError->(
+                ErrorMessage => 'Not possible to create encrypt object',
             );
-
-            return;
         }
     }
 
     # Sign body inline.
     if ( $Param{EmailSecurity}->{SignKey} && $Param{EmailSecurity}->{Method} eq 'Inline' ) {
+
+        $CommunicationLogObject->ObjectLog(
+            ObjectLogType => 'Message',
+            Priority      => 'Debug',
+            Key           => 'Kernel::System::Email',
+            Value         => "Signing message (inline) with $Param{EmailSecurity}->{Backend}.",
+        );
 
         my $Body = $EncryptObject->Sign(
             Message => $Param{Body},
@@ -291,6 +340,13 @@ sub Send {
 
     # Encrypt body inline
     if ( $Param{EmailSecurity}->{EncryptKeys} && $Param{EmailSecurity}->{Method} eq 'Inline' ) {
+
+        $CommunicationLogObject->ObjectLog(
+            ObjectLogType => 'Message',
+            Priority      => 'Debug',
+            Key           => 'Kernel::System::Email',
+            Value         => "Encrypting message (inline) with $Param{EmailSecurity}->{Backend}.",
+        );
 
         my $Body = $EncryptObject->Crypt(
             Message => $Param{Body},
@@ -308,6 +364,13 @@ sub Send {
 
     # Sign email detached
     if ( $Param{EmailSecurity}->{SignKey} && $Param{EmailSecurity}->{Method} eq 'Detached' ) {
+
+        $CommunicationLogObject->ObjectLog(
+            ObjectLogType => 'Message',
+            Priority      => 'Debug',
+            Key           => 'Kernel::System::Email',
+            Value         => "Signing message (detached) with $Param{EmailSecurity}->{Backend}.",
+        );
 
         if ( $Param{EmailSecurity}->{Backend} eq 'PGP' ) {
 
@@ -405,6 +468,13 @@ sub Send {
     # Encrypt email detached!
     #my $NotCryptedBody = $Entity->body_as_string();
     if ( $Param{EmailSecurity}->{EncryptKeys} && $Param{EmailSecurity}->{Method} eq 'Detached' ) {
+
+        $CommunicationLogObject->ObjectLog(
+            ObjectLogType => 'Message',
+            Priority      => 'Debug',
+            Key           => 'Kernel::System::Email',
+            Value         => "Encrypting message (detached) with $Param{EmailSecurity}->{Backend}.",
+        );
 
         if ( $Param{EmailSecurity}->{Backend} eq 'PGP' ) {
 
@@ -557,31 +627,153 @@ sub Send {
         }
     }
 
+    $CommunicationLogObject->ObjectLog(
+        ObjectLogType => 'Message',
+        Priority      => 'Info',
+        Key           => 'Kernel::System::Email',
+        Value         => "Queuing message for delivery.",
+    );
+
+    # Save it to the queue
+    my $MailQueueObject = $Kernel::OM->Get('Kernel::System::MailQueue');
+    my $MailQueued      = $MailQueueObject->Create(
+        ArticleID => $Param{ArticleID},
+        MessageID => $Param{'Message-ID'},
+        Sender    => $RealFrom,
+        Recipient => \@ToArray,
+        Message   => {
+            Header => $Param{Header},
+            Body   => $Param{Body},
+        },
+        CommunicationLogObject => $CommunicationLogObject,
+    );
+
+    if ( !$MailQueued ) {
+        return $SendError->(
+            ErrorMessage => sprintf(
+                "Error while queueing email to '%s' from '%s'. Subject => '%s';",
+                $To,
+                $RealFrom,
+                $Param{Subject},
+            ),
+        );
+    }
+
     # debug
     if ( $Self->{Debug} > 1 ) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'notice',
-            Message  => "Sent email to '$To' from '$RealFrom'. Subject => '$Param{Subject}';",
+            Message  => "Queued email to '$To' from '$RealFrom'. Subject => '$Param{Subject}';",
         );
     }
 
-    # send email to backend
-    my $Sent = $Self->{Backend}->Send(
-        From    => $RealFrom,
-        ToArray => \@ToArray,
-        Header  => \$Param{Header},
-        Body    => \$Param{Body},
+    $CommunicationLogObject->ObjectLog(
+        ObjectLogType => 'Message',
+        Priority      => 'Info',
+        Key           => 'Kernel::System::Email',
+        Value         => 'Successfully queued message for delivery '
+            . sprintf(
+            "(%sTo: '%s', From: '%s', Subject: '%s').",
+            ( $Param{'Message-ID'} ? "MessageID: $Param{'Message-ID'}, " : '' ),
+            $To,
+            $RealFrom,
+            $Param{Subject},
+            ),
     );
 
-    if ( !$Sent ) {
-        $Kernel::OM->Get('Kernel::System::Log')->Log(
-            Message  => "Error sending message",
-            Priority => 'info',
-        );
-        return;
+    return $SendSuccess->(
+        Data => {
+            Header => $Param{Header},
+            Body   => $Param{Body},
+        },
+    );
+}
+
+=head2 SendExecute()
+
+Really send the mail
+
+    my $Result = $SendObject->SendExecute(
+        From                   => $RealFrom,
+        ToArray                => \@ToArray,
+        Header                 => \$Param{Header},
+        Body                   => \$Param{Body},
+        CommunicationLogObject => $CommunicationLogObject,
+    );
+
+This returns something like:
+
+    $Result = {
+        Success      => 0|1,
+        ErrorMessage => '...', # In case of failure.
     }
 
-    return ( \$Param{Header}, \$Param{Body} );
+=cut
+
+sub SendExecute {
+    my ( $Self, %Param ) = @_;
+
+    # Check for required data
+    for my $Needed (qw(To Header Body)) {
+        if ( !$Param{$Needed} ) {
+            return {
+                Success      => 0,
+                ErrorMessage => "Need $Needed!",
+            };
+        }
+    }
+
+    # Normalize 'To', always use an arrayref.
+    my $To = $Param{'To'};
+    if ( !( ref $To ) ) {
+        $To = [ split( ',', $To, ) ];
+    }
+
+    my $LogMessage = sprintf(
+        "Trying to send the email using backend '%s'.",
+        ref( $Self->{Backend} ),
+    );
+
+    $Kernel::OM->Get('Kernel::System::Log')->Log(
+        Message  => $LogMessage,
+        Priority => 'debug',
+    );
+
+    $Param{CommunicationLogObject}->ObjectLog(
+        ObjectLogType => 'Message',
+        Priority      => 'Debug',
+        Key           => 'Kernel::System::Email',
+        Value         => $LogMessage,
+    );
+
+    my $Sent = $Self->{Backend}->Send(
+        From                   => $Param{From},
+        ToArray                => $To,
+        Header                 => \$Param{Header},
+        Body                   => \$Param{Body},
+        CommunicationLogObject => $Param{CommunicationLogObject},
+    );
+
+    if ( !$Sent->{Success} ) {
+
+        my $LogErrorMessage = sprintf(
+            "Error sending message using backend '%s'.",
+            ref( $Self->{Backend} ),
+        );
+
+        $Param{CommunicationLogObject}->ObjectLog(
+            ObjectLogType => 'Message',
+            Priority      => 'Error',
+            Key           => 'Kernel::System::Email',
+            Value         => $LogErrorMessage,
+        );
+
+        return $Sent;
+    }
+
+    return {
+        Success => 1,
+    };
 }
 
 =head2 Check()
@@ -630,7 +822,11 @@ sub Bounce {
                 Priority => 'error',
                 Message  => "Need $_!"
             );
-            return;
+
+            return {
+                Success      => 0,
+                ErrorMessage => "Need $_",
+            };
         }
     }
 
@@ -670,16 +866,23 @@ sub Bounce {
         );
     }
 
-    my $Sent = $Self->{Backend}->Send(
-        From    => $RealFrom,
-        ToArray => [ $Param{To} ],
-        Header  => \$HeaderAsString,
-        Body    => \$BodyAsString,
+    my $SentResult = $Self->{Backend}->Send(
+        From                   => $RealFrom,
+        ToArray                => [ $Param{To} ],
+        Header                 => \$HeaderAsString,
+        Body                   => \$BodyAsString,
+        CommunicationLogObject => $Param{CommunicationLogObject},
     );
 
-    return if !$Sent;
+    return $SentResult if !$SentResult->{Success};
 
-    return ( \$HeaderAsString, \$BodyAsString );
+    return {
+        Success => 1,
+        Data    => {
+            Header => $HeaderAsString,
+            Body   => $BodyAsString,
+        },
+    };
 }
 
 =begin Internal:

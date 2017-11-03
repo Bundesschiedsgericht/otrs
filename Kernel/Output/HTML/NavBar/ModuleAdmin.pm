@@ -41,6 +41,7 @@ sub Run {
     # get all Frontend::Module
     my %NavBarModule;
 
+    my $Config           = $ConfigObject->Get('Frontend::Module')           || {};
     my $NavigationModule = $ConfigObject->Get('Frontend::NavigationModule') || {};
 
     MODULE:
@@ -48,6 +49,7 @@ sub Run {
         my %Hash = %{ $NavigationModule->{$Module} };
 
         next MODULE if !$Hash{Name};
+        next MODULE if !$Config->{$Module};    # If module is not registered, skip it.
 
         if ( $Hash{Module} eq 'Kernel::Output::HTML::NavBar::ModuleAdmin' ) {
 
@@ -84,21 +86,9 @@ sub Run {
             }
             next MODULE if !$Shown;
 
-            my $Key = sprintf( "%07d", $Hash{NavBarModule}->{Prio} || 0 );
-            COUNT:
-            for ( 1 .. 51 ) {
-                if ( $NavBarModule{$Key} ) {
-                    $Hash{NavBarModule}->{Prio}++;
-                    $Key = sprintf( "%07d", $Hash{NavBarModule}->{Prio} );
-                }
-                if ( !$NavBarModule{$Key} ) {
-                    last COUNT;
-                }
-            }
-            $NavBarModule{$Key} = {
+            $NavBarModule{$Module} = {
                 'Frontend::Module' => $Module,
                 %Hash,
-                %{ $Hash{NavBarModule} },
             };
         }
     }
@@ -137,23 +127,32 @@ sub Run {
 
     my %Modules;
     ITEMS:
-    for my $Item ( sort keys %NavBarModule ) {
+    for my $Module ( sort keys %NavBarModule ) {
 
         # dont show the admin overview as a tile
-        next ITEMS if ( $NavBarModule{$Item}->{'Link'} && $NavBarModule{$Item}->{'Link'} eq 'Action=Admin' );
+        next ITEMS if ( $NavBarModule{$Module}->{'Link'} && $NavBarModule{$Module}->{'Link'} eq 'Action=Admin' );
 
-        if ( grep { $_ eq $NavBarModule{$Item}->{'Frontend::Module'} } @{$PrefFavourites} ) {
-            push @Favourites,       $NavBarModule{$Item};
-            push @FavouriteModules, $NavBarModule{$Item}->{'Frontend::Module'};
-            $NavBarModule{$Item}->{IsFavourite} = 1;
+        if ( grep { $_ eq $Module } @{$PrefFavourites} ) {
+            push @Favourites, $NavBarModule{$Module};
+            $NavBarModule{$Module}->{IsFavourite} = 1;
         }
 
         # add the item to its Block
-        my $Block = $NavBarModule{$Item}->{'Block'} || 'Miscellaneous';
+        my $Block = $NavBarModule{$Module}->{'Block'} || 'Miscellaneous';
         if ( !grep { $_->{Key} eq $Block } @ModuleGroups ) {
             $Block = 'Miscellaneous';
         }
-        push @{ $Modules{$Block} }, $NavBarModule{$Item};
+        push @{ $Modules{$Block} }, $NavBarModule{$Module};
+    }
+
+    @Favourites = sort {
+        $LayoutObject->{LanguageObject}->Translate( $a->{Name} )
+            cmp
+            $LayoutObject->{LanguageObject}->Translate( $b->{Name} )
+    } @Favourites;
+
+    for my $Favourite (@Favourites) {
+        push @FavouriteModules, $Favourite->{'Frontend::Module'};
     }
 
     # Sort the items within the groups.

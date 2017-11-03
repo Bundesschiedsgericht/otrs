@@ -50,7 +50,7 @@ sub Configure {
     $Self->AddOption(
         Name => 'generate-po',
         Description =>
-            "Generate PO (translation content) files. This is only needed if a module is not yet available in transifex to force initial creation of the gettext files.",
+            "Generate PO (translation content) files. This is only needed if a module is not yet available in Transifex to force initial creation of the gettext files.",
         Required => 0,
         HasValue => 0,
     );
@@ -154,7 +154,7 @@ sub HandleLanguage {
     # We need to map internal codes to the official ones used by Transifex
     my %TransifexLanguagesMap = (
         sr_Cyrl => 'sr',
-        sr_Latn => 'sr@latin',
+        sr_Latn => 'sr',
     );
 
     my $TransifexLanguage = $TransifexLanguagesMap{$Language} // $Language;
@@ -266,6 +266,76 @@ sub HandleLanguage {
             }egx;
         }
 
+        # Add strings from .html.tmpl files (JavaScript templates).
+        my $JSDirectory = $IsSubTranslation
+            ? "$ModuleDirectory/Kernel/Output/JavaScript/Templates/$DefaultTheme"
+            : "$Home/Kernel/Output/JavaScript/Templates/$DefaultTheme";
+
+        my @JSTemplateList;
+        if ( -d $JSDirectory ) {
+            @JSTemplateList = $Kernel::OM->Get('Kernel::System::Main')->DirectoryRead(
+                Directory => $JSDirectory,
+                Filter    => '*.html.tmpl',
+                Recursive => 1,
+            );
+        }
+
+        my $CustomJSTemplatesDir = "$ModuleDirectory/Custom/Kernel/Output/JavaScript/Templates/$DefaultTheme";
+        if ( $IsSubTranslation && -d $CustomJSTemplatesDir ) {
+            my @CustomJSTemplateList = $Kernel::OM->Get('Kernel::System::Main')->DirectoryRead(
+                Directory => $CustomJSTemplatesDir,
+                Filter    => '*.html.tmpl',
+                Recursive => 1,
+            );
+            push @JSTemplateList, @CustomJSTemplateList;
+        }
+
+        for my $File (@JSTemplateList) {
+
+            my $ContentRef = $Kernel::OM->Get('Kernel::System::Main')->FileRead(
+                Location => $File,
+                Mode     => 'utf8',
+            );
+
+            if ( !ref $ContentRef ) {
+                die "Can't open $File: $!";
+            }
+
+            my $Content = ${$ContentRef};
+
+            $File =~ s{^.*/(.+?)\.html\.tmpl}{$1}smx;
+
+            # Find strings marked for translation.
+            $Content =~ s{
+                \{\{
+                \s*
+                (["'])(.*?)(?<!\\)\1
+                \s*
+                \|
+                \s*
+                Translate
+            }
+            {
+                my $Word = $2 // '';
+
+                # Unescape any \" or \' signs.
+                $Word =~ s{\\"}{"}smxg;
+                $Word =~ s{\\'}{'}smxg;
+
+                if (!$UsedWords{$Word}++) {
+                    push @OriginalTranslationStrings, {
+                        Location => "JS Template: $File",
+                        Source   => $Word,
+                    };
+                }
+
+                # Also save that this string was used in JS (for later use in Loader).
+                $UsedInJS{$Word} = 1;
+
+                '';
+            }egx;
+        }
+
         # add translatable strings from Perl code
         my @PerlModuleList = $Kernel::OM->Get('Kernel::System::Main')->DirectoryRead(
             Directory => $IsSubTranslation ? "$ModuleDirectory/Kernel" : "$Home/Kernel",
@@ -285,9 +355,10 @@ sub HandleLanguage {
         }
 
         # include var/packagesetup folder for modules
-        if ($IsSubTranslation) {
+        my $PackageSetupDir = "$ModuleDirectory/var/packagesetup";
+        if ( $IsSubTranslation && -d $PackageSetupDir ) {
             my @PackageSetupModuleList = $Kernel::OM->Get('Kernel::System::Main')->DirectoryRead(
-                Directory => "$ModuleDirectory/var/packagesetup",
+                Directory => $PackageSetupDir,
                 Filter    => '*.pm',
                 Recursive => 1,
             );
@@ -873,8 +944,10 @@ EOF
     \$Self->{Completeness}        = $Completeness;
 
     # csv separator
-    \$Self->{Separator} = '$LanguageCoreObject->{Separator}';
+    \$Self->{Separator}         = '$LanguageCoreObject->{Separator}';
 
+    \$Self->{DecimalSeparator}  = '$LanguageCoreObject->{DecimalSeparator}';
+    \$Self->{ThousandSeparator} = '$LanguageCoreObject->{ThousandSeparator}';
 EOF
 
                 if ( $LanguageCoreObject->{TextDirection} ) {

@@ -44,7 +44,7 @@ sub new {
 
     # Die if someone tries to instantiate the base class.
     if ( $Type eq __PACKAGE__ ) {
-        ...;    # yada-yada (unimplemented) operator
+        die 'Virtual method in base class must not be called.';
     }
 
     my $Self = {};
@@ -69,7 +69,7 @@ implement this method.
 =cut
 
 sub ArticleDataTables {
-    ...;    # yada-yada (unimplemented) operator
+    die 'Virtual method in base class must not be called.';
 }
 
 =head2 ArticleDataArticleIDField()
@@ -83,7 +83,7 @@ the main article table.
 =cut
 
 sub ArticleDataArticleIDField {
-    ...;    # yada-yada (unimplemented) operator
+    die 'Virtual method in base class must not be called.';
 }
 
 =head2 ArticleBackend()
@@ -99,21 +99,7 @@ This method will always return a valid object, so that you can chain-call on the
 =cut
 
 sub ArticleBackend {
-    ...;    # yada-yada (unimplemented) operator
-}
-
-=head2 ArticleDataIsDroppable()
-
-Returns 1 if communication channel article data can be dropped/deleted. Override this method in your
-class.
-
-    my $IsDroppable = $ChannelObject->ArticleDataIsDroppable();
-    $IsDroppable = 1;
-
-=cut
-
-sub ArticleDataIsDroppable {
-    ...;    # yada-yada (unimplemented) operator
+    die 'Virtual method in base class must not be called.';
 }
 
 =head2 PackageNameGet()
@@ -126,7 +112,7 @@ Returns name of the package that provides communication channel. Override this m
 =cut
 
 sub PackageNameGet {
-    ...;    # yada-yada (unimplemented) operator
+    die 'Virtual method in base class must not be called.';
 }
 
 1;

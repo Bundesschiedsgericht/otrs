@@ -285,7 +285,6 @@ $Selenium->RunTest(
         my $HTMLContent     = '';
         my %AttachmentIndex = $ArticleBackendObject->ArticleAttachmentIndex(
             ArticleID => $LastArticleID,
-            UserID    => 1,
         );
 
         # go through all attachments
@@ -293,7 +292,6 @@ $Selenium->RunTest(
             my %Attachment = $ArticleBackendObject->ArticleAttachment(
                 ArticleID => $LastArticleID,
                 FileID    => $FileID,
-                UserID    => 1,
             );
 
             # image attachment
@@ -381,12 +379,10 @@ $Selenium->RunTest(
 
         $Selenium->switch_to_frame($FrameName);
 
-        # expand the article widget
-        $Selenium->find_element( "#WidgetArticle .Toggle a", 'css' )->click();
-
-        $Selenium->execute_script(
-            "\$('#WidgetArticle .Toggle a', \$('.PopupIframe').contents()).trigger('click')"
-        );
+        $Selenium->WaitFor(
+            JavaScript =>
+                'return typeof(Core) == "object" && typeof(Core.App) == "object" && Core.App.PageLoadComplete'
+        ) || die "OTRS API verification failed after page load.";
 
         # check if the richtext is empty
         $Self->Is(
@@ -431,6 +427,15 @@ $Selenium->RunTest(
             TicketID => $TicketID,
             UserID   => $TestUserID,
         );
+
+        # Ticket deletion could fail if apache still writes to ticket history. Try again in this case.
+        if ( !$Success ) {
+            sleep 3;
+            $Success = $TicketObject->TicketDelete(
+                TicketID => $TicketID,
+                UserID   => $TestUserID,
+            );
+        }
         $Self->True(
             $Success,
             "Ticket is deleted - ID $TicketID",

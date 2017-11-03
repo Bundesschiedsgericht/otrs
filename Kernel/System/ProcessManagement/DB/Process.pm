@@ -774,7 +774,7 @@ sub ProcessList {
     if ( $StateEntityIDsStrg ne 'ALL' ) {
 
         my $StateEntityIDsStrgDB =
-            join ',', map "'" . $DBObject->Quote($_) . "'", @{ $Param{StateEntityIDs} };
+            join ',', map { "'" . $DBObject->Quote($_) . "'" } @{ $Param{StateEntityIDs} };
 
         $SQL .= "WHERE state_entity_id IN ($StateEntityIDsStrgDB)";
     }
@@ -898,6 +898,87 @@ sub ProcessListGet {
         Value => \@Data,
         TTL   => $Self->{CacheTTL},
     );
+
+    return \@Data;
+}
+
+=head2 ProcessSearch()
+
+search processes by process name
+
+    my $ProcessEntityIDs = $ProcessObject->ProcessSearch(
+        ProcessName => 'SomeText',       # e. g. "SomeText*", "Some*ext" or ['*SomeTest1*', '*SomeTest2*']
+    );
+
+    Returns:
+
+    $ProcessEntityIDs = [ 'Process-e11e2e9aa83344a235279d4f6babc6ec', 'Process-f8194a25ab0ccddefeb4240c281c1f56' ];
+
+=cut
+
+sub ProcessSearch {
+    my ( $Self, %Param ) = @_;
+
+    # check needed stuff
+    if ( !$Param{ProcessName} ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => 'Need ProcessName!',
+        );
+        return;
+    }
+
+    my $DBObject = $Kernel::OM->Get('Kernel::System::DB');
+
+    my $SQL = 'SELECT DISTINCT entity_id
+               FROM pm_process ';
+
+    # if it's no ref, put it to array ref
+    if ( ref $Param{ProcessName} eq '' ) {
+        $Param{ProcessName} = [ $Param{ProcessName} ];
+    }
+
+    if ( IsArrayRefWithData( $Param{ProcessName} ) ) {
+        $SQL .= ' WHERE' if IsArrayRefWithData( $Param{ProcessName} );
+    }
+
+    my @QuotedSearch;
+    my $SQLOR = 0;
+
+    VALUE:
+    for my $Value ( @{ $Param{ProcessName} } ) {
+
+        next VALUE if !defined $Value || !length $Value;
+
+        $Value = '%' . $DBObject->Quote( $Value, 'Like' ) . '%';
+        $Value =~ s/\*/%/g;
+        $Value =~ s/%%/%/gi;
+
+        if ($SQLOR) {
+            $SQL .= ' OR';
+        }
+
+        $SQL .= ' name LIKE ? ';
+
+        push @QuotedSearch, $Value;
+        $SQLOR = 1;
+
+    }
+
+    if ( IsArrayRefWithData( $Param{ProcessName} ) ) {
+        $SQL .= $DBObject->GetDatabaseFunction('LikeEscapeString');
+    }
+    $SQL .= ' ORDER BY entity_id';
+
+    return if !$DBObject->Prepare(
+        SQL  => $SQL,
+        Bind => [ \(@QuotedSearch) ]
+    );
+
+    my @Data;
+    while ( my @Row = $DBObject->FetchrowArray() ) {
+        push @Data, $Row[0];
+    }
 
     return \@Data;
 }
@@ -1354,13 +1435,14 @@ sub ProcessDump {
 package Kernel::Config::Files::ZZZProcessManagement;
 use strict;
 use warnings;
-no warnings 'redefine';
+no warnings 'redefine'; ## no critic
 use utf8;
 sub Load {
     my ($File, $Self) = @_;
 EOF
 
             my $FileEnd = <<'EOF';
+    return;
 }
 1;
 EOF
@@ -1539,7 +1621,7 @@ sub ProcessImport {
 
                 # check if EntityID matched the format (it could be that a process from 3.3.x is been
                 #    imported)
-                if ( $NewEntityID !~ m{\A $PartName - [0-9a-f]{32}? \z}msx ) {
+                if ( $NewEntityID !~ m{\A $PartName - [0-9a-f]{32} \z}msx ) {
 
                     # generate new EntityIDs
                     $NewEntityID = $Self->{EntityObject}->EntityIDGenerate(

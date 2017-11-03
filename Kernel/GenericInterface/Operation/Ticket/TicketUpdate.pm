@@ -204,7 +204,6 @@ if applicable the created ArticleID.
                     ResponsibleID      => 123,
                     Age                => 3456,
                     Created            => '2010-10-27 20:15:00'
-                    CreateTimeUnix     => '1231414141',
                     CreateBy           => 123,
                     Changed            => '2010-10-27 20:15:15',
                     ChangeBy           => 123,
@@ -2137,6 +2136,7 @@ sub _TicketUpdate {
     for my $Attachment ( @{$AttachmentList} ) {
         my $Result = $Self->CreateAttachment(
             Attachment => $Attachment,
+            TicketID   => $TicketID,
             ArticleID  => $ArticleID || '',
             UserID     => $Param{UserID}
         );
@@ -2153,7 +2153,7 @@ sub _TicketUpdate {
         }
     }
 
-    # get webservice configuration
+    # get web service configuration
     my $Webservice = $Kernel::OM->Get('Kernel::System::GenericInterface::Webservice')->WebserviceGet(
         ID => $Self->{WebserviceID},
     );
@@ -2243,7 +2243,6 @@ sub _TicketUpdate {
         ArticleID => $ArticleID || $LastArticleID,
         DynamicFields => 1,
         TicketID      => $TicketID,
-        UserID        => $Param{UserID},
     );
 
     # prepare Article DynamicFields
@@ -2273,7 +2272,6 @@ sub _TicketUpdate {
     if ( IsArrayRefWithData($AttachmentList) ) {
         my %AttachmentIndex = $TicketObject->ArticleAttachmentIndex(
             ArticleID => $ArticleData{ArticleID},
-            UserID    => $Param{UserID},
         );
 
         my @Attachments;
@@ -2284,7 +2282,6 @@ sub _TicketUpdate {
             my %Attachment = $TicketObject->ArticleAttachment(
                 ArticleID => $ArticleData{ArticleID},
                 FileID    => $FileID,
-                UserID    => $Param{UserID},
             );
 
             next ATTACHMENT if !IsHashRefWithData( \%Attachment );

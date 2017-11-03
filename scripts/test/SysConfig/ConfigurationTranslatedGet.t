@@ -115,6 +115,7 @@ bounce: bounced to "%s".
 customerupdate: changed customer to "%s".
 emailagent: sent email to customer.
 emailcustomer: added email. %s
+emailresend: resent email to "%s".
 escalationresponsetimenotifybefore: notified about response time escalation.
 escalationresponsetimestart: started response time escalation.
 escalationresponsetimestop: stopped response time escalation.
@@ -128,6 +129,7 @@ followup: added follow-up to ticket [%s]. %s
 forward: forwarded to "%s".
 lock: locked ticket.
 loopprotection: \'loop protection: no auto-response sent to "%s".\'
+merged: merged ticket (%s/%s) to (%s/%s).
 misc: \'%s\'
 move: changed queue to "%s" (%s) from "%s" (%s).
 newticket: created ticket [%s] in "%s" with priority "%s" and state "%s".
@@ -154,7 +156,7 @@ ticketlinkadd: added link to ticket "%s".
 ticketlinkdelete: deleted link to ticket "%s".
 timeaccounting: added %s time unit(s), for a total of %s time unit(s).
 titleupdate: changed title from "%s" to "%s".
-typeupdate: changed type to "%s" (%s).
+typeupdate: changed type from "%s" (%s) to "%s" (%s).
 unlock: unlocked ticket.
 unsubscribe: removed subscription for user "%s".
 webrequestcustomer: added web request from customer.

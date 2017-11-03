@@ -12,8 +12,8 @@ use strict;
 use warnings;
 
 our @ObjectDependencies = (
-    'Kernel::System::CustomerUser',
     'Kernel::System::Log',
+    'Kernel::System::CustomerUser',
     'Kernel::System::Ticket',
     'Kernel::System::Ticket::Article',
 );
@@ -28,6 +28,9 @@ sub new {
     # get parser object
     $Self->{ParserObject} = $Param{ParserObject} || die "Got no ParserObject!";
 
+    # Get communication log object.
+    $Self->{CommunicationLogObject} = $Param{CommunicationLogObject} || die "Got no CommunicationLogObject!";
+
     return $Self;
 }
 
@@ -40,9 +43,11 @@ sub Run {
     # check needed stuff
     for (qw(JobConfig GetParam UserID)) {
         if ( !$Param{$_} ) {
-            $Kernel::OM->Get('Kernel::System::Log')->Log(
-                Priority => 'error',
-                Message  => "Need $_!"
+            $Self->{CommunicationLogObject}->ObjectLog(
+                ObjectLogType => 'Message',
+                Priority      => 'Error',
+                Key           => 'Kernel::System::PostMaster::Filter::FollowUpArticleVisibilityCheck',
+                Value         => "Need $_!",
             );
             return;
         }
@@ -108,10 +113,7 @@ sub Run {
     for my $MetaArticle ( reverse @MetaArticleIndex ) {
 
         my $Article = {
-            $ArticleBackendObject->ArticleGet(
-                %{$MetaArticle},
-                UserID => $Param{UserID},
-                )
+            $ArticleBackendObject->ArticleGet( %{$MetaArticle} )
         };
 
         # check recipients

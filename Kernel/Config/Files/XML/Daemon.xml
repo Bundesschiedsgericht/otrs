@@ -59,6 +59,13 @@
             </Item>
         </Value>
     </Setting>
+    <Setting Name="Daemon::PID::Path" Required="0" Valid="0">
+        <Description Translatable="1">If enabled the daemon will use this directory to create its PID files. Note: Please stop the daemon before any change and use this setting only if &lt;$OTRSHome&gt;/var/run/ can not be used.</Description>
+        <Navigation>Daemon</Navigation>
+        <Value>
+            <Item ValueRegex="" ValueType="Directory">/opt/otrs/var/run/</Item>
+        </Value>
+    </Setting>
     <Setting Name="Daemon::Log::DaysToKeep" Required="0" Valid="0">
         <Description Translatable="1">Defines the number of days to keep the daemon log files.</Description>
         <Navigation>Daemon::Log</Navigation>
@@ -113,6 +120,15 @@
         <Value>
             <Hash>
                 <Item Key="Module">Kernel::System::Daemon::DaemonModules::SchedulerTaskWorker</Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="DaemonModules###SystemConfigurationSyncManager" Required="1" Valid="1">
+        <Description Translatable="1">The daemon registration for the system configuration deployment sync manager.</Description>
+        <Navigation>Daemon::ModuleRegistration</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Module">Kernel::System::Daemon::DaemonModules::SystemConfigurationSyncManager</Item>
             </Hash>
         </Value>
     </Setting>
@@ -408,6 +424,42 @@
                         <Item>4</Item>
                         <Item>--limit</Item>
                         <Item>20000</Item>
+                    </Array>
+                </Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="Daemon::SchedulerCronTaskManager::Task###MailQueueSend" Required="0" Valid="1" ConfigLevel="100">
+        <Description Translatable="1">Checks for queued outgoing emails to be sent.</Description>
+        <Navigation>Daemon::SchedulerCronTaskManager::Task</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="TaskName">MailQueueSend</Item>
+                <Item Key="Schedule">* * * * *</Item> <!-- default every minute -->
+                <Item Key="Module">Kernel::System::Console::Command::Maint::Email::MailQueue</Item>
+                <Item Key="Function">Execute</Item>
+                <Item Key="MaximumParallelInstances">1</Item>
+                <Item Key="Params">
+                    <Array>
+                        <Item>--send</Item>
+                    </Array>
+                </Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="Daemon::SchedulerCronTaskManager::Task###CommunicationLogDelete" Required="0" Valid="1" ConfigLevel="100">
+        <Description Translatable="1">Checks for communication log entries to be deleted.</Description>
+        <Navigation>Daemon::SchedulerCronTaskManager::Task</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="TaskName">CommunicationLogDelete</Item>
+                <Item Key="Schedule">00 03 * * *</Item> <!-- default each day at 03:00 AM -->
+                <Item Key="Module">Kernel::System::Console::Command::Maint::Log::CommunicationLog</Item>
+                <Item Key="Function">Execute</Item>
+                <Item Key="MaximumParallelInstances">1</Item>
+                <Item Key="Params">
+                    <Array>
+                        <Item>--purge</Item>
                     </Array>
                 </Item>
             </Hash>
@@ -792,6 +844,26 @@
                     <Array>
                         <Item>--created-before-days</Item>
                         <Item>14</Item>
+                    </Array>
+                </Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="Daemon::SchedulerCronTaskManager::Task###TicketDraftDeleteExpired" Required="0" Valid="1" ConfigLevel="100">
+        <Description Translatable="1">Delete expired ticket draft entries.</Description>
+        <Navigation>Daemon::SchedulerCronTaskManager::Task</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="TaskName">TicketDraftDeleteExpired</Item>
+                <Item Key="Schedule">55 * * * *</Item> <!-- default every hour in minute 55 -->
+                <Item Key="Module">Kernel::System::Console::Command::Maint::FormDraft::Delete</Item>
+                <Item Key="Function">Execute</Item>
+                <Item Key="MaximumParallelInstances">1</Item>
+                <Item Key="Params">
+                    <Array>
+                        <Item>--object-type</Item>
+                        <Item>Ticket</Item>
+                        <Item>--expired</Item>
                     </Array>
                 </Item>
             </Hash>

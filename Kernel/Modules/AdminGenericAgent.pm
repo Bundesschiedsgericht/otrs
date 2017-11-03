@@ -1154,19 +1154,13 @@ sub _MaskUpdate {
 
         # refresh event list for each event type
 
-        # hide inactive event lists
-        my $EventListHidden = '';
-        if ( $Type ne $SelectedEventType ) {
-            $EventListHidden = 'Hidden';
-        }
-
         # paint each selector
         my $EventStrg = $LayoutObject->BuildSelection(
             Data => $RegisteredEvents{$Type} || [],
             Name => $Type . 'Event',
             Sort => 'AlphanumericValue',
             PossibleNone => 0,
-            Class        => 'EventList GenericInterfaceSpacing ' . $EventListHidden,
+            Class        => 'Modernize EventList GenericInterfaceSpacing',
             Title        => $LayoutObject->{LanguageObject}->Translate('Event'),
         );
 
@@ -1187,7 +1181,7 @@ sub _MaskUpdate {
         Sort          => 'AlphanumericValue',
         SelectedValue => $SelectedEventType,
         PossibleNone  => 0,
-        Class         => '',
+        Class         => 'Modernize',
         Title         => $LayoutObject->{LanguageObject}->Translate('Type'),
     );
     $LayoutObject->Block(
@@ -1356,10 +1350,7 @@ sub _MaskRun {
             );
             my %Article;
             for my $Article (@Articles) {
-                %Article = $ArticleObject->BackendForArticle( %{$Article} )->ArticleGet(
-                    %{$Article},
-                    UserID => $Self->{UserID},
-                );
+                %Article = $ArticleObject->BackendForArticle( %{$Article} )->ArticleGet( %{$Article} );
             }
 
             my %Data = ( %Ticket, %Article );

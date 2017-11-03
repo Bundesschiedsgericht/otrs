@@ -53,7 +53,7 @@ article back ends.
 
 Don't use the constructor directly, use the ObjectManager instead:
 
-    my $ArticleObject = $Kernel::OM->Get('Kernel::System::Article');
+    my $ArticleObject = $Kernel::OM->Get('Kernel::System::Ticket::Article');
 
 =cut
 
@@ -120,7 +120,7 @@ sub BackendForArticle {
             ArticleID => $Param{ArticleID},
         );
         if (@BaseArticles) {
-            $Param{CommunicationChannelID} = $BaseArticles[0]->{CommunicationChannelID},
+            $Param{CommunicationChannelID} = $BaseArticles[0]->{CommunicationChannelID};
         }
     }
 

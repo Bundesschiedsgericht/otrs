@@ -149,7 +149,6 @@ sub Run {
         my %ArticleData = $ArticleBackendObject->ArticleGet(
             TicketID  => $Self->{TicketID},
             ArticleID => $ArticleMetaData->{ArticleID},
-            UserID    => $Self->{UserID},
             RealNames => 1,
         );
 
@@ -165,7 +164,6 @@ sub Run {
         # Get attachment index.
         my %AtmIndex = $ArticleBackendObject->ArticleAttachmentIndex(
             ArticleID        => $ArticleMetaData->{ArticleID},
-            UserID           => 1,
             ExcludePlainText => 1,
             ExcludeHTMLBody  => 1,
             ExcludeInline    => 1,
@@ -409,15 +407,6 @@ sub Run {
             );
         }
 
-        # for attachment actions
-        my $IsUpload = 0;
-
-        # attachment delete
-        my @AttachmentIDs = map {
-            my ($ID) = $_ =~ m{ \A AttachmentDelete (\d+) \z }xms;
-            $ID ? $ID : ();
-        } $ParamObject->GetParamNames();
-
         my $UploadCacheObject = $Kernel::OM->Get('Kernel::System::Web::UploadCache');
 
         if ( $GetParam{FromChat} ) {
@@ -439,35 +428,7 @@ sub Run {
             }
         }
 
-        COUNT:
-        for my $Count ( reverse sort @AttachmentIDs ) {
-            my $Delete = $ParamObject->GetParam( Param => "AttachmentDelete$Count" );
-            next COUNT if !$Delete;
-            $GetParam{FollowUpVisible} = 'Visible';
-            $Error{AttachmentDelete}   = 1;
-            $UploadCacheObject->FormIDRemoveFile(
-                FormID => $Self->{FormID},
-                FileID => $Count,
-            );
-            $IsUpload = 1;
-        }
-
-        # attachment upload
-        if ( $ParamObject->GetParam( Param => 'AttachmentUpload' ) ) {
-            $GetParam{FollowUpVisible} = 'Visible';
-            $Error{AttachmentUpload}   = 1;
-            my %UploadStuff = $ParamObject->GetUploadAll(
-                Param => "file_upload",
-            );
-            $UploadCacheObject->FormIDAddFile(
-                FormID      => $Self->{FormID},
-                Disposition => 'attachment',
-                %UploadStuff,
-            );
-            $IsUpload = 1;
-        }
-
-        if ( !$IsUpload && !$GetParam{FromChat} ) {
+        if ( !$GetParam{FromChat} ) {
             if ( !$GetParam{Body} || $GetParam{Body} eq '<br />' ) {
                 $Error{RichTextInvalid}    = 'ServerError';
                 $GetParam{FollowUpVisible} = 'Visible';
@@ -523,36 +484,32 @@ sub Run {
                 }
             }
 
-            my $ValidationResult;
+            my $ValidationResult = $BackendObject->EditFieldValueValidate(
+                DynamicFieldConfig   => $DynamicFieldConfig,
+                PossibleValuesFilter => $PossibleValuesFilter,
+                ParamObject          => $ParamObject,
+                Mandatory =>
+                    $Config->{FollowUpDynamicField}->{ $DynamicFieldConfig->{Name} }
+                    == 2,
+            );
 
-            # do not validate on attachment upload
-            if ( !$IsUpload ) {
-
-                $ValidationResult = $BackendObject->EditFieldValueValidate(
-                    DynamicFieldConfig   => $DynamicFieldConfig,
-                    PossibleValuesFilter => $PossibleValuesFilter,
-                    ParamObject          => $ParamObject,
-                    Mandatory            => $Config->{FollowUpDynamicField}->{ $DynamicFieldConfig->{Name} } == 2,
+            if ( !IsHashRefWithData($ValidationResult) ) {
+                my $Output = $LayoutObject->CustomerHeader( Title => 'Error' );
+                $Output .= $LayoutObject->CustomerError(
+                    Message => $LayoutObject->{LanguageObject}
+                        ->Translate( 'Could not perform validation on field %s!', $DynamicFieldConfig->{Label} ),
+                    Comment => Translatable('Please contact the administrator.'),
                 );
+                $Output .= $LayoutObject->CustomerFooter();
+                return $Output;
+            }
 
-                if ( !IsHashRefWithData($ValidationResult) ) {
-                    my $Output = $LayoutObject->CustomerHeader( Title => 'Error' );
-                    $Output .= $LayoutObject->CustomerError(
-                        Message => $LayoutObject->{LanguageObject}
-                            ->Translate( 'Could not perform validation on field %s!', $DynamicFieldConfig->{Label} ),
-                        Comment => Translatable('Please contact the administrator.'),
-                    );
-                    $Output .= $LayoutObject->CustomerFooter();
-                    return $Output;
-                }
+            # propagate validation error to the Error variable to be detected by the frontend
+            if ( $ValidationResult->{ServerError} ) {
+                $Error{ $DynamicFieldConfig->{Name} } = ' ServerError';
 
-                # propagate validation error to the Error variable to be detected by the frontend
-                if ( $ValidationResult->{ServerError} ) {
-                    $Error{ $DynamicFieldConfig->{Name} } = ' ServerError';
-
-                    # make FollowUp visible to correctly show the error
-                    $GetParam{FollowUpVisible} = 'Visible';
-                }
+                # make FollowUp visible to correctly show the error
+                $GetParam{FollowUpVisible} = 'Visible';
             }
 
             # get field html
@@ -1806,10 +1763,8 @@ sub _Mask {
             {
                 next ATTACHMENT;
             }
-            $LayoutObject->Block(
-                Name => 'FollowUpAttachment',
-                Data => $Attachment,
-            );
+
+            push @{ $Param{AttachmentList} }, $Attachment;
         }
     }
 

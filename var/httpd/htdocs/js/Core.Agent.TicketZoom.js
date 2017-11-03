@@ -116,22 +116,31 @@ Core.Agent.TicketZoom = (function (TargetNS) {
      *      Set iframe height automatically based on real content height and default config setting.
      */
     TargetNS.IframeAutoHeight = function ($Iframe) {
-        var NewHeight;
+
+        var NewHeight,
+            IframeBodyHeight;
 
         if (isJQueryObject($Iframe)) {
-
+            IframeBodyHeight = $Iframe.contents().find('body').height();
             NewHeight = $Iframe.contents().height();
             if (!NewHeight || isNaN(NewHeight)) {
                 NewHeight = Core.Config.Get('Ticket::Frontend::HTMLArticleHeightDefault');
             }
             else {
-                if (NewHeight > Core.Config.Get('Ticket::Frontend::HTMLArticleHeightMax')) {
+                NewHeight = IframeBodyHeight;
+                if (IframeBodyHeight > Core.Config.Get('Ticket::Frontend::HTMLArticleHeightMax')) {
                     NewHeight = Core.Config.Get('Ticket::Frontend::HTMLArticleHeightMax');
                 }
             }
 
             // add delta for scrollbar
             NewHeight = parseInt(NewHeight, 10) + 25;
+
+            // make sure the minimum height is in line with the avatar images
+            if (NewHeight < 46) {
+                NewHeight = 46;
+            }
+
             $Iframe.height(NewHeight + 'px');
         }
     };
@@ -185,6 +194,8 @@ Core.Agent.TicketZoom = (function (TargetNS) {
 
             // Add event bindings to new widget.
             ArticleDetailsEvents();
+
+            Core.UI.InitWidgetActionToggle();
 
             // Add hash to the URL to provide direct URLs and history back/forward functionality
             // If new ArticleID is again the InitialArticleID than remove hash from URL
@@ -368,18 +379,27 @@ Core.Agent.TicketZoom = (function (TargetNS) {
 
         // Calendar settings button
         $ArticleViewSettingsObj.off('click.AgentTicketZoom').on('click.AgentTicketZoom', function (Event) {
+
             Core.UI.Dialog.ShowContentDialog(ArticleViewSettingsDialogHTML, Core.Language.Translate('Settings'), '10px', 'Center', true,
                 [
                     {
-                        Label: Core.Language.Translate('Save'),
-                        Class: 'Primary',
-                        Type: 'Submit'
-                    },
-                    {
-                        Label: Core.Language.Translate('Close'),
+                        Label: Core.Language.Translate('Close this dialog'),
                         Type: 'Close'
                     }
                 ], true);
+
+            $('#ArticleView').off('change').on('change', function() {
+
+                if (!parseInt(Core.Config.Get('OTRSBusinessIsInstalled'), 10) && ($(this).val() === null || $(this).val() === '')) {
+                    Core.UI.Dialog.CloseDialog($('.Dialog:visible'));
+                    Core.Agent.ShowOTRSBusinessRequiredDialog();
+                    return false;
+                }
+                else {
+                    Core.UI.Dialog.MakeDialogWait();
+                    $('#ArticleView').closest('form').submit();
+                }
+            });
 
             Event.preventDefault();
             Event.stopPropagation();
@@ -525,7 +545,7 @@ Core.Agent.TicketZoom = (function (TargetNS) {
                 Buttons: [
                     {
                         Type: 'Close',
-                        Label: Core.Language.Translate("Close dialog"),
+                        Label: Core.Language.Translate("Close this dialog"),
                         Function: function() {
                             Core.UI.Dialog.CloseDialog($('.Dialog:visible'));
                             Core.Form.EnableForm($('form[name="compose"]'));
@@ -556,6 +576,38 @@ Core.Agent.TicketZoom = (function (TargetNS) {
     }
 
     /**
+     * @name InitWidgets
+     * @memberof Core.Agent.TicketZoom
+     * @function
+     * @param {Object} AsyncWidgetActions - list of widgets to initialize
+     * @description
+     *      This function initializes configured asynchronous widgets.
+     */
+    function InitWidgets(AsyncWidgetActions) {
+        $.each(AsyncWidgetActions, function (ElementID, URLPart) {
+            Core.AJAX.ContentUpdate($('#' + ElementID), Core.Config.Get('Baselink') + URLPart, function() {
+
+                // wait for content update
+                $('#' + ElementID).find("a.AsPopup").on('click', function () {
+                    var Matches,
+                        PopupType = 'TicketAction';
+
+                    Matches = $(this).attr('class').match(/PopupType_(\w+)/);
+                    if (Matches) {
+                        PopupType = Matches[1];
+                    }
+
+                    Core.UI.Popup.OpenPopup($(this).attr('href'), PopupType);
+                    return false;
+                });
+
+                $('#' + ElementID).find('.WidgetSimple').hide().fadeIn();
+                Core.UI.InitWidgetActionToggle();
+            });
+        });
+    }
+
+    /**
      * @name Init
      * @memberof Core.Agent.TicketZoom
      * @function
@@ -574,8 +626,7 @@ Core.Agent.TicketZoom = (function (TargetNS) {
             ArticleFilterDialog = parseInt(Core.Config.Get('ArticleFilterDialog'), 10),
             AsyncWidgetActions = Core.Config.Get('AsyncWidgetActions') || {},
             TimelineView = Core.Config.Get('TimelineView'),
-            ProcessWidget = Core.Config.Get('ProcessWidget'),
-            ElementID;
+            ProcessWidget = Core.Config.Get('ProcessWidget');
 
         // create open popup event for dropdown elements
         if (MenuItems.length > 0) {
@@ -651,27 +702,7 @@ Core.Agent.TicketZoom = (function (TargetNS) {
         });
 
         // Start asynchronous loading of widgets
-        for (ElementID in AsyncWidgetActions) {
-            if (AsyncWidgetActions.hasOwnProperty(ElementID)) {
-                Core.AJAX.ContentUpdate($('#' + ElementID), Core.Config.Get('Baselink') + AsyncWidgetActions[ElementID], function() {
-                    $('#' + ElementID).find("a.AsPopup").on('click', function () {
-                        var Matches,
-                            PopupType = 'TicketAction';
-
-                        Matches = $(this).attr('class').match(/PopupType_(\w+)/);
-                        if (Matches) {
-                            PopupType = Matches[1];
-                        }
-
-                        Core.UI.Popup.OpenPopup($(this).attr('href'), PopupType);
-                        return false;
-                    });
-
-                    $('#' + ElementID).find('.WidgetSimple').hide().fadeIn();
-                    Core.UI.InitWidgetActionToggle();
-                });
-            }
-        }
+        InitWidgets(AsyncWidgetActions);
 
         // loading new articles
         $('#ArticleTable tbody tr').on('click', function () {

@@ -106,7 +106,36 @@ sub Run {
         );
     }
 
+    my $UserObject = $Kernel::OM->Get('Kernel::System::User');
+
+    my $Time;
+
     for my $Data (@Lines) {
+        $Data->{Class} = '';
+
+        my $HistoryArticleTime = $Kernel::OM->Create(
+            'Kernel::System::DateTime',
+            ObjectParams => {
+                String => $Data->{CreateTime},
+                }
+        )->ToEpoch();
+
+        my $IsNewWidget;
+
+        # Create a new widget if article create time difference is more then 5 sec.
+        if ( !$Time || abs( $Time - $HistoryArticleTime ) > 5 ) {
+
+            $LayoutObject->Block(
+                Name => 'HistoryWidget',
+                Data => {
+                    CreateTime => $Data->{CreateTime},
+                },
+            );
+
+            $Time        = $HistoryArticleTime;
+            $IsNewWidget = 1;
+
+        }
 
         # replace text
         if ( $Data->{Name} && $Data->{Name} =~ m/^%%/x ) {
@@ -124,6 +153,12 @@ sub Run {
                 @Values = ( $Values[1], $Values[5] // '', $Values[3] // '' );
             }
 
+            # Make sure that the order of the values is correct, because we're now
+            #   also showing the old ticket type on 'TypeUpdate'.
+            elsif ( $Data->{HistoryType} eq 'TypeUpdate' ) {
+                @Values = ( $Values[2], $Values[3], $Values[0], $Values[1] );
+            }
+
             $Data->{Name} = $LayoutObject->{LanguageObject}->Translate(
                 $HistoryTypes{ $Data->{HistoryType} },
                 @Values,
@@ -132,23 +167,16 @@ sub Run {
             # remove not needed place holder
             $Data->{Name} =~ s/\%s//xg;
         }
+        else {
+            $Data->{Name} = $LayoutObject->{LanguageObject}->Translate(
+                $Data->{Name}
+            );
+        }
 
         $LayoutObject->Block(
             Name => 'Row',
             Data => $Data,
         );
-
-        if ( $Data->{ArticleID} ne "0" ) {
-            $LayoutObject->Block(
-                Name => 'ShowLinkZoom',
-                Data => $Data,
-            );
-        }
-        else {
-            $LayoutObject->Block(
-                Name => 'NoLinkZoom',
-            );
-        }
     }
 
     # build page

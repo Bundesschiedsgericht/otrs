@@ -198,6 +198,7 @@ sub Run {
             %Param,
         );
         $Output .= $LayoutObject->Footer();
+        return $Output;
 
     }
 
@@ -217,7 +218,7 @@ sub Run {
                 Data     => $LayoutObject->{LanguageObject}->Translate( "Please activate %s first!", "Service" ),
                 Link =>
                     $LayoutObject->{Baselink}
-                    . 'Action=AdminSystemConfiguration;Subaction=Edit;SysConfigGroup=Ticket;SysConfigSubGroup=Core::Ticket#Ticket::Service',
+                    . 'Action=AdminSystemConfiguration;Subaction=View;Setting=Ticket%3A%3AService;',
             );
         }
 
@@ -283,6 +284,7 @@ sub Run {
 
         return $Output;
     }
+    return;
 }
 
 sub _MaskNew {
@@ -322,8 +324,9 @@ sub _MaskNew {
 
     # generate ParentOptionStrg
     my %ServiceList = $ServiceObject->ServiceList(
-        Valid  => 0,
-        UserID => $Self->{UserID},
+        Valid        => 1,
+        KeepChildren => $ConfigObject->Get('Ticket::Service::KeepChildren') // 0,
+        UserID       => $Self->{UserID},
     );
     $ServiceData{ParentOptionStrg} = $LayoutObject->BuildSelection(
         Data           => \%ServiceList,

@@ -36,7 +36,7 @@ sub Run {
     # ------------------------------------------------------------ #
     if ( !$Kernel::OM->Get('Kernel::Config')->Get('PGP') ) {
 
-        my $Output .= $LayoutObject->Header();
+        my $Output = $LayoutObject->Header();
         $Output .= $LayoutObject->NavigationBar();
 
         $LayoutObject->Block( Name => 'Overview' );
@@ -64,7 +64,7 @@ sub Run {
 
         $Output .= $LayoutObject->Notify(
             Priority => 'Error',
-            Data     => Translatable("PGP environment is not working. Please check log for more info!"),
+            Info     => Translatable('PGP environment is not working. Please check log for more info!'),
             Link     => $LayoutObject->{Baselink} . 'Action=AdminLog',
         );
 
@@ -342,7 +342,7 @@ sub Run {
     # ------------------------------------------------------------ #
     else {
 
-        my $Output .= $LayoutObject->Header();
+        my $Output = $LayoutObject->Header();
         $Output .= $LayoutObject->NavigationBar();
 
         $LayoutObject->Block( Name => 'Overview' );

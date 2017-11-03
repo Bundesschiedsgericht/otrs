@@ -149,8 +149,18 @@ for my $Test (@Tests) {
 
     my @Email = split( /\n/, $Test->{Email} );
 
+    my $CommunicationLogObject = $Kernel::OM->Create(
+        'Kernel::System::CommunicationLog',
+        ObjectParams => {
+            Transport => 'Email',
+            Direction => 'Incoming',
+        },
+    );
+    $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
+
     my $PostMasterObject = Kernel::System::PostMaster->new(
-        Email => \@Email,
+        CommunicationLogObject => $CommunicationLogObject,
+        Email                  => \@Email,
     );
 
     my $EmailParams = $PostMasterObject->GetEmailParams();
@@ -162,6 +172,14 @@ for my $Test (@Tests) {
             "$Test->{Name} - $EmailParam",
         );
     }
+
+    $CommunicationLogObject->ObjectLogStop(
+        ObjectLogType => 'Message',
+        Status        => 'Successful',
+    );
+    $CommunicationLogObject->CommunicationStop(
+        Status => 'Successful',
+    );
 }
 
 # cleanup cache is done by RestoreDatabase

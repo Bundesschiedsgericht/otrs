@@ -128,6 +128,9 @@ Core.Customer.TicketProcess = (function (TargetNS) {
                         // Register event for tree selection dialog
                         Core.UI.TreeSelection.InitTreeSelection();
 
+                        // initialize ajax dnd upload
+                        Core.UI.InitAjaxDnDUpload();
+
                         // move help triggers into field rows for dynamic fields
                         $('.Row > .FieldHelpContainer').each(function () {
                             if (!$(this).next('label').find('.Marker').length) {
@@ -151,6 +154,8 @@ Core.Customer.TicketProcess = (function (TargetNS) {
 
                         Core.TicketProcess.Init();
 
+                        // Publish event on first activity dialog load, so other code can know to execute again.
+                        Core.App.Publish('TicketProcess.Init.FirstActivityDialog.Load', [$ElementToUpdate]);
                     }
                     else {
 

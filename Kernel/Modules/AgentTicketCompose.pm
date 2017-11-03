@@ -24,6 +24,19 @@ sub new {
     my $Self = {%Param};
     bless( $Self, $Type );
 
+    # Try to load draft if requested.
+    if (
+        $Kernel::OM->Get('Kernel::Config')->Get("Ticket::Frontend::$Self->{Action}")->{FormDraft}
+        && $Kernel::OM->Get('Kernel::System::Web::Request')->GetParam( Param => 'LoadFormDraft' )
+        && $Kernel::OM->Get('Kernel::System::Web::Request')->GetParam( Param => 'FormDraftID' )
+        )
+    {
+        $Self->{LoadedFormDraftID} = $Kernel::OM->Get('Kernel::System::Web::Request')->LoadFormDraft(
+            FormDraftID => $Kernel::OM->Get('Kernel::System::Web::Request')->GetParam( Param => 'FormDraftID' ),
+            UserID      => $Self->{UserID},
+        );
+    }
+
     $Self->{Debug} = $Param{Debug} || 0;
 
     # get form id
@@ -100,6 +113,18 @@ sub Run {
         }
     }
 
+    # Check for failed draft loading request.
+    if (
+        $Kernel::OM->Get('Kernel::System::Web::Request')->GetParam( Param => 'LoadFormDraft' )
+        && !$Self->{LoadedFormDraftID}
+        )
+    {
+        return $LayoutObject->ErrorScreen(
+            Message => Translatable('Loading draft failed!'),
+            Comment => Translatable('Please contact the administrator.'),
+        );
+    }
+
     my %Ticket = $TicketObject->TicketGet(
         TicketID      => $Self->{TicketID},
         DynamicFields => 1
@@ -158,6 +183,7 @@ sub Run {
         qw(
         From To Cc Bcc Subject Body InReplyTo References ResponseID ReplyArticleID StateID ArticleID
         IsVisibleForCustomerPresent IsVisibleForCustomer TimeUnits Year Month Day Hour Minute FormID ReplyAll
+        FormDraftID Title
         )
         )
     {
@@ -395,7 +421,6 @@ sub Run {
     for my $DynamicFieldItem ( sort keys %DynamicFieldValues ) {
         next DYNAMICFIELD if !$DynamicFieldItem;
         next DYNAMICFIELD if !defined $DynamicFieldValues{$DynamicFieldItem};
-        next DYNAMICFIELD if !length $DynamicFieldValues{$DynamicFieldItem};
 
         $DynamicFieldACLParameters{ 'DynamicField_' . $DynamicFieldItem } = $DynamicFieldValues{$DynamicFieldItem};
     }
@@ -420,10 +445,12 @@ sub Run {
     my $MainObject        = $Kernel::OM->Get('Kernel::System::Main');
 
     # send email
-    if ( $Self->{Subaction} eq 'SendEmail' ) {
+    if ( $Self->{Subaction} eq 'SendEmail' || $Self->{LoadedFormDraftID} ) {
 
         # challenge token check for write action
-        $LayoutObject->ChallengeTokenCheck();
+        if ( !$Self->{LoadedFormDraftID} ) {
+            $LayoutObject->ChallengeTokenCheck();
+        }
 
         # get valid state id
         if ( !$GetParam{StateID} ) {
@@ -480,46 +507,131 @@ sub Run {
             );
         }
 
-        # If is an action about attachments
-        my $IsUpload = 0;
-
-        # attachment delete
-        my @AttachmentIDs = map {
-            my ($ID) = $_ =~ m{ \A AttachmentDelete (\d+) \z }xms;
-            $ID ? $ID : ();
-        } $ParamObject->GetParamNames();
-
-        COUNT:
-        for my $Count ( reverse sort @AttachmentIDs ) {
-            my $Delete = $ParamObject->GetParam( Param => "AttachmentDelete$Count" );
-            next COUNT if !$Delete;
-            $Error{AttachmentDelete} = 1;
-            $UploadCacheObject->FormIDRemoveFile(
-                FormID => $Self->{FormID},
-                FileID => $Count,
-            );
-            $IsUpload = 1;
-        }
-
-        # attachment upload
-        if ( $ParamObject->GetParam( Param => 'AttachmentUpload' ) ) {
-            $IsUpload                = 1;
-            %Error                   = ();
-            $Error{AttachmentUpload} = 1;
-            my %UploadStuff = $ParamObject->GetUploadAll(
-                Param => 'FileUpload',
-            );
-            $UploadCacheObject->FormIDAddFile(
-                FormID      => $Self->{FormID},
-                Disposition => 'attachment',
-                %UploadStuff,
-            );
-        }
-
         # get all attachments meta data
         my @Attachments = $UploadCacheObject->FormIDGetAllFilesMeta(
             FormID => $Self->{FormID},
         );
+
+        # Get and validate draft action.
+        my $FormDraftAction = $ParamObject->GetParam( Param => 'FormDraftAction' );
+        if ( $FormDraftAction && !$Config->{FormDraft} ) {
+            return $LayoutObject->ErrorScreen(
+                Message => Translatable('FormDraft functionality disabled!'),
+                Comment => Translatable('Please contact the administrator.'),
+            );
+        }
+
+        my %FormDraftResponse;
+
+        # Check draft name.
+        if (
+            $FormDraftAction
+            && ( $FormDraftAction eq 'Add' || $FormDraftAction eq 'Update' )
+            )
+        {
+            my $Title = $ParamObject->GetParam( Param => 'FormDraftTitle' );
+
+            # A draft name is required.
+            if ( !$Title ) {
+
+                %FormDraftResponse = (
+                    Success      => 0,
+                    ErrorMessage => $Kernel::OM->Get('Kernel::Language')->Translate("Draft name is required!"),
+                );
+            }
+
+            # Chosen draft name must be unique.
+            else {
+                my $FormDraftList = $Kernel::OM->Get('Kernel::System::FormDraft')->FormDraftListGet(
+                    ObjectType => 'Ticket',
+                    ObjectID   => $Self->{TicketID},
+                    Action     => $Self->{Action},
+                    UserID     => $Self->{UserID},
+                );
+                DRAFT:
+                for my $FormDraft ( @{$FormDraftList} ) {
+
+                    # No existing draft with same name.
+                    next DRAFT if $Title ne $FormDraft->{Title};
+
+                    # Same name for update on existing draft.
+                    if (
+                        $GetParam{FormDraftID}
+                        && $FormDraftAction eq 'Update'
+                        && $GetParam{FormDraftID} eq $FormDraft->{FormDraftID}
+                        )
+                    {
+                        next DRAFT;
+                    }
+
+                    # Another draft with the chosen name already exists.
+                    %FormDraftResponse = (
+                        Success      => 0,
+                        ErrorMessage => $Kernel::OM->Get('Kernel::Language')
+                            ->Translate( "FormDraft name %s is already in use!", $Title ),
+                    );
+                    last DRAFT;
+                }
+            }
+        }
+
+        # Perform draft action instead of saving form data in ticket/article.
+        if ( $FormDraftAction && !%FormDraftResponse ) {
+
+            # Reset FormDraftID to prevent updating existing draft.
+            if ( $FormDraftAction eq 'Add' && $GetParam{FormDraftID} ) {
+                $ParamObject->{Query}->param(
+                    -name  => 'FormDraftID',
+                    -value => '',
+                );
+            }
+
+            my $FormDraftActionOk;
+            if (
+                $FormDraftAction eq 'Add'
+                ||
+                ( $FormDraftAction eq 'Update' && $GetParam{FormDraftID} )
+                )
+            {
+                $FormDraftActionOk = $ParamObject->SaveFormDraft(
+                    UserID     => $Self->{UserID},
+                    ObjectType => 'Ticket',
+                    ObjectID   => $Self->{TicketID},
+                );
+            }
+            elsif ( $FormDraftAction eq 'Delete' && $GetParam{FormDraftID} ) {
+                $FormDraftActionOk = $Kernel::OM->Get('Kernel::System::FormDraft')->FormDraftDelete(
+                    FormDraftID => $GetParam{FormDraftID},
+                    UserID      => $Self->{UserID},
+                );
+            }
+
+            if ($FormDraftActionOk) {
+                $FormDraftResponse{Success} = 1;
+            }
+            else {
+                %FormDraftResponse = (
+                    Success      => 0,
+                    ErrorMessage => 'Could not perform requested draft action!',
+                );
+            }
+        }
+
+        if (%FormDraftResponse) {
+
+            # build JSON output
+            my $JSON = $LayoutObject->JSONEncode(
+                Data => \%FormDraftResponse,
+            );
+
+            # send JSON response
+            return $LayoutObject->Attachment(
+                ContentType => 'application/json; charset=' . $LayoutObject->{Charset},
+                Content     => $JSON,
+                Type        => 'inline',
+                NoCache     => 1,
+            );
+        }
 
         # check pending date
         if ( $StateData{TypeName} && $StateData{TypeName} =~ /^pending/i ) {
@@ -538,7 +650,6 @@ sub Run {
 
             if (
                 ( !$PendingDateTimeObject || $PendingDateTimeObject < $CurSystemDateTimeObject )
-                && !$IsUpload
                 )
             {
                 $Error{DateInvalid} = 'ServerError';
@@ -546,10 +657,8 @@ sub Run {
         }
 
         # check if at least one recipient has been chosen
-        if ( $IsUpload == 0 ) {
-            if ( !$GetParam{To} ) {
-                $Error{'ToInvalid'} = 'ServerError';
-            }
+        if ( !$GetParam{To} ) {
+            $Error{'ToInvalid'} = 'ServerError';
         }
 
         # check some values
@@ -558,20 +667,18 @@ sub Run {
             next LINE if !$GetParam{$Line};
             for my $Email ( Mail::Address->parse( $GetParam{$Line} ) ) {
                 if ( !$CheckItemObject->CheckEmail( Address => $Email->address() ) ) {
-                    if ( $IsUpload == 0 ) {
-                        $Error{ $Line . 'Invalid' } = 'ServerError';
-                    }
+                    $Error{ $Line . 'Invalid' } = 'ServerError';
                 }
             }
         }
 
         # check subject
-        if ( !$IsUpload && !$GetParam{Subject} ) {
+        if ( !$GetParam{Subject} ) {
             $Error{SubjectInvalid} = ' ServerError';
         }
 
         # check body
-        if ( !$IsUpload && !$GetParam{Body} ) {
+        if ( !$GetParam{Body} ) {
             $Error{BodyInvalid} = ' ServerError';
         }
 
@@ -582,9 +689,7 @@ sub Run {
             && $GetParam{TimeUnits} eq ''
             )
         {
-            if ( !$IsUpload ) {
-                $Error{TimeUnitsInvalid} = 'ServerError';
-            }
+            $Error{TimeUnitsInvalid} = 'ServerError';
         }
 
         # prepare subject
@@ -714,33 +819,27 @@ sub Run {
                 }
             }
 
-            my $ValidationResult;
+            my $ValidationResult = $DynamicFieldBackendObject->EditFieldValueValidate(
+                DynamicFieldConfig   => $DynamicFieldConfig,
+                PossibleValuesFilter => $PossibleValuesFilter,
+                ParamObject          => $ParamObject,
+                Mandatory =>
+                    $Config->{DynamicField}->{ $DynamicFieldConfig->{Name} } == 2,
+            );
 
-            # do not validate on attachment upload
-            if ( !$IsUpload ) {
-
-                $ValidationResult = $DynamicFieldBackendObject->EditFieldValueValidate(
-                    DynamicFieldConfig   => $DynamicFieldConfig,
-                    PossibleValuesFilter => $PossibleValuesFilter,
-                    ParamObject          => $ParamObject,
-                    Mandatory =>
-                        $Config->{DynamicField}->{ $DynamicFieldConfig->{Name} } == 2,
+            if ( !IsHashRefWithData($ValidationResult) ) {
+                return $LayoutObject->ErrorScreen(
+                    Message => $LayoutObject->{LanguageObject}->Translate(
+                        'Could not perform validation on field %s!',
+                        $DynamicFieldConfig->{Label},
+                    ),
+                    Comment => Translatable('Please contact the administrator.'),
                 );
+            }
 
-                if ( !IsHashRefWithData($ValidationResult) ) {
-                    return $LayoutObject->ErrorScreen(
-                        Message => $LayoutObject->{LanguageObject}->Translate(
-                            'Could not perform validation on field %s!',
-                            $DynamicFieldConfig->{Label},
-                        ),
-                        Comment => Translatable('Please contact the administrator.'),
-                    );
-                }
-
-                # propagate validation error to the Error variable to be detected by the frontend
-                if ( $ValidationResult->{ServerError} ) {
-                    $Error{ $DynamicFieldConfig->{Name} } = ' ServerError';
-                }
+            # propagate validation error to the Error variable to be detected by the frontend
+            if ( $ValidationResult->{ServerError} ) {
+                $Error{ $DynamicFieldConfig->{Name} } = ' ServerError';
             }
 
             # get field html
@@ -757,6 +856,11 @@ sub Run {
                 AJAXUpdate   => 1,
                 UpdatableFields => $Self->_GetFieldsToUpdate(),
                 );
+        }
+
+        # Make sure we don't save form if a draft was loaded.
+        if ( $Self->{LoadedFormDraftID} ) {
+            %Error = ( LoadedFormDraft => 1 );
         }
 
         # check if there is an error
@@ -832,12 +936,7 @@ sub Run {
             ATTACHMENT:
             for my $Attachment (@AttachmentData) {
                 my $ContentID = $Attachment->{ContentID};
-                if (
-                    $ContentID
-                    && ( $Attachment->{ContentType} =~ /image/i )
-                    && ( $Attachment->{Disposition} eq 'inline' )
-                    )
-                {
+                if ( $ContentID && ( $Attachment->{ContentType} =~ /image/i ) ) {
                     my $ContentIDHTMLQuote = $LayoutObject->Ascii2Html(
                         Text => $ContentID,
                     );
@@ -846,9 +945,15 @@ sub Run {
                     my $ContentIDLinkEncode = $LayoutObject->LinkEncode($ContentID);
                     $GetParam{Body} =~ s/(ContentID=)$ContentIDLinkEncode/$1$ContentID/g;
 
-                    # ignore attachment if not linked in body
-                    next ATTACHMENT
-                        if $GetParam{Body} !~ /(\Q$ContentIDHTMLQuote\E|\Q$ContentID\E)/i;
+                    # IF the image is referenced in the body set it as inline.
+                    if ( $GetParam{Body} =~ /(\Q$ContentIDHTMLQuote\E|\Q$ContentID\E)/i ) {
+                        $Attachment->{Disposition} = 'inline';
+                    }
+                    elsif ( $Attachment->{Disposition} eq 'inline' ) {
+
+                        # Ignore attachment if not linked in body.
+                        next ATTACHMENT;
+                    }
                 }
 
                 # remember inline images and normal attachments
@@ -963,8 +1068,28 @@ sub Run {
         # remove pre submited attachments
         $UploadCacheObject->FormIDRemove( FormID => $GetParam{FormID} );
 
+        # If form was called based on a draft,
+        #   delete draft since its content has now been used.
+        if (
+            $GetParam{FormDraftID}
+            && !$Kernel::OM->Get('Kernel::System::FormDraft')->FormDraftDelete(
+                FormDraftID => $GetParam{FormDraftID},
+                UserID      => $Self->{UserID},
+            )
+            )
+        {
+            return $LayoutObject->ErrorScreen(
+                Message => Translatable('Could not delete draft!'),
+                Comment => Translatable('Please contact the administrator.'),
+            );
+        }
+
         # redirect
-        if ( $StateData{TypeName} =~ /^close/i ) {
+        if (
+            $StateData{TypeName} =~ /^close/i
+            && !$ConfigObject->Get('Ticket::Frontend::RedirectAfterCloseDisabled')
+            )
+        {
             return $LayoutObject->PopupClose(
                 URL => ( $Self->{LastScreenOverview} || 'Action=AgentDashboard' ),
             );
@@ -1196,10 +1321,43 @@ sub Run {
             %Data = $CurrentArticleBackendObject->ArticleGet(
                 TicketID  => $Self->{TicketID},
                 ArticleID => $ArticleMetaData->{ArticleID},
+            );
+
+            $Data{CommunicationChannelName} = $CurrentArticleBackendObject->ChannelNameGet();
+
+            last ARTICLEMETADATA;
+        }
+
+        # If article is not a MIMEBase article, get customer recipients from the backend.
+        if ( !$Data{To} && !$Data{From} ) {
+            my @CustomerUserIDs = $LayoutObject->ArticleCustomerRecipientsGet(
+                TicketID  => $Self->{TicketID},
+                ArticleID => $Data{ArticleID},
                 UserID    => $Self->{UserID},
             );
 
-            last ARTICLEMETADATA;
+            my $CustomerUserObject = $Kernel::OM->Get('Kernel::System::CustomerUser');
+
+            my @CustomerRecipients;
+
+            CUSTOMER_USER_ID:
+            for my $CustomerUserID (@CustomerUserIDs) {
+                my %Customer = $CustomerUserObject->CustomerUserDataGet(
+                    User => $CustomerUserID,
+                );
+                next CUSTOMER_USER_ID if !%Customer;
+
+                push @CustomerRecipients, "\"$Customer{UserFirstname} $Customer{UserLastname}\" <$Customer{UserEmail}>";
+            }
+
+            $Data{To} = join( ',', @CustomerRecipients ) // '';
+
+            # Include sender name in 'From' field for correct quoting.
+            my %ArticleFields = $LayoutObject->ArticleFields(
+                TicketID  => $Self->{TicketID},
+                ArticleID => $Data{ArticleID},
+            );
+            $Data{From} = $ArticleFields{Sender}->{Value} // '';
         }
 
         # set OrigFrom for correct email quoting (xxxx wrote)
@@ -1892,13 +2050,35 @@ sub _Mask {
         );
     }
 
-    my @EmailAddressesCc;
+    my $CustomerUserObject = $Kernel::OM->Get('Kernel::System::CustomerUser');
 
     # set preselected values for Cc field
     if ( $Param{Cc} && $Param{Cc} ne '' && !$CustomerCounterCc ) {
 
         # split Cc values
-        @EmailAddressesCc = map { $_->[0] ? "$_->[0] <$_->[1]>" : "$_->[1]" } ( Mail::Address->parse( $Param{Cc} ) );
+        my @EmailAddressesCc;
+        for my $Email ( Mail::Address->parse( $Param{Cc} ) ) {
+
+            my %CustomerSearch = $CustomerUserObject->CustomerSearch(
+                PostMasterSearch => $Email->address(),
+                Limit            => 1,
+            );
+
+            if (%CustomerSearch) {
+                for my $CustomerUserID ( sort keys %CustomerSearch ) {
+                    push @EmailAddressesCc, {
+                        CustomerKey        => $CustomerUserID,
+                        CustomerTicketText => $CustomerSearch{$CustomerUserID},
+                    };
+                }
+            }
+            else {
+                push @EmailAddressesCc, {
+                    CustomerKey        => '',
+                    CustomerTicketText => $Email->[0] ? "$Email->[0] <$Email->[1]>" : "$Email->[1]",
+                    },
+            }
+        }
 
         $LayoutObject->AddJSData(
             Key   => 'EmailAddressesCc',
@@ -1912,7 +2092,29 @@ sub _Mask {
     if ( defined $Param{To} && $Param{To} ne '' && !$CustomerCounter ) {
 
         # split To values
-        my @EmailAddressesTo = map { $_->[0] ? "$_->[0] <$_->[1]>" : "$_->[1]" } ( Mail::Address->parse( $Param{To} ) );
+        my @EmailAddressesTo;
+        for my $Email ( Mail::Address->parse( $Param{To} ) ) {
+
+            my %CustomerSearch = $CustomerUserObject->CustomerSearch(
+                PostMasterSearch => $Email->address(),
+                Limit            => 1,
+            );
+
+            if (%CustomerSearch) {
+                for my $CustomerUserID ( sort keys %CustomerSearch ) {
+                    push @EmailAddressesTo, {
+                        CustomerKey        => $CustomerUserID,
+                        CustomerTicketText => $CustomerSearch{$CustomerUserID},
+                    };
+                }
+            }
+            else {
+                push @EmailAddressesTo, {
+                    CustomerKey        => '',
+                    CustomerTicketText => $Email->[0] ? "$Email->[0] <$Email->[1]>" : "$Email->[1]",
+                    },
+            }
+        }
 
         $LayoutObject->AddJSData(
             Key   => 'EmailAddressesTo',
@@ -2028,10 +2230,8 @@ sub _Mask {
         {
             next ATTACHMENT;
         }
-        $LayoutObject->Block(
-            Name => 'Attachment',
-            Data => $Attachment,
-        );
+
+        push @{ $Param{AttachmentList} }, $Attachment;
     }
 
     $LayoutObject->AddJSData(
@@ -2039,11 +2239,63 @@ sub _Mask {
         Value => $DynamicFieldNames,
     );
 
+    my $LoadedFormDraft;
+    if ( $Self->{LoadedFormDraftID} ) {
+        $LoadedFormDraft = $Kernel::OM->Get('Kernel::System::FormDraft')->FormDraftGet(
+            FormDraftID => $Self->{LoadedFormDraftID},
+            GetContent  => 0,
+            UserID      => $Self->{UserID},
+        );
+
+        my @Articles = $Kernel::OM->Get('Kernel::System::Ticket::Article')->ArticleList(
+            TicketID => $Self->{TicketID},
+            OnlyLast => 1,
+        );
+
+        if (@Articles) {
+            my $LastArticle = $Articles[0];
+
+            my $LastArticleSystemTime;
+            if ( $LastArticle->{CreateTime} ) {
+                my $LastArticleSystemTimeObject = $Kernel::OM->Create(
+                    'Kernel::System::DateTime',
+                    ObjectParams => {
+                        String => $LastArticle->{CreateTime},
+                    },
+                );
+                $LastArticleSystemTime = $LastArticleSystemTimeObject->ToEpoch();
+            }
+
+            my $FormDraftSystemTimeObject = $Kernel::OM->Create(
+                'Kernel::System::DateTime',
+                ObjectParams => {
+                    String => $LoadedFormDraft->{ChangeTime},
+                },
+            );
+            my $FormDraftSystemTime = $FormDraftSystemTimeObject->ToEpoch();
+
+            if ( !$LastArticleSystemTime || $FormDraftSystemTime <= $LastArticleSystemTime ) {
+                $Param{FormDraftOutdated} = 1;
+            }
+        }
+    }
+
+    if ( IsHashRefWithData($LoadedFormDraft) ) {
+
+        $LoadedFormDraft->{ChangeByName} = $Kernel::OM->Get('Kernel::System::User')->UserName(
+            UserID => $LoadedFormDraft->{ChangeBy},
+        );
+    }
+
     # create & return output
     return $LayoutObject->Output(
         TemplateFile => 'AgentTicketCompose',
         Data         => {
-            FormID => $Self->{FormID},
+            FormID         => $Self->{FormID},
+            FormDraft      => $Config->{FormDraft},
+            FormDraftID    => $Self->{LoadedFormDraftID},
+            FormDraftTitle => $LoadedFormDraft ? $LoadedFormDraft->{Title} : '',
+            FormDraftMeta  => $LoadedFormDraft,
             %Param,
         },
     );

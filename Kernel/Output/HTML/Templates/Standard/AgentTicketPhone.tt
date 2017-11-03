@@ -232,14 +232,14 @@
                     <label for="StandardTemplateID">[% Translate("Text Template") | html %]:</label>
                     <div class="Field">
                         [% Data.StandardTemplateStrg %]
-                        <p class="FieldExplanation">[% Translate("Setting a template will overwrite any text or attachment.") %]</p>
+                        <p class="FieldExplanation">[% Translate("Setting a template will overwrite any text or attachment.") | html %]</p>
                     </div>
                     <div class="Clear"></div>
 [% RenderBlockEnd("StandardTemplate") %]
 
                     <label class="Mandatory" for="RichText"><span class="Marker">*</span> [% Translate("Text") | html %]:</label>
                     <div id="RichTextField" class="RichTextField">
-                        <textarea id="RichText" class="RichText Validate_Required [% Data.RichTextInvalid | html %]" name="Body" title="[% Translate("Message body") | html %]" rows="15" cols="[% Config("Ticket::Frontend::TextAreaNote") %]">[% Data.Body | html %]</textarea>
+                        <textarea id="RichText" class="RichText Validate_Required [% Data.RichTextInvalid | html %]" name="Body" title="[% Translate("Message body") | html %]" rows="15" cols="[% Config("Ticket::Frontend::TextAreaNote") | html %]">[% Data.Body | html %]</textarea>
                         <div id="RichTextError" class="TooltipErrorMessage">
                             <p>[% Translate("This field is required.") | html %]</p>
                         </div>
@@ -249,21 +249,9 @@
                     </div>
                     <div class="Clear"></div>
 
-                    <label>[% Translate("Attachment") | html %]:</label>
+                    <label>[% Translate("Attachments") | html %]:</label>
                     <div class="Field">
-                        <ul>
-[% RenderBlockStart("Attachment") %]
-                            <li>
-                                <button type="button" id="AttachmentDeleteButton[% Data.FileID | html %]" name="AttachmentDeleteButton[% Data.FileID | html %]" value="[% Translate("Delete") | html %]" class="CallForAction Inline Small SpacingRight"><span>[% Translate("Delete") | html %]</span></button>
-                                <input type="hidden" id="AttachmentDelete[% Data.FileID | html %]" name="AttachmentDelete[% Data.FileID | html %]" />
-                                [% Data.Filename | html %] ([% Data.Filesize | Localize('Filesize') | html %])
-                            </li>
-[% RenderBlockEnd("Attachment") %]
-                            <li>
-                                <input id="FileUpload" name="FileUpload" type="file" size="40" />
-                                <input type="hidden" id="AttachmentUpload" name="AttachmentUpload" value="0" />
-                            </li>
-                        </ul>
+[% INCLUDE "FormElements/AttachmentList.tt" %]
                     </div>
                     <div class="Clear"></div>
 

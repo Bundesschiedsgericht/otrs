@@ -510,12 +510,20 @@ sub Run {
             );
         }
 
-        # create new ACL name
-        my $ACLName =
-            $ACLData->{Name}
-            . ' ('
-            . $LayoutObject->{LanguageObject}->Translate('Copy')
-            . ')';
+        # Create new ACL name.
+        my $Count   = 1;
+        my $ACLName = "$ACLData->{Name} (" . $LayoutObject->{LanguageObject}->Translate('Copy') . ") $Count";
+        while (
+            $ACLObject->ACLGet(
+                Name   => $ACLName,
+                UserID => $Self->{UserID}
+            )
+            && $Count < 100
+            )
+        {
+            $ACLName =~ s/\d+$/$Count/;
+            $Count++;
+        }
 
         # otherwise save configuration and return to overview screen
         my $ACLID = $ACLObject->ACLAdd(
@@ -525,7 +533,7 @@ sub Run {
             ConfigMatch    => $ACLData->{ConfigMatch} || '',
             ConfigChange   => $ACLData->{ConfigChange} || '',
             StopAfterMatch => $ACLData->{StopAfterMatch} || 0,
-            ValidID        => '1',
+            ValidID        => $ACLData->{ValidID},
             UserID         => $Self->{UserID},
         );
 
@@ -563,10 +571,8 @@ sub _ShowOverview {
         # show error notfy, don't work with user id 1
         $Output .= $LayoutObject->Notify(
             Priority => 'Error',
-            Data =>
-                Translatable(
-                "Please note that ACL restrictions will be ignored for the Superuser account (UserID 1)."
-                ),
+            Info =>
+                Translatable('Please note that ACL restrictions will be ignored for the Superuser account (UserID 1).'),
         );
     }
 
@@ -659,7 +665,7 @@ sub _ShowEdit {
     $Param{ACLKeysLevel1Match} = $LayoutObject->BuildSelection(
         Data         => $ACLKeysLevel1Match,
         Name         => 'ItemAdd',
-        Class        => 'ItemAdd ItemAddLevel1',
+        Class        => 'Modernize ItemAdd ItemAddLevel1',
         ID           => 'ItemAddLevel1Match',
         TreeView     => 1,
         PossibleNone => 1,
@@ -670,7 +676,7 @@ sub _ShowEdit {
     $Param{ACLKeysLevel1Change} = $LayoutObject->BuildSelection(
         Data         => $ACLKeysLevel1Change,
         Name         => 'ItemAdd',
-        Class        => 'ItemAdd ItemAddLevel1',
+        Class        => 'Modernize ItemAdd ItemAddLevel1',
         ID           => 'ItemAddLevel1Change',
         TreeView     => 1,
         PossibleNone => 1,
@@ -682,7 +688,7 @@ sub _ShowEdit {
         Data         => $ACLKeysLevel2Possible,
         Name         => 'ItemAdd',
         ID           => 'Possible',
-        Class        => 'ItemAdd LevelToBeAdded',
+        Class        => 'Modernize ItemAdd LevelToBeAdded',
         Translation  => 0,
         PossibleNone => 1,
     );
@@ -692,7 +698,7 @@ sub _ShowEdit {
         Data         => $ACLKeysLevel2PossibleAdd,
         Name         => 'ItemAdd',
         ID           => 'PossibleAdd',
-        Class        => 'ItemAdd LevelToBeAdded',
+        Class        => 'Modernize ItemAdd LevelToBeAdded',
         Translation  => 0,
         PossibleNone => 1,
     );
@@ -702,7 +708,7 @@ sub _ShowEdit {
         Data         => $ACLKeysLevel2PossibleNot,
         Name         => 'ItemAdd',
         ID           => 'PossibleNot',
-        Class        => 'ItemAdd LevelToBeAdded',
+        Class        => 'Modernize ItemAdd LevelToBeAdded',
         Translation  => 0,
         PossibleNone => 1,
     );
@@ -712,7 +718,7 @@ sub _ShowEdit {
         Data         => $ACLKeysLevel2Properties,
         Name         => 'ItemAdd',
         ID           => 'Properties',
-        Class        => 'ItemAdd LevelToBeAdded',
+        Class        => 'Modernize ItemAdd LevelToBeAdded',
         Translation  => 0,
         PossibleNone => 1,
     );
@@ -722,7 +728,7 @@ sub _ShowEdit {
         Data         => $ACLKeysLevel2PropertiesDatabase,
         Name         => 'ItemAdd',
         ID           => 'PropertiesDatabase',
-        Class        => 'ItemAdd LevelToBeAdded',
+        Class        => 'Modernize ItemAdd LevelToBeAdded',
         Translation  => 0,
         PossibleNone => 1,
     );
@@ -758,7 +764,7 @@ sub _ShowEdit {
     $Param{ACLKeysLevel3DynamicFields} = $LayoutObject->BuildSelection(
         Data         => \%DynamicFields,
         Name         => 'NewDataKeyDropdown',
-        Class        => 'NewDataKeyDropdown',
+        Class        => 'Modernize NewDataKeyDropdown',
         ID           => 'DynamicField',
         Translation  => 0,
         PossibleNone => 1,
@@ -775,7 +781,7 @@ sub _ShowEdit {
     $Param{ACLKeysLevel3Actions} = $LayoutObject->BuildSelection(
         Data         => \@PossibleActionsList,
         Name         => 'NewDataKeyDropdown',
-        Class        => 'NewDataKeyDropdown Boolean',
+        Class        => 'Modernize NewDataKeyDropdown Boolean',
         ID           => 'Action',
         Translation  => 0,
         PossibleNone => 1,

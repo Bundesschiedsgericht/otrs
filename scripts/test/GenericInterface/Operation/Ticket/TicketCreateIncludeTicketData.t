@@ -91,8 +91,9 @@ $Self->Is(
 my $TestOwnerLogin        = $Helper->TestUserCreate();
 my $TestResponsibleLogin  = $Helper->TestUserCreate();
 my $TestCustomerUserLogin = $Helper->TestCustomerUserCreate();
-
-# create user object
+my $TestUserLogin         = $Helper->TestUserCreate(
+    Groups => [ 'admin', 'users', ],
+);
 my $UserObject = $Kernel::OM->Get('Kernel::System::User');
 
 my $OwnerID = $UserObject->UserLookup(
@@ -100,6 +101,9 @@ my $OwnerID = $UserObject->UserLookup(
 );
 my $ResponsibleID = $UserObject->UserLookup(
     UserLogin => $TestResponsibleLogin,
+);
+my $UserID = $UserObject->UserLookup(
+    UserLogin => $TestUserLogin,
 );
 
 my $InvalidID = $Kernel::OM->Get('Kernel::System::Valid')->ValidLookup( Valid => 'invalid' );
@@ -369,15 +373,15 @@ $Self->True(
     "DynamicFieldGet() - for testing dynamic field",
 );
 
-# create webservice object
+# create web service object
 my $WebserviceObject = $Kernel::OM->Get('Kernel::System::GenericInterface::Webservice');
 $Self->Is(
     ref $WebserviceObject,
     'Kernel::System::GenericInterface::Webservice',
-    "Create webservice object",
+    "Create web service object",
 );
 
-# set webservice name
+# set web service name
 my $WebserviceName = '-Test-' . $RandomID;
 
 my $WebserviceID = $WebserviceObject->WebserviceAdd(
@@ -397,13 +401,13 @@ my $WebserviceID = $WebserviceObject->WebserviceAdd(
 );
 $Self->True(
     $WebserviceID,
-    "Added Webservice",
+    "Added web service",
 );
 
 # get remote host with some precautions for certain unit test systems
 my $Host = $Helper->GetTestHTTPHostname();
 
-# prepare webservice config
+# prepare web service config
 my $RemoteSystem =
     $ConfigObject->Get('HttpType')
     . '://'
@@ -448,6 +452,7 @@ my $WebserviceConfig = {
                 NameSpace => 'http://otrs.org/SoapTestInterface/',
                 Encoding  => 'UTF-8',
                 Endpoint  => $RemoteSystem,
+                Timeout   => 120,
             },
         },
         Invoker => {
@@ -461,7 +466,7 @@ my $WebserviceConfig = {
     },
 };
 
-# update webservice with real config
+# update web service with real config
 my $WebserviceUpdate = $WebserviceObject->WebserviceUpdate(
     ID      => $WebserviceID,
     Name    => $WebserviceName,
@@ -471,7 +476,7 @@ my $WebserviceUpdate = $WebserviceObject->WebserviceUpdate(
 );
 $Self->True(
     $WebserviceUpdate,
-    "Updated Webservice $WebserviceID - $WebserviceName",
+    "Updated web service $WebserviceID - $WebserviceName",
 );
 
 # Get SessionID
@@ -501,7 +506,7 @@ my $CustomerPassword  = $CustomerUserLogin;
 my $CustomerUserLogin2 = $Helper->TestCustomerUserCreate();
 my $CustomerPassword2  = $CustomerUserLogin2;
 
-# start requester with our webservice
+# start requester with our web service
 my $RequesterSessionResult = $RequesterSessionObject->Run(
     WebserviceID => $WebserviceID,
     Invoker      => 'SessionCreate',
@@ -549,9 +554,9 @@ my @Tests        = (
                 HistoryType                     => 'NewTicket',
                 HistoryComment                  => '% % ',
                 TimeUnit                        => 25,
-                ForceNotificationToUserID       => [1],
-                ExcludeNotificationToUserID     => [1],
-                ExcludeMuteNotificationToUserID => [1],
+                ForceNotificationToUserID       => [$UserID],
+                ExcludeNotificationToUserID     => [$UserID],
+                ExcludeMuteNotificationToUserID => [$UserID],
             },
             DynamicField => [
                 {
@@ -614,7 +619,7 @@ for my $Test (@Tests) {
         %Auth = %{ $Test->{Auth} };
     }
 
-    # start requester with our webservice
+    # start requester with our web service
     my $LocalResult = $LocalObject->Run(
         WebserviceID => $WebserviceID,
         Invoker      => $Test->{Operation},
@@ -639,7 +644,7 @@ for my $Test (@Tests) {
         "$Test->{Name} - Create requester object",
     );
 
-    # start requester with our webservice
+    # start requester with our web service
     my $RequesterResult = $RequesterObject->Run(
         WebserviceID => $WebserviceID,
         Invoker      => $Test->{Operation},
@@ -851,18 +856,19 @@ for my $Test (@Tests) {
     }
 }
 
-# delete webservice
+# delete web service
 my $WebserviceDelete = $WebserviceObject->WebserviceDelete(
     ID     => $WebserviceID,
     UserID => 1,
 );
 $Self->True(
     $WebserviceDelete,
-    "Deleted Webservice $WebserviceID",
+    "Deleted web service $WebserviceID",
 );
 
 # get DB object
 my $DBObject = $Kernel::OM->Get('Kernel::System::DB');
+
 my $Success;
 
 # delete queues

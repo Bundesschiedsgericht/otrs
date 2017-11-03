@@ -35,6 +35,7 @@ our @ObjectDependencies = (
     'Kernel::System::DateTime',
     'Kernel::System::Type',
     'Kernel::System::User',
+    'Kernel::Output::HTML::Layout',
 );
 
 sub new {
@@ -598,7 +599,7 @@ sub GetObjectAttributes {
         }
 
         my %ObjectAttribute = (
-            Name             => Translatable('CustomerID'),
+            Name             => Translatable('Customer ID'),
             UseAsXvalue      => 0,
             UseAsValueSeries => 0,
             UseAsRestriction => 1,
@@ -1369,6 +1370,19 @@ sub GetStatTable {
 
                         # change raw value from ticket to a plain text value
                         $Ticket{$ParameterName} = $ValueStrg->{Value};
+
+                        ## nofilter(TidyAll::Plugin::OTRS::Perl::LayoutObject)
+                        if ( $DynamicFieldConfig->{Name} =~ /ProcessManagementProcessID|ProcessManagementActivityID/ ) {
+                            my $DisplayValue = $DynamicFieldBackendObject->DisplayValueRender(
+                                DynamicFieldConfig => $DynamicFieldConfig,
+                                Value              => $ValueStrg->{Value},
+                                ValueMaxChars      => 20,
+                                LayoutObject       => $Kernel::OM->Get('Kernel::Output::HTML::Layout'),
+                                HTMLOutput         => 0,
+                            );
+                            $Ticket{$ParameterName} = $DisplayValue->{Value};
+                        }
+
                     }
                 }
             }
@@ -1395,7 +1409,8 @@ sub GetStatTable {
 
             if ( $Attribute eq 'Owner' || $Attribute eq 'Responsible' ) {
                 $Ticket{$Attribute} = $Kernel::OM->Get('Kernel::System::User')->UserName(
-                    User => $Ticket{$Attribute},
+                    User          => $Ticket{$Attribute},
+                    NoOutOfOffice => 1,
                 );
             }
 
@@ -1618,7 +1633,7 @@ sub _TicketAttributes {
     my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
 
     my %TicketAttributes = (
-        Number       => 'Number',                             # only a counter for a better readability
+        Number       => Translatable('Number'),               # only a counter for a better readability
         TicketNumber => $ConfigObject->Get('Ticket::Hook'),
 
         #TicketID       => 'TicketID',
@@ -1633,11 +1648,10 @@ sub _TicketAttributes {
         Priority => 'Priority',
 
         #PriorityID     => 'PriorityID',
-        CustomerID => 'CustomerID',
-        Changed    => 'Last Changed',
+        CustomerID => 'Customer ID',
+        Changed    => Translatable('Last Changed'),
         Created    => 'Created',
 
-        #CreateTimeUnix => 'CreateTimeUnix',
         CustomerUserID => 'Customer User',
         Lock           => 'Lock',
 

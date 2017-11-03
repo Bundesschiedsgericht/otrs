@@ -122,21 +122,29 @@ $Selenium->RunTest(
         my $ScriptAlias = $ConfigObject->Get('ScriptAlias');
         $Selenium->VerifiedGet("${ScriptAlias}index.pl?Action=AgentStatistics;Subaction=Import");
 
-        # check breadcrumb on Import screen
-        my $Count = 1;
-        for my $BreadcrumbText ( 'Statistics Overview', 'Import Statistics Configuration' )
-        {
-            $Self->Is(
-                $Selenium->execute_script("return \$('.BreadCrumb li:eq($Count)').text().trim()"),
-                $BreadcrumbText,
-                "Breadcrumb text '$BreadcrumbText' is found on screen"
-            );
+        # import test selenium statistic
+        my $LocationNotExistingObject = $Kernel::OM->Get('Kernel::Config')->Get('Home')
+            . "/scripts/test/sample/Stats/Stats.Static.NotExisting.xml";
+        $Selenium->find_element( "#File", 'css' )->send_keys($LocationNotExistingObject);
 
-            $Count++;
-        }
+        $Selenium->find_element("//button[\@value='Import'][\@type='submit']")->VerifiedClick();
+
+        # Confirm JS error.
+        $Selenium->find_element( "#DialogButton1", 'css' )->click();
+
+        # Verify error class.
+        $Self->Is(
+            $Selenium->execute_script(
+                "return \$('#File').hasClass('Error')"
+            ),
+            '1',
+            'Import file field has class error',
+        );
+
+        $Selenium->VerifiedGet("${ScriptAlias}index.pl?Action=AgentStatistics;Subaction=Import");
 
         # import test selenium statistic
-        my $Location = $ConfigObject->Get('Home')
+        my $Location = $Kernel::OM->Get('Kernel::Config')->Get('Home')
             . "/scripts/test/sample/Stats/Stats.TicketOverview.de.xml";
         $Selenium->find_element( "#File", 'css' )->send_keys($Location);
 
@@ -171,7 +179,7 @@ $Selenium->RunTest(
             UserID   => 1,
         );
 
-        $Count = scalar @{$StatsIDs};
+        my $Count       = scalar @{$StatsIDs};
         my $StatsIDLast = $StatsIDs->[ $Count - 1 ];
 
         # check for imported stats on overview screen

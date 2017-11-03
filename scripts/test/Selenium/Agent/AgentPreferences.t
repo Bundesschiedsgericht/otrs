@@ -23,6 +23,16 @@ $Selenium->RunTest(
         # get helper object
         my $Helper = $Kernel::OM->Get('Kernel::System::UnitTest::Helper');
 
+        # enable google authenticator shared secret preference
+        my $SharedSecretConfig
+            = $Kernel::OM->Get('Kernel::Config')->Get('PreferencesGroups')->{'GoogleAuthenticatorSecretKey'};
+        $SharedSecretConfig->{Active} = 1;
+        $Helper->ConfigSettingChange(
+            Valid => 1,
+            Key   => "PreferencesGroups###GoogleAuthenticatorSecretKey",
+            Value => $SharedSecretConfig,
+        );
+
         $Helper->ConfigSettingChange(
             Valid => 1,
             Key   => 'Ticket::Service',
@@ -74,11 +84,12 @@ $Selenium->RunTest(
         # navigate to AgentPreferences screen
         $Selenium->VerifiedGet("${ScriptAlias}index.pl?Action=AgentPreferences");
 
+        my $PreferencesGroups = $Kernel::OM->Get('Kernel::Config')->Get('AgentPreferencesGroups');
+
+        my @GroupNames = map { $_->{Key} } @{$PreferencesGroups};
+
         # check if the default groups are present (UserProfile)
-        for my $Group (
-            qw(UserProfile NotificationSettings Miscellaneous)
-            )
-        {
+        for my $Group (@GroupNames) {
             my $Element = $Selenium->find_element("//a[contains(\@href, \'Group=$Group')]");
             $Element->is_enabled();
             $Element->is_displayed();
@@ -89,7 +100,7 @@ $Selenium->RunTest(
 
         # check for some settings
         for my $ID (
-            qw(CurPw NewPw NewPw1 UserLanguage OutOfOfficeOn OutOfOfficeOff)
+            qw(CurPw NewPw NewPw1 UserLanguage OutOfOfficeOn OutOfOfficeOff UserGoogleAuthenticatorSecretKey)
             )
         {
             my $Element = $Selenium->find_element( "#$ID", 'css' );
@@ -120,7 +131,7 @@ $Selenium->RunTest(
             # wait for the ajax call to finish
             $Selenium->WaitFor(
                 JavaScript =>
-                    "return \$('#UserLanguage').closest('.WidgetSimple').hasClass('HasOverlay')"
+                    "return typeof(\$) === 'function' && \$('#UserLanguage').closest('.WidgetSimple').hasClass('HasOverlay')"
             );
             $Selenium->WaitFor(
                 JavaScript =>
@@ -134,13 +145,23 @@ $Selenium->RunTest(
                 "#UserLanguage updated value",
             );
 
-            # reload the screen
-            $Selenium->VerifiedGet("${ScriptAlias}index.pl?Action=AgentPreferences;Subaction=Group;Group=UserProfile");
-
             # create language object
             my $LanguageObject = Kernel::Language->new(
                 UserLanguage => "$Language",
             );
+
+            # check, if reload notification is shown
+            my $NotificationTranslation = $LanguageObject->Translate(
+                "Please note that at least one of the settings you have changed requires a page reload. Click here to reload the current screen."
+            );
+
+            $Selenium->WaitFor(
+                JavaScript =>
+                    "return \$('div.MessageBox.Notice:contains(\"" . $NotificationTranslation . "\")').length"
+            );
+
+            # reload the screen
+            $Selenium->VerifiedGet("${ScriptAlias}index.pl?Action=AgentPreferences;Subaction=Group;Group=UserProfile");
 
             # check for correct translation
             for my $String ( 'Change password', 'Language', 'Out Of Office Time' ) {
@@ -151,6 +172,71 @@ $Selenium->RunTest(
                 ) || die;
             }
         }
+
+        # try updating the UserGoogleAuthenticatorSecret (which has a regex validation configured)
+        $Selenium->find_element( "#UserGoogleAuthenticatorSecretKey", 'css' )->send_keys('Invalid Key');
+        $Selenium->execute_script(
+            "\$('#UserGoogleAuthenticatorSecretKey').closest('.WidgetSimple').find('.SettingUpdateBox').find('button').trigger('click');"
+        );
+        $Selenium->WaitFor(
+            JavaScript =>
+                "return typeof(\$) === 'function' && \$('#UserGoogleAuthenticatorSecretKey').closest('.WidgetSimple').find('.WidgetMessage.Error:visible').length"
+        );
+
+        # wait for the message to disappear again
+        $Selenium->WaitFor(
+            JavaScript =>
+                "return !\$('#UserGoogleAuthenticatorSecretKey').closest('.WidgetSimple').find('.WidgetMessage.Error:visible').length"
+        );
+
+        # clear the field and then use a valid secret
+        $Selenium->find_element( "#UserGoogleAuthenticatorSecretKey", 'css' )->clear();
+        $Selenium->find_element( "#UserGoogleAuthenticatorSecretKey", 'css' )->send_keys('ABCABCABCABCABC2');
+        $Selenium->execute_script(
+            "\$('#UserGoogleAuthenticatorSecretKey').closest('.WidgetSimple').find('.SettingUpdateBox').find('button').trigger('click');"
+        );
+        $Selenium->WaitFor(
+            JavaScript =>
+                "return \$('#UserGoogleAuthenticatorSecretKey').closest('.WidgetSimple').hasClass('HasOverlay')"
+        );
+        $Selenium->WaitFor(
+            JavaScript =>
+                "return \$('#UserGoogleAuthenticatorSecretKey').closest('.WidgetSimple.HasOverlay').find('.fa-check:visible').length"
+        );
+        $Selenium->WaitFor(
+            JavaScript =>
+                "return !\$('#UserGoogleAuthenticatorSecretKey').closest('.WidgetSimple').hasClass('HasOverlay')"
+        );
+
+        # check if the correct avatar widget is displayed (engine disabled)
+        $Helper->ConfigSettingChange(
+            Valid => 1,
+            Key   => 'Frontend::AvatarEngine',
+            Value => 'None',
+        );
+        $Selenium->VerifiedGet("${ScriptAlias}index.pl?Action=AgentPreferences;Subaction=Group;Group=UserProfile");
+        $Self->True(
+            index(
+                $Selenium->get_page_source(),
+                "Avatars have been disabled by the system administrator. You'll see your initials instead."
+                ) > -1,
+            "Avatars disabled message found"
+        );
+
+        # now set engine to 'Gravatar' and reload the screen
+        $Helper->ConfigSettingChange(
+            Valid => 1,
+            Key   => 'Frontend::AvatarEngine',
+            Value => 'Gravatar',
+        );
+        $Selenium->VerifiedGet("${ScriptAlias}index.pl?Action=AgentPreferences;Subaction=Group;Group=UserProfile");
+        $Self->True(
+            index(
+                $Selenium->get_page_source(),
+                "You can change your avatar image by registering with your email address"
+                ) > -1,
+            "Gravatar message found"
+        );
 
         # Inject malicious code in user language variable.
         my $MaliciousCode = 'en\\\'});window.iShouldNotExist=true;Core.Config.AddConfig({a:\\\'';
@@ -169,7 +255,7 @@ $Selenium->RunTest(
         # Wait for the AJAX call to finish.
         $Selenium->WaitFor(
             JavaScript =>
-                "return \$('#UserLanguage').closest('.WidgetSimple').hasClass('HasOverlay')"
+                "return typeof(\$) === 'function' && \$('#UserLanguage').closest('.WidgetSimple').hasClass('HasOverlay')"
         );
         $Selenium->WaitFor(
             JavaScript =>
@@ -232,7 +318,7 @@ JAVASCRIPT
         # wait for the ajax call to finish, an error message should occurr
         $Selenium->WaitFor(
             JavaScript =>
-                "return \$('.NotificationEvent').closest('.WidgetSimple').find('.WidgetMessage.Error:visible').length"
+                "return typeof(\$) === 'function' && \$('.NotificationEvent').closest('.WidgetSimple').find('.WidgetMessage.Error:visible').length"
         );
 
         my $LanguageObject = Kernel::Language->new(
@@ -255,8 +341,7 @@ JAVASCRIPT
         );
 
         # now enable the checkbox and try to submit again, it should work this time
-        $Selenium->find_element( "//input[\@id='Notification-" . $NotificationID . "-Email-checkbox']" )
-            ->VerifiedClick();
+        $Selenium->find_element( "#Notification-$NotificationID-Email-checkbox", 'css' )->click();
 
         $Selenium->execute_script(
             "\$('.NotificationEvent').closest('.WidgetSimple').find('.SettingUpdateBox').find('button').trigger('click');"
@@ -277,8 +362,7 @@ JAVASCRIPT
         );
 
         # now that the checkbox is checked, it should not be possible to disable it again
-        $Selenium->find_element( "//input[\@id='Notification-" . $NotificationID . "-Email-checkbox']" )
-            ->VerifiedClick();
+        $Selenium->find_element( "#Notification-$NotificationID-Email-checkbox", 'css' )->click();
 
         $Self->Is(
             $Selenium->execute_script("return window.getLastAlert()"),
@@ -325,7 +409,7 @@ JAVASCRIPT
         # wait for the ajax call to finish
         $Selenium->WaitFor(
             JavaScript =>
-                "return \$('#UserSkin').closest('.WidgetSimple').hasClass('HasOverlay')"
+                "return typeof(\$) === 'function' &&  \$('#UserSkin').closest('.WidgetSimple').hasClass('HasOverlay')"
         );
         $Selenium->WaitFor(
             JavaScript =>
@@ -334,6 +418,20 @@ JAVASCRIPT
         $Selenium->WaitFor(
             JavaScript =>
                 "return !\$('#UserSkin').closest('.WidgetSimple').hasClass('HasOverlay')"
+        );
+
+        # check, if reload notification is shown
+        $LanguageObject = Kernel::Language->new(
+            UserLanguage => "en",
+        );
+
+        my $NotificationTranslation = $LanguageObject->Translate(
+            "Please note that at least one of the settings you have changed requires a page reload. Click here to reload the current screen."
+        );
+
+        $Selenium->WaitFor(
+            JavaScript =>
+                "return \$('div.MessageBox.Notice:contains(\"" . $NotificationTranslation . "\")').length"
         );
 
         # reload the screen

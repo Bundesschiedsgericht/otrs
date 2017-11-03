@@ -294,6 +294,18 @@
             </Hash>
         </Value>
     </Setting>
+    <Setting Name="Ticket::EventModulePost###3100-LockAfterCreate" Required="0" Valid="0">
+        <Description Translatable="1">When agent creates a ticket, whether or not the ticket is automatically locked to the agent.</Description>
+        <Navigation>Core::Event::Ticket</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Module">Kernel::System::Ticket::Event::LockAfterCreate</Item>
+                <Item Key="Event">TicketCreate</Item>
+                <Item Key="Action">AgentTicketPhone|AgentTicketEmail</Item>
+                <Item Key="Transaction">1</Item>
+            </Hash>
+        </Value>
+    </Setting>
     <Setting Name="Ticket::EventModulePost###3300-TicketPendingTimeReset" Required="0" Valid="1">
         <Description Translatable="1">Sets the PendingTime of a ticket to 0 if the state is changed to a non-pending state.</Description>
         <Navigation>Core::Event::Ticket</Navigation>
@@ -419,11 +431,11 @@
             <Item ValueType="Checkbox">0</Item>
         </Value>
     </Setting>
-    <Setting Name="Ticket::SearchIndex::FilterStopWords" Required="1" Valid="1">
-        <Description Translatable="1">Filter stop words from article search index, turned on by default. If turned off, search index will store unfiltered text.</Description>
+    <Setting Name="Ticket::SearchIndex::ForceUnfilteredStorage" Required="1" Valid="1">
+        <Description Translatable="1">Force the storage of the original article text in the article search index, without executing filters or applying stop word lists. This will increase the size of the search index and thus may slow down fulltext searches.</Description>
         <Navigation>Core::Ticket::FulltextSearch</Navigation>
         <Value>
-            <Item ValueType="Checkbox">1</Item>
+            <Item ValueType="Checkbox">0</Item>
         </Value>
     </Setting>
     <Setting Name="Ticket::SearchIndex::WarnOnStopWordUsage" Required="1" Valid="1">
@@ -1536,6 +1548,13 @@
             </Array>
         </Value>
     </Setting>
+    <Setting Name="FormDraftTTL###Ticket" Required="0" Valid="1">
+        <Description Translatable="1">Defines time in minutes since last modification for drafts of specified type before they are considered expired.</Description>
+        <Navigation>Core::Draft</Navigation>
+        <Value>
+            <Item ValueType="String" ValueRegex="^\d+$">10080</Item>
+        </Value>
+    </Setting>
     <Setting Name="Ticket::Frontend::PlainView" UserPreferencesGroup="Advanced" UserModificationPossible="1" Required="1" Valid="1">
         <Description Translatable="1">Shows a link to see a zoomed email ticket in plain text.</Description>
         <Navigation>Frontend::Agent::View::TicketZoom</Navigation>
@@ -1600,13 +1619,6 @@
             <Item ValueType="Checkbox">0</Item>
         </Value>
     </Setting>
-    <Setting Name="Ticket::UseArticleColors" UserPreferencesGroup="Advanced" UserModificationPossible="1" Required="1" Valid="1">
-        <Description Translatable="1">Shows colors for different article types in the article table.</Description>
-        <Navigation>Frontend::Agent::View::TicketZoom</Navigation>
-        <Value>
-            <Item ValueType="Checkbox">1</Item>
-        </Value>
-    </Setting>
     <Setting Name="Ticket::Frontend::TicketArticleFilter" UserPreferencesGroup="Advanced" UserModificationPossible="1" Required="1" Valid="1">
         <Description Translatable="1">Activates the article filter in the zoom view to specify which articles should be shown.</Description>
         <Navigation>Frontend::Agent::View::TicketZoom</Navigation>
@@ -1655,6 +1667,7 @@
                 <Item Key="Forward" Translatable="1">Forwarded to "%s".</Item>
                 <Item Key="Lock" Translatable="1">Locked ticket.</Item>
                 <Item Key="LoopProtection" Translatable="1">Loop protection: no auto-response sent to "%s".</Item>
+                <Item Key="Merged" Translatable="1">Merged Ticket (%s/%s) to (%s/%s).</Item>
                 <Item Key="Misc">%s</Item>
                 <Item Key="Move" Translatable="1">Changed queue to "%s" (%s) from "%s" (%s).</Item>
                 <Item Key="NewTicket" Translatable="1">Created ticket [%s] in "%s" with priority "%s" and state "%s".</Item>
@@ -1663,6 +1676,7 @@
                 <Item Key="PhoneCallCustomer" Translatable="1">Added phone call from customer.</Item>
                 <Item Key="PriorityUpdate" Translatable="1">Changed priority from "%s" (%s) to "%s" (%s).</Item>
                 <Item Key="Remove" Translatable="1">%s</Item>
+                <Item Key="EmailResend" Translatable="1">Resent email to "%s".</Item>
                 <Item Key="ResponsibleUpdate" Translatable="1">Changed responsible to "%s" (%s).</Item>
                 <Item Key="SendAgentNotification" Translatable="1">Sent "%s" notification to "%s" via "%s".</Item>
                 <Item Key="SendAnswer" Translatable="1">Sent email to "%s".</Item>
@@ -1681,7 +1695,7 @@
                 <Item Key="TicketLinkDelete" Translatable="1">Deleted link to ticket "%s".</Item>
                 <Item Key="TimeAccounting" Translatable="1">Added %s time unit(s), for a total of %s time unit(s).</Item>
                 <Item Key="TitleUpdate" Translatable="1">Changed title from "%s" to "%s".</Item>
-                <Item Key="TypeUpdate" Translatable="1">Changed type to "%s" (%s).</Item>
+                <Item Key="TypeUpdate" Translatable="1">Changed type from "%s" (%s) to "%s" (%s).</Item>
                 <Item Key="Unlock" Translatable="1">Unlocked ticket.</Item>
                 <Item Key="Unsubscribe" Translatable="1">Removed subscription for user "%s".</Item>
                 <Item Key="WebRequestCustomer" Translatable="1">Added web request from customer.</Item>
@@ -1744,13 +1758,6 @@
         <Navigation>Frontend::Agent</Navigation>
         <Value>
             <Item ValueType="String" ValueRegex="^[0-9]{1,3}$">22</Item>
-        </Value>
-    </Setting>
-    <Setting Name="Ticket::Frontend::CustomerInfoZoom" Required="1" Valid="1">
-        <Description Translatable="1">Shows the customer user's info in the ticket zoom view.</Description>
-        <Navigation>Frontend::Agent</Navigation>
-        <Value>
-            <Item ValueType="Checkbox">1</Item>
         </Value>
     </Setting>
     <Setting Name="Ticket::Frontend::CustomerInfoZoomMaxSize" Required="1" Valid="1">
@@ -2629,6 +2636,13 @@
             <Item ValueType="Checkbox">1</Item>
         </Value>
     </Setting>
+    <Setting Name="Ticket::Frontend::AgentTicketFreeText###FormDraft" Required="0" Valid="1">
+        <Description Translatable="1">Allows to save current work as draft in the ticket free text screen of the agent interface.</Description>
+        <Navigation>Frontend::Agent::View::TicketFreeText</Navigation>
+        <Value>
+            <Item ValueType="Checkbox">1</Item>
+        </Value>
+    </Setting>
     <Setting Name="Ticket::Frontend::AgentTicketFreeText###HistoryType" Required="0" Valid="1">
         <Description Translatable="1">Defines the history type for the ticket free text screen action, which gets used for ticket history.</Description>
         <Navigation>Frontend::Agent::View::TicketFreeText</Navigation>
@@ -2711,6 +2725,13 @@
             <Item ValueType="String" ValueRegex=""></Item>
         </Value>
     </Setting>
+    <Setting Name="Ticket::Frontend::AgentTicketPhoneOutbound###FormDraft" Required="0" Valid="1">
+        <Description Translatable="1">Allows to save current work as draft in the ticket phone outbound screen of the agent interface.</Description>
+        <Navigation>Frontend::Agent::View::TicketPhoneOutbound</Navigation>
+        <Value>
+            <Item ValueType="Checkbox">1</Item>
+        </Value>
+    </Setting>
     <Setting Name="Ticket::Frontend::AgentTicketPhoneInbound###Permission" Required="1" Valid="1">
         <Description Translatable="1">Required permissions to use the ticket phone inbound screen in the agent interface.</Description>
         <Navigation>Frontend::Agent::View::TicketPhoneInbound</Navigation>
@@ -2777,6 +2798,13 @@
         <Navigation>Frontend::Agent::View::TicketPhoneInbound</Navigation>
         <Value>
             <Item ValueType="String" ValueRegex=""></Item>
+        </Value>
+    </Setting>
+    <Setting Name="Ticket::Frontend::AgentTicketPhoneInbound###FormDraft" Required="0" Valid="1">
+        <Description Translatable="1">Allows to save current work as draft in the ticket phone inbound screen of the agent interface.</Description>
+        <Navigation>Frontend::Agent::View::TicketPhoneInbound</Navigation>
+        <Value>
+            <Item ValueType="Checkbox">1</Item>
         </Value>
     </Setting>
     <Setting Name="Ticket::Frontend::NewOwnerSelection" Required="1" Valid="1">
@@ -3213,6 +3241,13 @@
             <Item ValueType="Checkbox">0</Item>
         </Value>
     </Setting>
+    <Setting Name="Ticket::Frontend::AgentTicketClose###FormDraft" Required="0" Valid="1">
+        <Description Translatable="1">Allows to save current work as draft in the close ticket screen of the agent interface.</Description>
+        <Navigation>Frontend::Agent::View::TicketClose</Navigation>
+        <Value>
+            <Item ValueType="Checkbox">1</Item>
+        </Value>
+    </Setting>
     <Setting Name="Ticket::Frontend::AgentTicketClose###HistoryType" Required="0" Valid="1">
         <Description Translatable="1">Defines the history type for the close ticket screen action, which gets used for ticket history in the agent interface.</Description>
         <Navigation>Frontend::Agent::View::TicketClose</Navigation>
@@ -3412,6 +3447,13 @@
         <Navigation>Frontend::Agent::View::TicketNote</Navigation>
         <Value>
             <Item ValueType="Checkbox">0</Item>
+        </Value>
+    </Setting>
+    <Setting Name="Ticket::Frontend::AgentTicketNote###FormDraft" Required="0" Valid="1">
+        <Description Translatable="1">Allows to save current work as draft in the ticket note screen of the agent interface.</Description>
+        <Navigation>Frontend::Agent::View::TicketNote</Navigation>
+        <Value>
+            <Item ValueType="Checkbox">1</Item>
         </Value>
     </Setting>
     <Setting Name="Ticket::Frontend::AgentTicketNote###HistoryType" Required="0" Valid="1">
@@ -3614,6 +3656,13 @@
             <Item ValueType="Checkbox">0</Item>
         </Value>
     </Setting>
+    <Setting Name="Ticket::Frontend::AgentTicketOwner###FormDraft" Required="0" Valid="1">
+        <Description Translatable="1">Allows to save current work as draft in the ticket owner screen of the agent interface.</Description>
+        <Navigation>Frontend::Agent::View::TicketOwner</Navigation>
+        <Value>
+            <Item ValueType="Checkbox">1</Item>
+        </Value>
+    </Setting>
     <Setting Name="Ticket::Frontend::AgentTicketOwner###HistoryType" Required="0" Valid="1">
         <Description Translatable="1">Defines the history type for the ticket owner screen action, which gets used for ticket history in the agent interface.</Description>
         <Navigation>Frontend::Agent::View::TicketOwner</Navigation>
@@ -3811,6 +3860,13 @@
         <Navigation>Frontend::Agent::View::TicketPending</Navigation>
         <Value>
             <Item ValueType="Checkbox">0</Item>
+        </Value>
+    </Setting>
+    <Setting Name="Ticket::Frontend::AgentTicketPending###FormDraft" Required="0" Valid="1">
+        <Description Translatable="1">Allows to save current work as draft in the ticket pending screen of the agent interface.</Description>
+        <Navigation>Frontend::Agent::View::TicketPending</Navigation>
+        <Value>
+            <Item ValueType="Checkbox">1</Item>
         </Value>
     </Setting>
     <Setting Name="Ticket::Frontend::AgentTicketPending###HistoryType" Required="0" Valid="1">
@@ -4013,6 +4069,13 @@
             <Item ValueType="Checkbox">0</Item>
         </Value>
     </Setting>
+    <Setting Name="Ticket::Frontend::AgentTicketPriority###FormDraft" Required="0" Valid="1">
+        <Description Translatable="1">Allows to save current work as draft in the ticket priority screen of the agent interface.</Description>
+        <Navigation>Frontend::Agent::View::TicketPriority</Navigation>
+        <Value>
+            <Item ValueType="Checkbox">1</Item>
+        </Value>
+    </Setting>
     <Setting Name="Ticket::Frontend::AgentTicketPriority###HistoryType" Required="0" Valid="1">
         <Description Translatable="1">Defines the history type for the ticket priority screen action, which gets used for ticket history in the agent interface.</Description>
         <Navigation>Frontend::Agent::View::TicketPriority</Navigation>
@@ -4213,6 +4276,13 @@
             <Item ValueType="Checkbox">1</Item>
         </Value>
     </Setting>
+    <Setting Name="Ticket::Frontend::AgentTicketResponsible###FormDraft" Required="0" Valid="1">
+        <Description Translatable="1">Allows to save current work as draft in the ticket responsible screen of the agent interface.</Description>
+        <Navigation>Frontend::Agent::View::TicketResponsible</Navigation>
+        <Value>
+            <Item ValueType="Checkbox">1</Item>
+        </Value>
+    </Setting>
     <Setting Name="Ticket::Frontend::AgentTicketResponsible###HistoryType" Required="0" Valid="1">
         <Description Translatable="1">Defines the history type for the ticket responsible screen action, which gets used for ticket history in the agent interface.</Description>
         <Navigation>Frontend::Agent::View::TicketResponsible</Navigation>
@@ -4364,6 +4434,13 @@
             <Item ValueType="Checkbox">0</Item>
         </Value>
     </Setting>
+    <Setting Name="Ticket::Frontend::AgentTicketMove###FormDraft" Required="0" Valid="1">
+        <Description Translatable="1">Allows to save current work as draft in the ticket move screen of the agent interface.</Description>
+        <Navigation>Frontend::Agent::View::TicketMove</Navigation>
+        <Value>
+            <Item ValueType="Checkbox">1</Item>
+        </Value>
+    </Setting>
     <Setting Name="Ticket::Frontend::AgentTicketBounce###Permission" Required="1" Valid="1">
         <Description Translatable="1">Required permissions to use the ticket bounce screen in the agent interface.</Description>
         <Navigation>Frontend::Agent::View::TicketBounce</Navigation>
@@ -4437,6 +4514,13 @@
     </Setting>
     <Setting Name="Ticket::Frontend::AgentTicketCompose###IsVisibleForCustomerDefault" Required="1" Valid="1">
         <Description Translatable="1">Defines if the message in the ticket compose screen of the agent interface is visible for the customer by default.</Description>
+        <Navigation>Frontend::Agent::View::TicketCompose</Navigation>
+        <Value>
+            <Item ValueType="Checkbox">1</Item>
+        </Value>
+    </Setting>
+    <Setting Name="Ticket::Frontend::AgentTicketCompose###FormDraft" Required="0" Valid="1">
+        <Description Translatable="1">Allows to save current work as draft in the ticket compose screen of the agent interface.</Description>
         <Navigation>Frontend::Agent::View::TicketCompose</Navigation>
         <Value>
             <Item ValueType="Checkbox">1</Item>
@@ -4537,6 +4621,13 @@
             <Item ValueType="Checkbox">1</Item>
         </Value>
     </Setting>
+    <Setting Name="Ticket::Frontend::AgentTicketForward###FormDraft" Required="0" Valid="1">
+        <Description Translatable="1">Allows to save current work as draft in the ticket forward screen of the agent interface.</Description>
+        <Navigation>Frontend::Agent::View::TicketForward</Navigation>
+        <Value>
+            <Item ValueType="Checkbox">1</Item>
+        </Value>
+    </Setting>
     <Setting Name="Ticket::Frontend::AgentTicketEmailOutbound###Permission" Required="1" Valid="1">
         <Description Translatable="1">Required permissions to use the email outbound screen in the agent interface.</Description>
         <Navigation>Frontend::Agent::View::TicketEmailOutbound</Navigation>
@@ -4572,6 +4663,34 @@
     </Setting>
     <Setting Name="Ticket::Frontend::AgentTicketEmailOutbound###IsVisibleForCustomerDefault" Required="0" Valid="1">
         <Description Translatable="1">Defines if the message in the email outbound screen of the agent interface is visible for the customer by default.</Description>
+        <Navigation>Frontend::Agent::View::TicketEmailOutbound</Navigation>
+        <Value>
+            <Item ValueType="Checkbox">1</Item>
+        </Value>
+    </Setting>
+    <Setting Name="Ticket::Frontend::AgentTicketEmailResend###Permission" Required="1" Valid="1">
+        <Description Translatable="1">Required permissions to use the email resend screen in the agent interface.</Description>
+        <Navigation>Frontend::Agent::View::TicketEmailResend</Navigation>
+        <Value>
+            <Item ValueType="String" ValueRegex="">compose</Item>
+        </Value>
+    </Setting>
+    <Setting Name="Ticket::Frontend::AgentTicketEmailResend###RequiredLock" Required="0" Valid="1">
+        <Description Translatable="1">Defines if a ticket lock is required in the email resend screen of the agent interface (if the ticket isn't locked yet, the ticket gets locked and the current agent will be set automatically as its owner).</Description>
+        <Navigation>Frontend::Agent::View::TicketEmailResend</Navigation>
+        <Value>
+            <Item ValueType="Checkbox">1</Item>
+        </Value>
+    </Setting>
+    <Setting Name="Ticket::Frontend::AgentTicketEmailResend###IsVisibleForCustomerDefault" Required="0" Valid="1">
+        <Description Translatable="1">Defines if the message in the email resend screen of the agent interface is visible for the customer by default.</Description>
+        <Navigation>Frontend::Agent::View::TicketEmailResend</Navigation>
+        <Value>
+            <Item ValueType="Checkbox">1</Item>
+        </Value>
+    </Setting>
+    <Setting Name="Ticket::Frontend::AgentTicketEmailOutbound###FormDraft" Required="0" Valid="1">
+        <Description Translatable="1">Allows to save current work as draft in the email outbound screen of the agent interface.</Description>
         <Navigation>Frontend::Agent::View::TicketEmailOutbound</Navigation>
         <Value>
             <Item ValueType="Checkbox">1</Item>
@@ -4766,7 +4885,7 @@
                 <Item Key="Name" Translatable="1">Status view</Item>
                 <Item Key="Link">Action=AgentTicketStatusView</Item>
                 <Item Key="Action">AgentTicketStatusView</Item>
-                <Item Key="AccessKey">S</Item>
+                <Item Key="AccessKey"></Item>
                 <Item Key="CssClass">StatusView</Item>
                 <Item Key="Icon">fa fa-list-ol</Item>
                 <Item Key="Priority">1010020</Item>
@@ -4930,10 +5049,9 @@
             <Hash>
                 <Item Key="Module">Kernel::Output::HTML::ToolBar::Generic</Item>
                 <Item Key="Description" Translatable="1">Fulltext search</Item>
-                <Item Key="Name" Translatable="1">Fulltext search</Item>
+                <Item Key="Name" Translatable="1">Fulltext</Item>
                 <Item Key="Block">ToolBarSearchFulltext</Item>
                 <Item Key="Size">10</Item>
-                <Item Key="CSS">Core.Agent.Toolbar.FulltextSearch.css</Item>
                 <Item Key="Priority">1990020</Item>
             </Hash>
         </Value>
@@ -4945,10 +5063,9 @@
             <Hash>
                 <Item Key="Module">Kernel::Output::HTML::ToolBar::Generic</Item>
                 <Item Key="Description" Translatable="1">CustomerID search</Item>
-                <Item Key="Name" Translatable="1">CustomerID search</Item>
+                <Item Key="Name" Translatable="1">CustomerID</Item>
                 <Item Key="Block">ToolBarCICSearchCustomerID</Item>
                 <Item Key="Size">10</Item>
-                <Item Key="CSS">Core.Agent.Toolbar.CICSearch.css</Item>
                 <Item Key="Priority">1990030</Item>
             </Hash>
         </Value>
@@ -4960,10 +5077,9 @@
             <Hash>
                 <Item Key="Module">Kernel::Output::HTML::ToolBar::Generic</Item>
                 <Item Key="Description" Translatable="1">Customer user search</Item>
-                <Item Key="Name" Translatable="1">Customer user search</Item>
+                <Item Key="Name" Translatable="1">Customer User</Item>
                 <Item Key="Block">ToolBarCICSearchCustomerUser</Item>
                 <Item Key="Size">10</Item>
-                <Item Key="CSS">Core.Agent.Toolbar.CICSearch.css</Item>
                 <Item Key="Priority">1990040</Item>
             </Hash>
         </Value>
@@ -5200,6 +5316,24 @@
                 <Item Key="PopupType">TicketHistory</Item>
                 <Item Key="ClusterName" Translatable="1">Miscellaneous</Item>
                 <Item Key="ClusterPriority">800</Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="Ticket::Frontend::MenuModule###999-TeaserAttachmentView" Required="0" Valid="1">
+        <Description Translatable="1">Shows a teaser link in the menu for the ticket attachment view of OTRS Business Solution™.</Description>
+        <Navigation>Frontend::Agent::View::TicketZoom::MenuModule</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Module">Kernel::Output::HTML::TicketMenu::TeaserAttachmentView</Item>
+                <Item Key="Name">All attachments (OTRS Business Solution™)</Item>
+                <Item Key="Description" Translatable="1">View all attachments of the current ticket</Item>
+                <Item Key="Action">AgentTicketZoom</Item>
+                <Item Key="Link">Action=AgentTicketZoom;TicketID=[% Data.TicketID | html %]</Item>
+                <Item Key="Target"></Item>
+                <Item Key="Class">OTRSBusinessRequired</Item>
+                <Item Key="PopupType"></Item>
+                <Item Key="ClusterName" Translatable="1">Miscellaneous</Item>
+                <Item Key="ClusterPriority">999</Item>
             </Hash>
         </Value>
     </Setting>
@@ -5488,6 +5622,24 @@
                 <Item Key="PopupType"></Item>
                 <Item Key="ClusterName" Translatable="1"></Item>
                 <Item Key="ClusterPriority"></Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="Ticket::Frontend::MenuModule###500-ExternalLink" Required="0" Valid="0">
+        <Description Translatable="1">Shows link to external page in the ticket zoom view of the agent interface. Additional access control to show or not show this link can be done by using Key "Group" and Content like "rw:group1;move_into:group2".</Description>
+        <Navigation>Frontend::Agent::View::TicketZoom::MenuModule</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Module">Kernel::Output::HTML::TicketMenu::Generic</Item>
+                <Item Key="Name" Translatable="1">External Link</Item>
+                <Item Key="Action"></Item>
+                <Item Key="Description" Translatable="1">Open an external link!</Item>
+                <Item Key="Link">http://external-application.test/app/index.php?TicketID=[% Data.TicketID %]&amp;queue_id=[% Data.QueueID %]</Item>
+                <Item Key="Target">_blank</Item>
+                <Item Key="PopupType"></Item>
+                <Item Key="ClusterName" Translatable="1">Miscellaneous</Item>
+                <Item Key="ClusterPriority"></Item>
+                <Item Key="ExternalLink">1</Item>
             </Hash>
         </Value>
     </Setting>
@@ -5813,7 +5965,7 @@
         </Value>
     </Setting>
     <Setting Name="DashboardBackend###0100-TicketPendingReminder" Required="0" Valid="1">
-        <Description Translatable="1">Parameters for the dashboard backend of the ticket pending reminder overview of the agent interface . "Limit" is the number of entries shown by default. "Group" is used to restrict the access to the plugin (e. g. Group: admin;group1;group2;). "Default" determines if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" is the cache time in minutes for the plugin. Note: Only Ticket attributes and Dynamic Fields (DynamicField_NameX) are allowed for DefaultColumns.</Description>
+        <Description Translatable="1">Parameters for the dashboard backend of the ticket pending reminder overview of the agent interface . "Limit" is the number of entries shown by default. "Group" is used to restrict the access to the plugin (e. g. Group: admin;group1;group2;). "Default" determines if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" is the cache time in minutes for the plugin. "Mandatory" determines if the plugin is always shown and can not be removed by agents. Note: Only Ticket attributes and Dynamic Fields (DynamicField_NameX) are allowed for DefaultColumns.</Description>
         <Navigation>Frontend::Agent::View::Dashboard</Navigation>
         <Value>
             <Hash>
@@ -5861,11 +6013,12 @@
                         <Item Key="Type" SelectedID="1"></Item>
                     </Hash>
                 </Item>
+                <Item Key="Mandatory">0</Item>
             </Hash>
         </Value>
     </Setting>
     <Setting Name="DashboardBackend###0110-TicketEscalation" Required="0" Valid="1">
-        <Description Translatable="1">Parameters for the dashboard backend of the ticket escalation overview of the agent interface . "Limit" is the number of entries shown by default. "Group" is used to restrict the access to the plugin (e. g. Group: admin;group1;group2;). "Default" determines if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" is the cache time in minutes for the plugin. Note: Only Ticket attributes and Dynamic Fields (DynamicField_NameX) are allowed for DefaultColumns.</Description>
+        <Description Translatable="1">Parameters for the dashboard backend of the ticket escalation overview of the agent interface . "Limit" is the number of entries shown by default. "Group" is used to restrict the access to the plugin (e. g. Group: admin;group1;group2;). "Default" determines if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" is the cache time in minutes for the plugin. "Mandatory" determines if the plugin is always shown and can not be removed by agents. Note: Only Ticket attributes and Dynamic Fields (DynamicField_NameX) are allowed for DefaultColumns.</Description>
         <Navigation>Frontend::Agent::View::Dashboard</Navigation>
         <Value>
             <Hash>
@@ -5913,11 +6066,12 @@
                         <Item Key="Type" SelectedID="1"></Item>
                     </Hash>
                 </Item>
+                <Item Key="Mandatory">0</Item>
             </Hash>
         </Value>
     </Setting>
     <Setting Name="DashboardBackend###0120-TicketNew" Required="0" Valid="1">
-        <Description Translatable="1">Parameters for the dashboard backend of the new tickets overview of the agent interface. "Limit" is the number of entries shown by default. "Group" is used to restrict the access to the plugin (e. g. Group: admin;group1;group2;). "Default" determines if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" is the cache time in minutes for the plugin. Note: Only Ticket attributes and Dynamic Fields (DynamicField_NameX) are allowed for DefaultColumns.</Description>
+        <Description Translatable="1">Parameters for the dashboard backend of the new tickets overview of the agent interface. "Limit" is the number of entries shown by default. "Group" is used to restrict the access to the plugin (e. g. Group: admin;group1;group2;). "Default" determines if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" is the cache time in minutes for the plugin. "Mandatory" determines if the plugin is always shown and can not be removed by agents. Note: Only Ticket attributes and Dynamic Fields (DynamicField_NameX) are allowed for DefaultColumns.</Description>
         <Navigation>Frontend::Agent::View::Dashboard</Navigation>
         <Value>
             <Hash>
@@ -5965,11 +6119,12 @@
                         <Item Key="Type" SelectedID="1"></Item>
                     </Hash>
                 </Item>
+                <Item Key="Mandatory">0</Item>
             </Hash>
         </Value>
     </Setting>
     <Setting Name="DashboardBackend###0130-TicketOpen" Required="0" Valid="1">
-        <Description Translatable="1">Parameters for the dashboard backend of the open tickets overview of the agent interface. "Limit" is the number of entries shown by default. "Group" is used to restrict the access to the plugin (e. g. Group: admin;group1;group2;). "Default" determines if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" is the cache time in minutes for the plugin. Note: Only Ticket attributes and Dynamic Fields (DynamicField_NameX) are allowed for DefaultColumns.</Description>
+        <Description Translatable="1">Parameters for the dashboard backend of the open tickets overview of the agent interface. "Limit" is the number of entries shown by default. "Group" is used to restrict the access to the plugin (e. g. Group: admin;group1;group2;). "Default" determines if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" is the cache time in minutes for the plugin. "Mandatory" determines if the plugin is always shown and can not be removed by agents. Note: Only Ticket attributes and Dynamic Fields (DynamicField_NameX) are allowed for DefaultColumns.</Description>
         <Navigation>Frontend::Agent::View::Dashboard</Navigation>
         <Value>
             <Hash>
@@ -6017,11 +6172,12 @@
                         <Item Key="Type" SelectedID="1"></Item>
                     </Hash>
                 </Item>
+                <Item Key="Mandatory">0</Item>
             </Hash>
         </Value>
     </Setting>
     <Setting Name="DashboardBackend###0250-TicketStats" Required="0" Valid="1">
-        <Description Translatable="1">Parameters for the dashboard backend of the ticket stats of the agent interface. "Limit" is the number of entries shown by default. "Group" is used to restrict the access to the plugin (e. g. Group: admin;group1;group2;). "Default" determines if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" is the cache time in minutes for the plugin.</Description>
+        <Description Translatable="1">Parameters for the dashboard backend of the ticket stats of the agent interface. "Limit" is the number of entries shown by default. "Group" is used to restrict the access to the plugin (e. g. Group: admin;group1;group2;). "Default" determines if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" is the cache time in minutes for the plugin. "Mandatory" determines if the plugin is always shown and can not be removed by agents.</Description>
         <Navigation>Frontend::Agent::View::Dashboard</Navigation>
         <Value>
             <Hash>
@@ -6034,11 +6190,12 @@
                 <Item Key="Group"></Item>
                 <Item Key="Default">1</Item>
                 <Item Key="CacheTTLLocal">30</Item>
+                <Item Key="Mandatory">0</Item>
             </Hash>
         </Value>
     </Setting>
     <Setting Name="DashboardBackend###0260-TicketCalendar" Required="0" Valid="1">
-        <Description Translatable="1">Parameters for the dashboard backend of the upcoming events widget of the agent interface. "Limit" is the number of entries shown by default. "Group" is used to restrict the access to the plugin (e. g. Group: admin;group1;group2;). "Default" determines if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" is the cache time in minutes for the plugin.</Description>
+        <Description Translatable="1">Parameters for the dashboard backend of the upcoming events widget of the agent interface. "Limit" is the number of entries shown by default. "Group" is used to restrict the access to the plugin (e. g. Group: admin;group1;group2;). "Default" determines if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" is the cache time in minutes for the plugin. "Mandatory" determines if the plugin is always shown and can not be removed by agents.</Description>
         <Navigation>Frontend::Agent::View::Dashboard</Navigation>
         <Value>
             <Hash>
@@ -6051,11 +6208,12 @@
                 <Item Key="Group"></Item>
                 <Item Key="Default">1</Item>
                 <Item Key="CacheTTL">2</Item>
+                <Item Key="Mandatory">0</Item>
             </Hash>
         </Value>
     </Setting>
      <Setting Name="DashboardBackend###0270-TicketQueueOverview" Required="0" Valid="1">
-        <Description Translatable="1">Parameters for the dashboard backend of the queue overview widget of the agent interface. "Group" is used to restrict the access to the plugin (e. g. Group: admin;group1;group2;). "QueuePermissionGroup" is not mandatory, queues are only listed if they belong to this permission group if you enable it. "States" is a list of states, the key is the sort order of the state in the widget. "Default" determines if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" is the cache time in minutes for the plugin.</Description>
+        <Description Translatable="1">Parameters for the dashboard backend of the queue overview widget of the agent interface. "Group" is used to restrict the access to the plugin (e. g. Group: admin;group1;group2;). "QueuePermissionGroup" is not mandatory, queues are only listed if they belong to this permission group if you enable it. "States" is a list of states, the key is the sort order of the state in the widget. "Default" determines if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" is the cache time in minutes for the plugin. "Mandatory" determines if the plugin is always shown and can not be removed by agents.</Description>
         <Navigation>Frontend::Agent::View::Dashboard</Navigation>
         <Value>
             <Hash>
@@ -6076,11 +6234,12 @@
                         <Item Key="6">pending reminder</Item>
                     </Hash>
                 </Item>
+                <Item Key="Mandatory">0</Item>
             </Hash>
         </Value>
     </Setting>
     <Setting Name="DashboardBackend###0280-DashboardEventsTicketCalendar" Required="0" Valid="1">
-        <Description Translatable="1">Parameters for the dashboard backend of the ticket events calendar of the agent interface. "Limit" is the number of entries shown by default. "Group" is used to restrict the access to the plugin (e. g. Group: admin;group1;group2;). "Default" determines if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" is the cache time in minutes for the plugin.</Description>
+        <Description Translatable="1">Parameters for the dashboard backend of the ticket events calendar of the agent interface. "Limit" is the number of entries shown by default. "Group" is used to restrict the access to the plugin (e. g. Group: admin;group1;group2;). "Default" determines if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" is the cache time in minutes for the plugin. "Mandatory" determines if the plugin is always shown and can not be removed by agents.</Description>
         <Navigation>Frontend::Agent::View::Dashboard</Navigation>
         <Value>
             <Hash>
@@ -6090,6 +6249,7 @@
                 <Item Key="Group"></Item>
                 <Item Key="Default">0</Item>
                 <Item Key="CacheTTL">0</Item>
+                <Item Key="Mandatory">0</Item>
             </Hash>
         </Value>
     </Setting>
@@ -6769,8 +6929,8 @@
                 <Item Key="Key" Translatable="1"></Item>
                 <Item Key="Data">
                     <Hash>
-                        <Item Key="0">CreateTicket</Item>
-                        <Item Key="AgentTicketZoom">TicketZoom</Item>
+                        <Item Key="0" Translatable="1">Create Ticket</Item>
+                        <Item Key="AgentTicketZoom" Translatable="1">Ticket Zoom</Item>
                     </Hash>
                 </Item>
                 <Item Key="DataSelected"></Item>
@@ -6952,8 +7112,8 @@
         <Navigation>Frontend::Customer::View::TicketMessage</Navigation>
         <Value>
             <Item ValueType="Select" SelectedID="Queue">
-                <Item ValueType="Option" Value="Queue">Queue</Item>
-                <Item ValueType="Option" Value="SystemAddress">SystemAddress</Item>
+                <Item ValueType="Option" Value="Queue" Translatable="1">Queue</Item>
+                <Item ValueType="Option" Value="SystemAddress" Translatable="1">System address</Item>
             </Item>
         </Value>
     </Setting>
@@ -7404,7 +7564,7 @@
                 <Item Key="NavBar">Ticket</Item>
                 <Item Key="Type"></Item>
                 <Item Key="Block"></Item>
-                <Item Key="AccessKey">O</Item>
+                <Item Key="AccessKey">i</Item>
                 <Item Key="Prio">105</Item>
             </Hash>
         </Value>
@@ -7502,6 +7662,7 @@
                     <Array>
                         <Item>Core.Agent.TicketAction.js</Item>
                         <Item>Core.Agent.TicketPhoneCommon.js</Item>
+                        <Item>Core.Agent.TicketFormDraft.js</Item>
                     </Array>
                 </Item>
             </Hash>
@@ -7537,6 +7698,7 @@
                     <Array>
                         <Item>Core.Agent.TicketAction.js</Item>
                         <Item>Core.Agent.TicketPhoneCommon.js</Item>
+                        <Item>Core.Agent.TicketFormDraft.js</Item>
                     </Array>
                 </Item>
             </Hash>
@@ -8033,8 +8195,9 @@
                         <Item>Core.Agent.TicketZoom.js</Item>
                         <Item>Core.UI.AllocationList.js</Item>
                         <Item>Core.UI.Table.Sort.js</Item>
-                        <Item>Core.Agent.TableFilters.js</Item>
                         <Item>Core.Agent.LinkObject.js</Item>
+                        <Item>Core.Agent.TableFilters.js</Item>
+                        <Item>Core.Agent.TicketFormDraft.js</Item>
                     </Array>
                 </Item>
             </Hash>
@@ -8133,6 +8296,7 @@
                     <Array>
                         <Item>Core.Agent.TicketAction.js</Item>
                         <Item>Core.Agent.TicketActionCommon.js</Item>
+                        <Item>Core.Agent.TicketFormDraft.js</Item>
                     </Array>
                 </Item>
             </Hash>
@@ -8202,6 +8366,7 @@
                     <Array>
                         <Item>Core.Agent.TicketAction.js</Item>
                         <Item>Core.Agent.TicketActionCommon.js</Item>
+                        <Item>Core.Agent.TicketFormDraft.js</Item>
                     </Array>
                 </Item>
             </Hash>
@@ -8258,6 +8423,7 @@
                     <Array>
                         <Item>Core.Agent.TicketAction.js</Item>
                         <Item>Core.Agent.TicketActionCommon.js</Item>
+                        <Item>Core.Agent.TicketFormDraft.js</Item>
                     </Array>
                 </Item>
             </Hash>
@@ -8314,6 +8480,7 @@
                     <Array>
                         <Item>Core.Agent.TicketAction.js</Item>
                         <Item>Core.Agent.TicketMove.js</Item>
+                        <Item>Core.Agent.TicketFormDraft.js</Item>
                     </Array>
                 </Item>
             </Hash>
@@ -8383,6 +8550,11 @@
         <Navigation>Frontend::Agent::ModuleRegistration::Loader</Navigation>
         <Value>
             <Hash>
+                <Item Key="CSS">
+                    <Array>
+                        <Item>Core.Agent.TicketHistory.css</Item>
+                    </Array>
+                </Item>
                 <Item Key="JavaScript">
                     <Array>
                         <Item>Core.Agent.TicketHistory.js</Item>
@@ -8421,6 +8593,7 @@
                     <Array>
                         <Item>Core.Agent.TicketAction.js</Item>
                         <Item>Core.Agent.TicketActionCommon.js</Item>
+                        <Item>Core.Agent.TicketFormDraft.js</Item>
                     </Array>
                 </Item>
             </Hash>
@@ -8456,6 +8629,7 @@
                     <Array>
                         <Item>Core.Agent.TicketAction.js</Item>
                         <Item>Core.Agent.TicketActionCommon.js</Item>
+                        <Item>Core.Agent.TicketFormDraft.js</Item>
                     </Array>
                 </Item>
             </Hash>
@@ -8493,6 +8667,7 @@
                         <Item>Core.Agent.CustomerSearchAutoComplete.js</Item>
                         <Item>Core.Agent.TicketAction.js</Item>
                         <Item>Core.Agent.TicketCompose.js</Item>
+                        <Item>Core.Agent.TicketFormDraft.js</Item>
                     </Array>
                 </Item>
             </Hash>
@@ -8564,6 +8739,7 @@
                         <Item>Core.Agent.CustomerSearchAutoComplete.js</Item>
                         <Item>Core.Agent.TicketAction.js</Item>
                         <Item>Core.Agent.TicketForward.js</Item>
+                        <Item>Core.Agent.TicketFormDraft.js</Item>
                     </Array>
                 </Item>
             </Hash>
@@ -8601,6 +8777,44 @@
                         <Item>Core.Agent.CustomerSearchAutoComplete.js</Item>
                         <Item>Core.Agent.TicketAction.js</Item>
                         <Item>Core.Agent.TicketEmailOutbound.js</Item>
+                        <Item>Core.Agent.TicketFormDraft.js</Item>
+                    </Array>
+                </Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="Frontend::Module###AgentTicketEmailResend" Required="0" Valid="1">
+        <Description Translatable="1">Frontend module registration for the agent interface.</Description>
+        <Navigation>Frontend::Agent::ModuleRegistration</Navigation>
+        <Value>
+            <Item ValueType="FrontendRegistration">
+                <Hash>
+                    <Item Key="Group">
+                        <Array>
+                        </Array>
+                    </Item>
+                    <Item Key="GroupRo">
+                        <Array>
+                        </Array>
+                    </Item>
+                    <Item Key="Description" Translatable="1">Resend Ticket Email.</Item>
+                    <Item Key="Title" Translatable="1">Email Resend</Item>
+                    <Item Key="NavBarName">Ticket</Item>
+                </Hash>
+            </Item>
+        </Value>
+    </Setting>
+    <Setting Name="Loader::Module::AgentTicketEmailResend###002-Ticket" Required="0" Valid="1">
+        <Description Translatable="1">Loader module registration for the agent interface.</Description>
+        <Navigation>Frontend::Agent::ModuleRegistration::Loader</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="JavaScript">
+                    <Array>
+                        <Item>Core.Agent.CustomerSearch.js</Item>
+                        <Item>Core.Agent.CustomerSearchAutoComplete.js</Item>
+                        <Item>Core.Agent.TicketAction.js</Item>
+                        <Item>Core.Agent.TicketEmailResend.js</Item>
                     </Array>
                 </Item>
             </Hash>
@@ -8673,6 +8887,7 @@
                     <Array>
                         <Item>Core.Agent.TicketAction.js</Item>
                         <Item>Core.Agent.TicketActionCommon.js</Item>
+                        <Item>Core.Agent.TicketFormDraft.js</Item>
                     </Array>
                 </Item>
             </Hash>
@@ -8708,6 +8923,7 @@
                     <Array>
                         <Item>Core.Agent.TicketAction.js</Item>
                         <Item>Core.Agent.TicketActionCommon.js</Item>
+                        <Item>Core.Agent.TicketFormDraft.js</Item>
                     </Array>
                 </Item>
             </Hash>
@@ -8829,7 +9045,6 @@
                 <Item Key="Description" Translatable="1">Configure and manage ACLs.</Item>
                 <Item Key="IconBig">fa-check-square-o</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">750</Item>
             </Hash>
         </Value>
     </Setting>
@@ -8889,7 +9104,6 @@
                 <Item Key="Description" Translatable="1">Create and manage queues.</Item>
                 <Item Key="IconBig">fa-folder</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">100</Item>
             </Hash>
         </Value>
     </Setting>
@@ -8948,7 +9162,6 @@
                 <Item Key="Description" Translatable="1">Create and manage templates.</Item>
                 <Item Key="IconBig">fa-file-text-o</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">200</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9007,7 +9220,6 @@
                 <Item Key="Description" Translatable="1">Link templates to queues.</Item>
                 <Item Key="IconBig">fa-file-text-o</Item>
                 <Item Key="IconSmall">fa-folder</Item>
-                <Item Key="Prio">300</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9066,7 +9278,6 @@
                 <Item Key="Description" Translatable="1">Create and manage responses that are automatically sent.</Item>
                 <Item Key="IconBig">fa-reply</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">400</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9125,7 +9336,6 @@
                 <Item Key="Description" Translatable="1">Link queues to auto responses.</Item>
                 <Item Key="IconBig">fa-reply</Item>
                 <Item Key="IconSmall">fa-folder</Item>
-                <Item Key="Prio">500</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9184,7 +9394,6 @@
                 <Item Key="Description" Translatable="1">Create and manage attachments.</Item>
                 <Item Key="IconBig">fa-paperclip</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">600</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9243,7 +9452,6 @@
                 <Item Key="Description" Translatable="1">Link attachments to templates.</Item>
                 <Item Key="IconBig">fa-paperclip</Item>
                 <Item Key="IconSmall">fa-file-text-o</Item>
-                <Item Key="Prio">700</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9302,7 +9510,6 @@
                 <Item Key="Description" Translatable="1">Create and manage salutations.</Item>
                 <Item Key="IconBig">fa-comment-o</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">800</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9361,7 +9568,6 @@
                 <Item Key="Description" Translatable="1">Create and manage signatures.</Item>
                 <Item Key="IconBig">fa-file-text-o</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">900</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9420,7 +9626,6 @@
                 <Item Key="Description" Translatable="1">Set sender email addresses for this system.</Item>
                 <Item Key="IconBig">fa-at</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">300</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9484,7 +9689,6 @@
                 <Item Key="Description" Translatable="1">Create and manage ticket notifications.</Item>
                 <Item Key="IconBig">fa-bell-o</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">400</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9543,7 +9747,6 @@
                 <Item Key="Description" Translatable="1">Create and manage services.</Item>
                 <Item Key="IconBig">fa-wrench</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">900</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9602,7 +9805,6 @@
                 <Item Key="Description" Translatable="1">Create and manage Service Level Agreements (SLAs).</Item>
                 <Item Key="IconBig">fa-ticket</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">1000</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9662,7 +9864,6 @@
                 <Item Key="Description" Translatable="1">Create and manage ticket types.</Item>
                 <Item Key="IconBig">fa-ticket</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">700</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9722,7 +9923,6 @@
                 <Item Key="Description" Translatable="1">Create and manage ticket states.</Item>
                 <Item Key="IconBig">fa-ticket</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">800</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9782,7 +9982,6 @@
                 <Item Key="Description" Translatable="1">Create and manage ticket priorities.</Item>
                 <Item Key="IconBig">fa-list-ol</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">850</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9841,7 +10040,6 @@
                 <Item Key="Description" Translatable="1">Manage tasks triggered by event or time based execution.</Item>
                 <Item Key="IconBig">fa-database</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">300</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9952,6 +10150,9 @@
                 <Item>ArticleFlagDelete</Item>
                 <Item>ArticleAgentNotification</Item>
                 <Item>ArticleCustomerNotification</Item>
+                <Item>ArticleEmailSendingQueued</Item>
+                <Item>ArticleEmailSendingSent</Item>
+                <Item>ArticleEmailSendingError</Item>
             </Array>
         </Value>
     </Setting>
@@ -10152,7 +10353,7 @@
                 <Item Key="NavBar">Ticket</Item>
                 <Item Key="Type">Submenu</Item>
                 <Item Key="Block"></Item>
-                <Item Key="AccessKey">M</Item>
+                <Item Key="AccessKey">t</Item>
                 <Item Key="Prio">120</Item>
             </Hash>
         </Value>
@@ -10506,7 +10707,9 @@
                 <Item>AgentTicketCompose</Item>
                 <Item>AgentTicketCustomer</Item>
                 <Item>AgentTicketForward</Item>
+                <Item>AgentTicketEmail</Item>
                 <Item>AgentTicketEmailOutbound</Item>
+                <Item>AgentTicketEmailResend</Item>
                 <Item>AgentTicketFreeText</Item>
                 <Item>AgentTicketHistory</Item>
                 <Item>AgentTicketLink</Item>
@@ -10683,6 +10886,13 @@
             <Item ValueType="String" ValueRegex="^([1-9]|[1-9][0-9])$">12</Item>
         </Value>
     </Setting>
+    <Setting Name="PostmasterBounceEmailAsFollowUp" Required="1" Valid="1">
+        <Description Translatable="1">Indicates if a bounce e-mail should always be treated as normal follow-up.</Description>
+        <Navigation>Core::Email::PostMaster</Navigation>
+        <Value>
+            <Item ValueType="Checkbox">1</Item>
+        </Value>
+    </Setting>
     <Setting Name="PostmasterX-Header" Required="1" Valid="1">
         <Description Translatable="1">Defines all the X-headers that should be scanned.</Description>
         <Navigation>Core::Email::PostMaster</Navigation>
@@ -10722,6 +10932,8 @@
                 <Item>Envelope-To</Item>
                 <Item>X-Envelope-To</Item>
                 <Item>Return-Path</Item>
+                <Item>X-OTRS-AttachmentExists</Item>
+                <Item>X-OTRS-AttachmentCount</Item>
                 <Item>X-OTRS-Owner</Item>
                 <Item>X-OTRS-OwnerID</Item>
                 <Item>X-OTRS-Responsible</Item>
@@ -11007,6 +11219,33 @@ Thanks for your help!
             </Hash>
         </Value>
     </Setting>
+    <Setting Name="PostMaster::PreFilterModule###000-DetectBounceEmail" Required="0" Valid="1">
+        <Description Translatable="1">Module to check if a incoming e-mail message is bounce.</Description>
+        <Navigation>Core::Email::PostMaster</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Module">Kernel::System::PostMaster::Filter::DetectBounceEmail</Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="PostMaster::PreFilterModule###000-DetectAttachment" Required="0" Valid="1">
+        <Description Translatable="1">Module used to detect if attachments are present.</Description>
+        <Navigation>Core::Email::PostMaster</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Module">Kernel::System::PostMaster::Filter::DetectAttachment</Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="PostMaster::CheckFollowUpModule###0000-BounceEmail" Required="0" Valid="1">
+        <Description Translatable="1">Executes follow-up checks on OTRS Header 'X-OTRS-Bounce'.</Description>
+        <Navigation>Core::Email::PostMaster</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Module">Kernel::System::PostMaster::FollowUpCheck::BounceEmail</Item>
+            </Hash>
+        </Value>
+    </Setting>
     <Setting Name="PostMaster::CheckFollowUpModule###0100-Subject" Required="0" Valid="1">
         <Description Translatable="1">Checks if an E-Mail is a followup to an existing ticket by searching the subject for a valid ticket number.</Description>
         <Navigation>Core::Email::PostMaster</Navigation>
@@ -11249,7 +11488,6 @@ Thanks for your help!
                 <Item Key="Description" Translatable="1">Create and manage dynamic fields.</Item>
                 <Item Key="IconBig">fa-align-left</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">1000</Item>
             </Hash>
         </Value>
     </Setting>
@@ -11866,16 +12104,6 @@ Thanks for your help!
             </Hash>
         </Value>
     </Setting>
-    <Setting Name="Ticket::Frontend::AgentTicketZoom###SenderDisplay" Required="1" Valid="1">
-         <Description Translatable="1">Controls which type of sender display will be used next to article contents in ticket zoom screen. If set to "Sender Image", system will automatically fetch image associated with sender's address from external service (Gravatar). If set to "Sender Initials", system will show first letters of sender's name.</Description>
-         <Navigation>Frontend::Agent::View::TicketZoom</Navigation>
-         <Value>
-             <Item ValueType="Select" SelectedID="SenderImage">
-                 <Item ValueType="Option" Value="SenderImage" Translatable="1">Sender Image</Item>
-                 <Item ValueType="Option" Value="SenderInitials" Translatable="1">Sender Initials</Item>
-             </Item>
-         </Value>
-     </Setting>
     <Setting Name="Ticket::Frontend::CustomerTicketZoom###DynamicField" Required="0" Valid="1">
         <Description Translatable="1">Dynamic fields shown in the ticket zoom screen of the customer interface.</Description>
         <Navigation>Frontend::Customer::View::TicketZoom</Navigation>
@@ -12359,6 +12587,20 @@ Thanks for your help!
         <Navigation>Frontend::Agent::View::TicketMerge</Navigation>
         <Value>
             <Item ValueType="String" ValueRegex="^\d+%?$">620</Item>
+        </Value>
+    </Setting>
+    <Setting Name="Ticket::Frontend::AgentTicketEmailResend###RichTextWidth" Required="0" Valid="1">
+        <Description Translatable="1">Defines the width for the rich text editor component for this screen. Enter number (pixels) or percent value (relative).</Description>
+        <Navigation>Frontend::Agent::View::TicketEmailResend</Navigation>
+        <Value>
+            <Item ValueType="String" ValueRegex="^\d+%?$">620</Item>
+        </Value>
+    </Setting>
+    <Setting Name="Ticket::Frontend::AgentTicketEmailResend###RichTextHeight" Required="0" Valid="1">
+        <Description Translatable="1">Defines the height for the rich text editor component for this screen. Enter number (pixels) or percent value (relative).</Description>
+        <Navigation>Frontend::Agent::View::TicketEmailResend</Navigation>
+        <Value>
+            <Item ValueType="String" ValueRegex="^\d+%?$">300</Item>
         </Value>
     </Setting>
     <Setting Name="Ticket::Frontend::AgentTicketMerge###RichTextHeight" UserPreferencesGroup="Advanced" UserModificationPossible="1" Required="0" Valid="1">

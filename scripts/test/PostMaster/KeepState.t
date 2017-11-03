@@ -194,11 +194,29 @@ for my $Test (@Tests) {
 
     # execute PostMaster with the read email
     {
+        my $CommunicationLogObject = $Kernel::OM->Create(
+            'Kernel::System::CommunicationLog',
+            ObjectParams => {
+                Transport => 'Email',
+                Direction => 'Incoming',
+            },
+        );
+        $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
+
         my $PostMasterObject = Kernel::System::PostMaster->new(
-            Email => \@Content,
+            CommunicationLogObject => $CommunicationLogObject,
+            Email                  => \@Content,
         );
 
         @Return = $PostMasterObject->Run();
+
+        $CommunicationLogObject->ObjectLogStop(
+            ObjectLogType => 'Message',
+            Status        => 'Successful',
+        );
+        $CommunicationLogObject->CommunicationStop(
+            Status => 'Successful',
+        );
     }
 
     # check we actually got followup

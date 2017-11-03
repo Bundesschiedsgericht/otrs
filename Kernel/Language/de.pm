@@ -29,6 +29,9 @@ sub Data {
     # csv separator
     $Self->{Separator} = ';';
 
+    $Self->{DecimalSeparator}    = ',';
+    $Self->{ThousandSeparator}   = '.';
+
     $Self->{Translation} = {
 
         # Template: AdminACL
@@ -3647,6 +3650,7 @@ sub Data {
         'State Type Historic' => 'Statustypchronik',
         'Until times' => '',
         'Historic Time Range' => 'Historischer Zeitbereich',
+        'Number'              => 'Nummer',
 
         # Perl Module: Kernel/System/Stats/Dynamic/TicketSolutionResponseTime.pm
         'Solution Average' => '',

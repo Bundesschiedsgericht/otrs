@@ -38,7 +38,7 @@ my $XHeaders          = $ConfigObject->Get('PostmasterX-Header');
 my @PostmasterXHeader = @{$XHeaders};
 HEADER:
 for my $Header ( sort keys %NeededXHeaders ) {
-    next HEADER if ( grep $_ eq $Header, @PostmasterXHeader );
+    next HEADER if ( grep { $_ eq $Header } @PostmasterXHeader );
     push @PostmasterXHeader, $Header;
 }
 $ConfigObject->Set(
@@ -423,6 +423,15 @@ my @Tests = (
     },
 );
 
+my $CommunicationLogObject = $Kernel::OM->Create(
+    'Kernel::System::CommunicationLog',
+    ObjectParams => {
+        Transport => 'Email',
+        Direction => 'Incoming',
+    },
+);
+$CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
+
 for my $Test (@Tests) {
 
     $ConfigObject->Set(
@@ -443,7 +452,8 @@ Some Content in Body
     my @Return;
     {
         my $PostMasterObject = Kernel::System::PostMaster->new(
-            Email => \$Email,
+            CommunicationLogObject => $CommunicationLogObject,
+            Email                  => \$Email,
         );
 
         @Return = $PostMasterObject->Run();
@@ -488,7 +498,8 @@ Some Content in Body
 
     {
         my $PostMasterObject = Kernel::System::PostMaster->new(
-            Email => \$Email2,
+            CommunicationLogObject => $CommunicationLogObject,
+            Email                  => \$Email2,
         );
 
         @Return = $PostMasterObject->Run();
@@ -527,6 +538,14 @@ Some Content in Body
         Value => undef,
     );
 }
+
+$CommunicationLogObject->ObjectLogStop(
+    ObjectLogType => 'Message',
+    Status        => 'Successful',
+);
+$CommunicationLogObject->CommunicationStop(
+    Status => 'Successful',
+);
 
 # cleanup is done by RestoreDatabase.
 

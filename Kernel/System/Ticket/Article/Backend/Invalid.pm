@@ -20,6 +20,7 @@ our @ObjectDependencies = (
     'Kernel::System::CommunicationChannel',
     'Kernel::System::DB',
     'Kernel::System::Log',
+    'Kernel::System::Ticket::Article',
 );
 
 =head1 NAME
@@ -70,7 +71,6 @@ Returns article meta data as also returned by L<Kernel::System::Ticket::Article:
         TicketID      => 123,
         ArticleID     => 123,
         DynamicFields => 1,
-        UserID        => 123,
     );
 
 =cut
@@ -78,7 +78,24 @@ Returns article meta data as also returned by L<Kernel::System::Ticket::Article:
 sub ArticleGet {
     my ( $Self, %Param ) = @_;
 
-    return $Self->_MetaArticleGet(%Param);
+    for my $Item (qw(TicketID ArticleID)) {
+        if ( !$Param{$Item} ) {
+            $Kernel::OM->Get('Kernel::System::Log')->Log(
+                Priority => 'error',
+                Message  => "Need $Item!",
+            );
+            return;
+        }
+    }
+
+    my %MetaArticle = $Self->_MetaArticleGet(%Param);
+
+    my %ArticleSenderTypeList = $Kernel::OM->Get('Kernel::System::Ticket::Article')->ArticleSenderTypeList();
+
+    # Include sender type lookup.
+    $MetaArticle{SenderType} = $ArticleSenderTypeList{ $MetaArticle{SenderTypeID} };
+
+    return %MetaArticle;
 }
 
 =head2 ArticleDelete()
@@ -175,6 +192,26 @@ Dummy function. The invalid backend will not return any searchable fields.
 =cut
 
 sub BackendSearchableFieldsGet {
+    return;
+}
+
+=head2 ArticleHasHTMLContent()
+
+Dummy function. The invalid backend will always return 1.
+
+=cut
+
+sub ArticleHasHTMLContent {
+    return 1;
+}
+
+=head2 ArticleAttachmentIndex()
+
+Dummy function. The invalid backend will not return any attachments.
+
+=cut
+
+sub ArticleAttachmentIndex {
     return;
 }
 

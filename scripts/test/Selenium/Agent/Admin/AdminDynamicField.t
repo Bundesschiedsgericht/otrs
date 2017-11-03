@@ -93,6 +93,26 @@ $Selenium->RunTest(
             "Breadcrumb is found on Overview screen.",
         );
 
+        my $OTRSBusinessIsInstalled = $Kernel::OM->Get('Kernel::System::OTRSBusiness')->OTRSBusinessIsInstalled();
+        my $OBTeaser                = $LanguageObject->Translate('More Business Fields');
+        my $OBTeaserFound           = index( $Selenium->get_page_source(), $OBTeaser ) > -1;
+        if ( !$OTRSBusinessIsInstalled ) {
+            $Self->True(
+                $OBTeaserFound,
+                "OTRSBusiness teaser found on page",
+            );
+            for my $TeaserOption (qw(Database Webservice ContactWithData)) {
+                $Selenium->find_element( "select#TicketDynamicField option[value=$TeaserOption]", 'css' );
+            }
+
+        }
+        else {
+            $Self->False(
+                $OBTeaserFound,
+                "OTRSBusiness teaser not found on page",
+            );
+        }
+
         # Define variables for breadcrumb.
         my $OverviewTitleBreadcrumb = $LanguageObject->Translate('Dynamic Fields Management');
         my $IDText;
@@ -140,7 +160,7 @@ $Selenium->RunTest(
                 $Selenium->find_element( "#Name",  'css' )->send_keys($RandomID);
                 $Selenium->find_element( "#Label", 'css' )->send_keys($RandomID);
                 $Selenium->execute_script("\$('#ValidID').val('1').trigger('redraw.InputField').trigger('change');");
-                $Selenium->find_element( "#Name", 'css' )->VerifiedSubmit();
+                $Selenium->find_element("//button[\@type='submit']")->VerifiedClick();
 
                 # Check if test DynamicField show on AdminDynamicField screen.
                 $Self->True(
@@ -164,7 +184,7 @@ $Selenium->RunTest(
                 $Selenium->find_element( "#Label", 'css' )->clear();
                 $Selenium->find_element( "#Label", 'css' )->send_keys( $RandomID . "-update" );
                 $Selenium->execute_script("\$('#ValidID').val('2').trigger('redraw.InputField').trigger('change');");
-                $Selenium->find_element( "#Name", 'css' )->VerifiedSubmit();
+                $Selenium->find_element("//button[\@type='submit']")->VerifiedClick();
 
                 # Check class of invalid DynamicField in the overview table.
                 $Self->True(

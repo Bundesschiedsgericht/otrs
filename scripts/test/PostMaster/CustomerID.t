@@ -124,11 +124,29 @@ for my $Test (@Tests) {
     my @Return;
 
     {
+        my $CommunicationLogObject = $Kernel::OM->Create(
+            'Kernel::System::CommunicationLog',
+            ObjectParams => {
+                Transport => 'Email',
+                Direction => 'Incoming',
+            },
+        );
+        $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
+
         my $PostMasterObject = Kernel::System::PostMaster->new(
-            Email => \$Email,
+            CommunicationLogObject => $CommunicationLogObject,
+            Email                  => \$Email,
         );
 
         @Return = $PostMasterObject->Run();
+
+        $CommunicationLogObject->ObjectLogStop(
+            ObjectLogType => 'Message',
+            Status        => 'Successful',
+        );
+        $CommunicationLogObject->CommunicationStop(
+            Status => 'Successful',
+        );
     }
 
     $Self->Is(

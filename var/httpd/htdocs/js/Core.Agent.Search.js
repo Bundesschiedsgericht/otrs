@@ -113,12 +113,13 @@ Core.Agent.Search = (function (TargetNS) {
      * @memberof Core.Agent.Search
      * @function
      * @param {String} Profile - The profile name that will be delete.
+     * @param {String} SearchProfileAction - The action of search profile delete module.
      * @description
      *      Delete a profile via an ajax requests.
      */
-    function SearchProfileDelete(Profile) {
+    function SearchProfileDelete(Profile, SearchProfileAction) {
         var Data = {
-            Action: 'AgentTicketSearch',
+            Action: SearchProfileAction,
             Subaction: 'AJAXProfileDelete',
             Profile: Profile
         };
@@ -362,7 +363,16 @@ Core.Agent.Search = (function (TargetNS) {
                     return;
                 }
 
-                Core.UI.Dialog.ShowContentDialog(HTML, Core.Language.Translate('Search'), '10px', 'Center', true, undefined, true);
+                Core.UI.Dialog.ShowDialog({
+                    HTML: HTML,
+                    Title: Core.Language.Translate('Search'),
+                    Modal: true,
+                    CloseOnClickOutside: false,
+                    CloseOnEscape: true,
+                    PositionTop: '10px',
+                    PositionLeft: 'Center',
+                    AllowAutoGrow: true
+                });
 
                 // hide add template block
                 $('#SearchProfileAddBlock').hide();
@@ -389,7 +399,7 @@ Core.Agent.Search = (function (TargetNS) {
                 Core.UI.InputFields.Activate($('.Dialog:visible'));
 
                 // register add of attribute
-                $('.AddButton').on('click', function () {
+                $('#Attribute').on('change', function () {
                     var Attribute = $('#Attribute').val();
                     TargetNS.SearchAttributeAdd(Attribute);
                     TargetNS.AdditionalAttributeSelectionRebuild();
@@ -464,7 +474,12 @@ Core.Agent.Search = (function (TargetNS) {
                 Core.Form.Validate.Init();
                 Core.Form.Validate.SetSubmitFunction($('#SearchForm'), function (Form) {
                     Form.submit();
-                    ShowWaitingDialog();
+
+                    // Show only a waiting dialog for Normal results mode, because this result
+                    //  will return the HTML in the same window.
+                    if ($('#SearchForm #ResultForm').val() === 'Normal') {
+                        ShowWaitingDialog();
+                    }
                 });
 
                 // load profile
@@ -535,6 +550,7 @@ Core.Agent.Search = (function (TargetNS) {
 
                 // delete profile
                 $('#SearchProfileDelete').on('click', function (Event) {
+                    var SearchProfileAction = $('#SearchAction').val();
 
                     // strip all already used attributes
                     $('#SearchProfile').find('option:selected').each(function () {
@@ -544,7 +560,7 @@ Core.Agent.Search = (function (TargetNS) {
                             $('#SearchInsert').text('');
 
                             // remove remote
-                            SearchProfileDelete($(this).val());
+                            SearchProfileDelete($(this).val(), SearchProfileAction);
 
                             // remove local
                             $(this).remove();

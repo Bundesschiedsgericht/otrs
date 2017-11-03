@@ -20,6 +20,7 @@ our @ObjectDependencies = (
     'Kernel::System::DB',
     'Kernel::System::Environment',
     'Kernel::System::Log',
+    'Kernel::System::OTRSBusiness',
     'Kernel::System::SupportDataCollector',
     'Kernel::System::SystemData',
     'Kernel::System::DateTime',
@@ -563,6 +564,7 @@ If you provide Type and Description, these will be sent to the registration serv
     my %Result = $RegistrationObject->RegistrationUpdateSend(
         Type        => 'test',
         Description => 'new test system',
+        Debug       => 1,                 # optional
     );
 
 returns
@@ -583,7 +585,12 @@ or
 sub RegistrationUpdateSend {
     my ( $Self, %Param ) = @_;
 
-    if ( $Self->{CloudServicesDisabled} ) {
+    # If OTRSSTORM package is installed, system is able to do a Cloud request even if CloudService is disabled.
+    if (
+        !$Kernel::OM->Get('Kernel::System::OTRSBusiness')->OTRSSTORMIsInstalled()
+        && $Self->{CloudServicesDisabled}
+        )
+    {
         return (
             Success => 0,
             Reason  => 'Cloud services are disabled!',
@@ -629,6 +636,7 @@ sub RegistrationUpdateSend {
         my %CollectResult = eval {
             $Kernel::OM->Get('Kernel::System::SupportDataCollector')->Collect(
                 WebTimeout => $SupportDataCollectorWebTimeout,
+                Debug      => $Param{Debug},
             );
         };
         if ( !$CollectResult{Success} ) {

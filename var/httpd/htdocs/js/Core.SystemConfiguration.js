@@ -6,6 +6,8 @@
 // did not receive this file, see http://www.gnu.org/licenses/agpl.txt.
 // --
 
+/*eslint-disable no-window*/
+
 "use strict";
 
 var Core = Core || {};
@@ -171,6 +173,12 @@ var Core = Core || {};
             Data["Category"] = 'All';
         }
 
+        $('#ConfigTree').on('click', '.OpenNodeInNewWindow', function(Event) {
+            window.open(Core.Config.Get('CGIHandle') + '?Action=AdminSystemConfigurationGroup;RootNavigation=' + $(this).data('node'), '_blank');
+            Event.preventDefault;
+            return false;
+        });
+
         if (Core.Config.Get('Action') == 'AgentPreferences') {
             Data["IsValid"] = 1;
         }
@@ -222,6 +230,18 @@ var Core = Core || {};
                     .on('after_close.jstree', function (Node, Selected, Event) {  //eslint-disable-line no-unused-vars
                         Core.UI.InitStickyElement();
                     })
+                    .on('hover_node.jstree', function (Node, Selected, Event) {  //eslint-disable-line no-unused-vars
+                        $('#ConfigTree #' + Core.App.EscapeSelector(Selected.node.id)).children('a').append('<span class="OpenNodeInNewWindow" title="' + Core.Language.Translate('Open this node in a new window') + '" data-node="' + Selected.node.id + '"><i class="fa fa-external-link"></i></span>').find('.OpenNodeInNewWindow').fadeIn();
+                    })
+                    .on('dehover_node.jstree', function (Node, Selected, Event) {  //eslint-disable-line no-unused-vars
+                        $('#ConfigTree #' + Core.App.EscapeSelector(Selected.node.id)).find('.OpenNodeInNewWindow').remove();
+                    });
+
+                if (SelectedNode) {
+                    $('#ConfigTree').jstree('select_node', SelectedNode);
+                }
+
+                $('#ConfigTree')
                     .on('select_node.jstree', function (Node, Selected, Event) {  //eslint-disable-line no-unused-vars
 
                         $('.ContentColumn').html(Core.Template.Render("Agent/WidgetLoading"));
@@ -245,10 +265,6 @@ var Core = Core || {};
                         return false;
                     }
                 );
-
-                if (SelectedNode) {
-                    $('#ConfigTree').jstree(true)._open_to(SelectedNode);
-                }
 
                 $("#ConfigTreeSearch").on('keyup keydown', function() {
                     $('#ConfigTree').jstree('search', $(this).val());
@@ -416,7 +432,7 @@ var Core = Core || {};
 
         if (ToggleValid) {
             IsValid = 0;
-            if ($Widget.find(".SettingDisabled:visible").length) {
+            if ($Widget.find(".SettingDisabled:visible").length || $Widget.find(".SettingEnable:visible").length) {
                 IsValid = 1;
             }
 
@@ -442,7 +458,7 @@ var Core = Core || {};
 
                 if (Response.Data.SettingData.IsDirty) {
                     Core.UI.ShowNotification(
-                        'You have undeployed settings, would you like to deploy them?',
+                        Core.Language.Translate('You have undeployed settings, would you like to deploy them?'),
                         'Notice',
                         'Action=AdminSystemConfigurationDeployment;Subaction=Deployment',
                         function() {
@@ -452,7 +468,7 @@ var Core = Core || {};
                 }
                 else if (Response.Data.DeploymentNeeded == 0) {
                     Core.UI.HideNotification(
-                        'You have undeployed settings, would you like to deploy them?',
+                        Core.Language.Translate('You have undeployed settings, would you like to deploy them?'),
                         'Notice',
                         function() {
                             Core.UI.InitStickyElement();
@@ -1038,7 +1054,7 @@ var Core = Core || {};
 
                         // hide the "deployment" notification
                         Core.UI.HideNotification(
-                            'You have undeployed settings, would you like to deploy them?',
+                            Core.Language.Translate('You have undeployed settings, would you like to deploy them?'),
                             'Notice',
                             function() {
                                 Core.UI.InitStickyElement();
@@ -1047,7 +1063,7 @@ var Core = Core || {};
                     }
                     else {
                         Core.UI.ShowNotification(
-                            'You have undeployed settings, would you like to deploy them?',
+                            Core.Language.Translate('You have undeployed settings, would you like to deploy them?'),
                             'Notice',
                             'Action=AdminSystemConfigurationDeployment;Subaction=Deployment',
                             function() {
@@ -1179,6 +1195,7 @@ var Core = Core || {};
 
             $Widget.find(".SettingDisabled").addClass("Hidden");
             $Widget.find(".SettingEnabled").removeClass("Hidden");
+            $Widget.removeClass("IsDisabled");
         }
         else {
             $Widget.find(".Header .Icon i")
@@ -1186,6 +1203,7 @@ var Core = Core || {};
 
             $Widget.find(".SettingDisabled").removeClass("Hidden");
             $Widget.find(".SettingEnabled").addClass("Hidden");
+            $Widget.addClass("IsDisabled");
         }
 
         if (Response.Data.SettingData.UserModificationActive == '1') {
@@ -1307,12 +1325,12 @@ var Core = Core || {};
             }
             else {
                 // Show all AddArrayItem and AddHashKey buttons.
-                $Structure.find("> .AddArrayItem, > .AddHashKey").show();
+                $Structure.find("> .AddArrayItem:not(.Hidden), > .AddHashKey:not(.Hidden)").show();
             }
         }
         else {
             // Show all AddArrayItem and AddHashKey buttons.
-            $Structure.find("> .AddArrayItem, > .AddHashKey").show();
+            $Structure.find("> .AddArrayItem:not(.Hidden), > .AddHashKey:not(.Hidden)").show();
         }
     }
 
@@ -1539,6 +1557,8 @@ var Core = Core || {};
             Action = "AgentPreferences";
         }
 
+        window.history.pushState(null, null, URL);
+
         Data = {
             Action     : Action,
             Subaction  : 'SettingList',
@@ -1565,6 +1585,7 @@ var Core = Core || {};
                 TargetNS.Init();
                 if (Core.Config.Get('Action') == 'AgentPreferences') {
                     Core.Agent.Preferences.InitSysConfig();
+                    Core.UI.Table.InitTableFilter($("#FilterSettings"), $(".SettingsList"));
                 }
                 else {
                     Core.Agent.Admin.SystemConfiguration.InitGroupView(true);
@@ -1584,12 +1605,19 @@ var Core = Core || {};
                 Core.UI.InputFields.InitSelect(
                     $(".SettingsList .Modernize")
                 );
+
+                // scroll to top to see all the settings from the current node
+                $('html, body').animate({
+                    scrollTop: $('.ContentColumn .WidgetSimple').first().position().top
+                }, 'fast');
             }, 'html'
         );
 
-        window.setTimeout(function() {
-            Core.Agent.Admin.SystemConfiguration.InitFavourites();
-        }, 1000);
+        if ($('#SysConfigFavourites').length) {
+            window.setTimeout(function() {
+                Core.Agent.Admin.SystemConfiguration.InitFavourites();
+            }, 1000);
+        }
     }
 
     Core.Init.RegisterNamespace(TargetNS, 'APP_MODULE');

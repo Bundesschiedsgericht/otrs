@@ -107,12 +107,19 @@ Core.Agent.Admin.DynamicField = (function (TargetNS) {
         // Bind event on dynamic field add action
         function FieldAddAction(Type) {
             $('#' + Type + 'DynamicField').on('change', function() {
-                if ($(this).val() !== '') {
+                if ($(this).val() !== null && $(this).val() !== '') {
                     Core.Agent.Admin.DynamicField.Redirect($(this).val(), Type);
 
                     // reset select value to none
                     $(this).val('');
                 }
+
+                // Show OTRSBusiness upgrade dialog.
+                else if (!parseInt(Core.Config.Get('OTRSBusinessIsInstalled'), 10)) {
+                    Core.Agent.ShowOTRSBusinessRequiredDialog();
+                }
+
+                return false;
             });
         }
         for (Key in ObjectType) {

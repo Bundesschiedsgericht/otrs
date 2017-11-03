@@ -60,9 +60,9 @@
 [% RenderBlockEnd("EventTypeFilterDialog") %]
 
 [% RenderBlockStart("Header") %]
-<div class="MainBox ARIARoleMain TicketZoom [% IF Data.UseArticleColors %]UseArticleColors[% END %]">
+<div class="MainBox ARIARoleMain TicketZoom UseArticleColors">
     <div class="ClearLeft"></div>
-    <div class="Headline">
+    <div class="Headline NoMargin">
         <div class="Flag" title="[% Translate(Data.Priority) | html %]"><span class="PriorityID-[% Data.PriorityID | html %]">[% Translate(Data.Priority) | html %]</span></div>
         <h1>
             [% Data.Hook %][% Config('Ticket::HookDivider') %][% Data.TicketNumber %] &mdash; [% Data.Title | html %]
@@ -78,6 +78,52 @@
 
     <div class="LayoutFixedSidebar SidebarLast">
         <div class="SidebarColumn">
+
+[% RenderBlockStart("FormDraftTable") %]
+            <div class="WidgetSimple">
+                <div class="Header">
+                    <div class="WidgetAction Toggle">
+                        <a href="#" title="[% Translate("Show or hide the content") | html %]"><i class="fa fa-caret-right"></i><i class="fa fa-caret-down"></i></a>
+                    </div>
+                    <h2>[% Translate( "Drafts") | html %]</h2>
+                </div>
+
+                <div class="Content">
+                    <table class="DataTable" id="FormDraftTable">
+                        <tbody>
+                            [% FOREACH FormDraft IN Data.FormDrafts %]
+                            <tr class="MasterAction">
+                                <td class="DraftName">
+                                    <a
+                                        href="[% Env("Baselink") %][% FormDraft.Link | Interpolate %];LoadFormDraft=1;FormDraftID=[% FormDraft.FormDraftID | html %]"
+                                        class="[% FormDraft.Class | html %] MasterActionLink"
+                                        [% FormDraft.LinkParam %]>
+
+                                        <span title="[% Translate(FormDraft.Description) | html %]">
+                                            [% Translate(FormDraft.Name) | html %] -
+                                        </span>
+                                        <span title="[% Translate("Created") | html %] [% FormDraft.CreateTime | Localize("TimeShort") %] [% Translate("by") | html %] [% FormDraft.CreatedByUser | html %] [% Translate("Changed") | html %] [% FormDraft.ChangeTime | Localize("TimeShort") %] [% Translate("by") | html %] [% FormDraft.ChangedByUser | html %]">
+                                            [% FormDraft.Title | html %]
+                                        </span>
+                                    </a>
+                                </td>
+                                <td>
+                                    <a class="FormDraftDelete"
+                                        href="[% Env("CGIHandle") %]?Action=AgentTicketZoom;Subaction=FormDraftDelete;FormDraftID=[% FormDraft.FormDraftID | html %];TicketID=[% Data.TicketID %]"
+                                        title="[% Translate("Delete") | html %]"
+                                        data-title="[% FormDraft.Title | html %]"
+                                        [% FormDraft.LinkParam %]>
+
+                                        <i class="fa fa-trash-o"></i>
+                                    </a>
+                                </td>
+                            [% END %]
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+[% RenderBlockEnd("FormDraftTable") %]
+
             [% FOREACH Widget IN Data.SidebarWidgets; %]
                 [% IF Widget.Async; %]
                     <div id="[% Widget.ElementID %]">
@@ -112,7 +158,7 @@
                                 <ul id="nav-[% Data.Name | replace(' ', '-') | html %]-container">
 [% RenderBlockStart("TicketMenuSubContainerItem") %]
                                     <li id="nav-[% Data.Name | replace(' ', '-') | html %]">
-                                        <a href="[% Env("Baselink") %][% Data.Link | Interpolate %]" class="[% Data.Class | html %]" [% Data.LinkParam %] title="[% Translate(Data.Description) | html %]">[% Translate(Data.Name) | html %]</a>
+                                        <a href="[% IF !Data.ExternalLink %][% Env("Baselink") %][% END %][% Data.Link | Interpolate %]" class="[% Data.Class | html %]" [% Data.LinkParam %] title="[% Translate(Data.Description) | html %]">[% Translate(Data.Name) | html %]</a>
                                     </li>
 [% RenderBlockEnd("TicketMenuSubContainerItem") %]
                                 </ul>
@@ -131,7 +177,7 @@
 [% RenderBlockEnd("TicketMenuPhoneAsDropdown") %]
 [% RenderBlockStart("MoveLink") %]
                             <li class="[% Data.Class | html %]">
-                                <form title="[% Translate("Move ticket to a different queue") | html %]" action="[% Env("CGIHandle") %]" method="post">
+                                <form title="[% Translate("Move ticket to a different queue") | html %]" action="[% Env("CGIHandle") | html %]" method="post">
                                     <input type="hidden" name="Action" value="AgentTicketMove"/>
                                     <input type="hidden" name="QueueID" value="[% Data.QueueID | html %]"/>
                                     <input type="hidden" name="TicketID" value="[% Data.TicketID | html %]"/>
@@ -145,6 +191,11 @@
                                 <a href="[% Env("Baselink") %]Action=AgentTicketMove;TicketID=[% Data.TicketID | uri %];" class="AsPopup PopupType_TicketAction" title="[% Translate("Change Queue") | html %]">[% Translate("Queue") | html %]</a>
                             </li>
 [% RenderBlockEnd("MoveForm") %]
+[% RenderBlockStart("TicketMenuExternalLink") %]
+                            <li>
+                                <a href="[% Data.Link | Interpolate %]" class="[% Data.Class | html %]" [% Data.LinkParam %] title="[% Translate(Data.Description) | html %]" target="[% Data.Target %]">[% Translate(Data.Name) | html %]</a>
+                            </li>
+[% RenderBlockEnd("TicketMenuExternalLink") %]
                         </ul>
                         <div class="Clear"></div>
                     </div>
@@ -265,7 +316,7 @@
 [% RenderBlockStart("ArticlePages") %]
             <div class="ArticlePages Icons">
         [% FOREACH page IN [1 .. Data.Pages]; %]
-                <a href="[% Env("Baselink") %]Action=AgentTicketZoom;TicketID=[% Data.TicketID | uri %];ArticlePage=[% page %]" title="[% Translate('Page %s', page) %]" data-page="[% page %]" [% IF page == Data.CurrentPage %]class="Active"[% END %]>[% page %]</a>
+                <a href="[% Env("Baselink") %]Action=AgentTicketZoom;TicketID=[% Data.TicketID | uri %];ArticlePage=[% page %]" title="[% Translate('Page %s', page) | html %]" data-page="[% page %]" [% IF page == Data.CurrentPage %]class="Active"[% END %]>[% page %]</a>
         [% END; %]
             </div>
 [% RenderBlockEnd("ArticlePages") %]
@@ -307,7 +358,7 @@
                                 <th class="Channel Sortable"><a href="#">[% Translate("Via") | html %]</a></th>
                                 <th class="Subject Sortable"><a href="#">[% Translate("Subject") | html %]</a></th>
                                 <th class="Created Sortable"><a href="#">[% Translate("Created") | html %]</a></th>
-                                <th class="Attachments Last">
+                                <th class="Attachments Last Center">
                                     <a href="#" title="[% Translate("Attachments") | html %]">
                                         <i class="fa fa-paperclip"></i>
                                     </a>
@@ -344,43 +395,56 @@
 [% RenderBlockStart("TreeItemDirectionIncoming") %]
                                     <span class="Direction Incoming" title="[% Translate("Incoming message") | html %]">
                                         <i class="fa fa-long-arrow-left"></i>
-                                        <i class="fa fa-square-o"></i>
                                     </span>
                                     <input type="hidden" class="SortData" value="0" />
 [% RenderBlockEnd("TreeItemDirectionIncoming") %]
 [% RenderBlockStart("TreeItemDirectionOutgoing") %]
                                     <span class="Direction Outgoing" title="[% Translate("Outgoing message") | html %]">
                                         <i class="fa fa-long-arrow-right"></i>
-                                        <i class="fa fa-square-o"></i>
                                     </span>
                                     <input type="hidden" class="SortData" value="1" />
 [% RenderBlockEnd("TreeItemDirectionOutgoing") %]
 [% RenderBlockStart("TreeItemDirectionInternal") %]
-                                    <span class="Direction Internal" title="[% Translate("Internal message") | html %]">
-                                        <i class="fa fa-square-o"></i>
-                                    </span>
+                                    <span class="Direction Internal" title="[% Translate("Internal message") | html %]"></span>
                                     <input type="hidden" class="SortData" value="2" />
 [% RenderBlockEnd("TreeItemDirectionInternal") %]
                                 </td>
                                 <td class="Sender">
-                                    <div title="[% Data.ArticleFields.Sender.Value | html %]"><a href="#">[% Data.ArticleFields.Sender.Realname | truncate(34) | html %]</a></div>
+                                    <div title="[% Data.ArticleFields.Sender.Value | html %]"><a href="#">[% Data.ArticleFields.Sender.Realname | truncate(100) | html %]</a></div>
                                     <input type="hidden" class="SortData" value="[% Data.ArticleFields.Sender.Value | html %]" />
                                 </td>
                                 <td class="Channel">
-                                    <div>[% Translate(Data.Channel) | html %]</div>
-                                    <input type="hidden" class="SortData" value="[% Translate(Data.Channel) | html %]" />
+                                    <div>[% Translate(Data.ChannelDisplayName) | html %]
+                                    [% IF Data.ChannelInvalid %]
+                                        <span title="[% Translate("Missing channel") | html %]">
+                                            <i class="fa fa-exclamation-triangle Warning" aria-hidden="true"></i>
+                                        </span>
+                                    [% END %]
+                                    [% IF Data.TransmissionStatus %]
+                                        [% IF Data.TransmissionStatus.Status == 'Failed' %]
+                                        <span title="[% Translate("Sending of this message has failed.") | html %]">
+                                            <i class="fa fa-times Error" aria-hidden="true"></i>
+                                        </span>
+                                        [% ELSIF Data.TransmissionStatus.Status == 'Processing' %]
+                                        <span title="[% Translate("This message has been queued for sending.") | html %]">
+                                            <i class="fa fa-spin fa-circle-o-notch Warning" aria-hidden="true"></i>
+                                        </span>
+                                        [% END %]
+                                    [% END %]
+                                    </div>
+                                    <input type="hidden" class="SortData" value="[% Translate(Data.ChannelDisplayName) | html %]" />
                                 </td>
                                 <td class="Subject">
-                                    <div title="[% Data.ArticleFields.Subject.Value | html %]"><a href="#">[% Data.ArticleFields.Subject.Value | truncate(36) | html %]</a></div>
+                                    <div title="[% Data.ArticleFields.Subject.Value | html %]"><a href="#">[% Data.ArticleFields.Subject.Value | truncate(100) | html %]</a></div>
                                     <input type="hidden" class="SortData" value="[% Data.ArticleFields.Subject.Value | html %]" />
                                 </td>
                                 <td class="Created">
-                                    <div title="[% Data.CreateTime | Localize('TimeShort') %]"><a href="#">[% Data.CreateTime | Localize("RelativeTime") %]</a></div>
+                                    <div title="[% Data.CreateTime | Localize('TimeShort') %]"><a href="#">[% Data.CreateTime | Localize("TimeShort") %]</a></div>
 # Include custom sorting information: date in ISO format.
 # Other date formats cannot be sorted reliably.
                                     <input type="hidden" class="SortData" value="[% Data.CreateTime | html %]" />
                                 </td>
-                                <td class="Attachments Attachment Fixed NonTextContent">
+                                <td class="Attachments Center Attachment Fixed NonTextContent">
 [% RenderBlockStart("TreeItemAttachment") %]
 [% PROCESS ArticleAttachments.tt %]
 [% RenderBlockEnd("TreeItemAttachment") %]
@@ -458,7 +522,7 @@
             <div class="Hidden ArticleIFrame" data-title="[% Translate("Full Article Text") | html %]"></div>
         </div>
 
-        <div class="TimelineView [% IF Data.UseArticleColors %]UseArticleColors[% END %]">
+        <div class="TimelineView UseArticleColors">
             <ul class="ListLeft">
                 <li class="NoEvents">[% Translate("No more events found. Please try changing the filter settings.") | html %]</li>
             </ul>

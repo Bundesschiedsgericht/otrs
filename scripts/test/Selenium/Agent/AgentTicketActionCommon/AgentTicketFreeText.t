@@ -423,6 +423,9 @@ $Selenium->RunTest(
                 $WaitForAJAX->();
             }
 
+            # Wait until opened field (due to error) has closed.
+            $Selenium->WaitFor( JavaScript => 'return $("div.jstree-wholerow:visible").length == 0' );
+
             # submit
             $Selenium->find_element( "#submitRichText", 'css' )->click();
 
@@ -483,6 +486,15 @@ $Selenium->RunTest(
             TicketID => $TicketID,
             UserID   => 1,
         );
+
+        # Ticket deletion could fail if apache still writes to ticket history. Try again in this case.
+        if ( !$Success ) {
+            sleep 3;
+            $Success = $TicketObject->TicketDelete(
+                TicketID => $TicketID,
+                UserID   => 1,
+            );
+        }
         $Self->True(
             $Success,
             "TicketID $TicketID is deleted"

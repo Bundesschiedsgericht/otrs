@@ -13,6 +13,7 @@ use warnings;
 
 our @ObjectDependencies = (
     'Kernel::System::Cache',
+    'Kernel::System::CommunicationLog',
 );
 
 sub new {
@@ -23,6 +24,8 @@ sub new {
 
     $Self->{CacheKey}  = 'Emails';
     $Self->{CacheType} = 'EmailTest';
+
+    $Self->{Type} = 'Test';
 
     return $Self;
 }
@@ -36,6 +39,7 @@ sub Send {
         Type => $Self->{CacheType},
     ) // [];
 
+    delete $Param{CommunicationLogObject};
     push @{$Emails}, \%Param;
 
     $Kernel::OM->Get('Kernel::System::Cache')->Set(
@@ -45,7 +49,9 @@ sub Send {
         TTL   => 60 * 60 * 24,
     );
 
-    return 1;
+    return {
+        Success => 1,
+    };
 }
 
 sub EmailsGet {

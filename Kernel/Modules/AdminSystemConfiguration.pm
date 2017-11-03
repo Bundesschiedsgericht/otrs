@@ -136,7 +136,9 @@ sub Run {
         # Check if setting is fixed but not yet deployed.
         for my $SettingName (@SettingNames) {
             my %Setting = $SysConfigObject->SettingGet(
-                Name => $SettingName,
+                Name            => $SettingName,
+                OverriddenInXML => 1,
+                UserID          => $Self->{UserID},
             );
 
             my %EffectiveValueCheck = $SysConfigObject->SettingEffectiveValueCheck(
@@ -197,11 +199,6 @@ sub Run {
 
         my $RootNavigation = $ParamObject->GetParam( Param => 'RootNavigation' ) || '';
 
-        # Get path structure to show in the bread crumbs
-        my @Path = $SysConfigObject->SettingNavigationToPath(
-            Navigation => $RootNavigation,
-        );
-
         # Get navigation tree
         my %Tree = $SysConfigObject->ConfigurationNavigationTree();
 
@@ -215,11 +212,40 @@ sub Run {
                 Results     => scalar @SettingList,
                 SettingList => \@SettingList,
                 %OutputData,
+                OTRSBusinessIsInstalled => $Kernel::OM->Get('Kernel::System::OTRSBusiness')->OTRSBusinessIsInstalled(),
             },
         );
         $Output .= $LayoutObject->Footer();
 
         return $Output;
+    }
+
+    elsif ( $Self->{Subaction} eq 'UserModificationsCount' ) {
+
+        my $SysConfigObject = $Kernel::OM->Get('Kernel::System::SysConfig');
+
+        my $ParamObject = $Kernel::OM->Get('Kernel::System::Web::Request');
+        my $SettingName = $ParamObject->GetParam( Param => 'Name' ) || '';
+
+        my %UsersList;
+        if ( $SysConfigObject->can('UserSettingModifiedValueList') ) {    # OTRS Business Solution™
+            %UsersList = $SysConfigObject->UserSettingModifiedValueList(
+                Name => $SettingName,
+            );
+        }
+
+        my $Result = keys %UsersList;
+
+        my $JSON = $LayoutObject->JSONEncode(
+            Data => $Result // 0,
+        );
+
+        return $LayoutObject->Attachment(
+            ContentType => 'application/json; charset=' . $LayoutObject->{Charset},
+            Content     => $JSON,
+            Type        => 'inline',
+            NoCache     => 1,
+        );
     }
 
     # Search for settings.
@@ -242,7 +268,9 @@ sub Run {
                 for my $SettingName ( sort @Result ) {
 
                     my %Setting = $SysConfigObject->SettingGet(
-                        Name => $SettingName,
+                        Name            => $SettingName,
+                        OverriddenInXML => 1,
+                        UserID          => $Self->{UserID},
                     );
 
                     $Setting{HTMLStrg} = $SysConfigObject->SettingRender(
@@ -265,6 +293,7 @@ sub Run {
                 Results     => scalar @SettingList,
                 SettingList => \@SettingList,
                 %OutputData,
+                OTRSBusinessIsInstalled => $Kernel::OM->Get('Kernel::System::OTRSBusiness')->OTRSBusinessIsInstalled(),
             },
         );
         $Output .= $LayoutObject->Footer();
@@ -315,7 +344,9 @@ sub Run {
             for my $SettingName ( sort @{$Favourites} ) {
 
                 my %Setting = $SysConfigObject->SettingGet(
-                    Name => $SettingName,
+                    Name            => $SettingName,
+                    OverriddenInXML => 1,
+                    UserID          => $Self->{UserID},
                 );
 
                 $Setting{HTMLStrg} = $SysConfigObject->SettingRender(
@@ -342,6 +373,7 @@ sub Run {
                 Results     => scalar @SettingList,
                 SettingList => \@SettingList,
                 %OutputData,
+                OTRSBusinessIsInstalled => $Kernel::OM->Get('Kernel::System::OTRSBusiness')->OTRSBusinessIsInstalled(),
             },
         );
         $Output .= $LayoutObject->Footer();
@@ -351,15 +383,19 @@ sub Run {
     # direct link
     elsif ( $Self->{Subaction} eq 'View' ) {
 
-        my $View = $ParamObject->GetParam( Param => 'Setting' ) || '';
+        my $SettingName = $ParamObject->GetParam( Param => 'Setting' ) || '';
         my @SettingList;
 
-        if ($View) {
+        if ($SettingName) {
+
+            # URL-decode setting name, just in case. Please see bug#13271 for more information.
+            $SettingName = URI::Escape::uri_unescape($SettingName);
 
             my $SysConfigObject = $Kernel::OM->Get('Kernel::System::SysConfig');
-
-            my %Setting = $SysConfigObject->SettingGet(
-                Name => $View,
+            my %Setting         = $SysConfigObject->SettingGet(
+                Name            => $SettingName,
+                OverriddenInXML => 1,
+                UserID          => $Self->{UserID},
             );
 
             if (%Setting) {
@@ -379,9 +415,10 @@ sub Run {
         $Output .= $LayoutObject->Output(
             TemplateFile => 'AdminSystemConfigurationView',
             Data         => {
-                View        => $View,
+                View        => $SettingName,
                 SettingList => \@SettingList,
                 %OutputData,
+                OTRSBusinessIsInstalled => $Kernel::OM->Get('Kernel::System::OTRSBusiness')->OTRSBusinessIsInstalled(),
             },
         );
         $Output .= $LayoutObject->Footer();
@@ -401,7 +438,9 @@ sub Run {
             for my $Name ( sort @Names ) {
 
                 my %Setting = $SysConfigObject->SettingGet(
-                    Name => $Name,
+                    Name            => $Name,
+                    OverriddenInXML => 1,
+                    UserID          => $Self->{UserID},
                 );
 
                 if (%Setting) {
@@ -432,10 +471,11 @@ sub Run {
         $Output .= $LayoutObject->Output(
             TemplateFile => 'AdminSystemConfigurationView',
             Data         => {
-                Type               => 'CustomList',
-                SettingList        => \@SettingList,
-                SettingListInvalid => \@SettingListInvalid,
-                CategoriesStrg     => $Self->_GetCategoriesStrg(),
+                Type                    => 'CustomList',
+                SettingList             => \@SettingList,
+                SettingListInvalid      => \@SettingListInvalid,
+                CategoriesStrg          => $Self->_GetCategoriesStrg(),
+                OTRSBusinessIsInstalled => $Kernel::OM->Get('Kernel::System::OTRSBusiness')->OTRSBusinessIsInstalled(),
             },
         );
         $Output .= $LayoutObject->Footer();
@@ -458,7 +498,9 @@ sub Run {
             for my $SettingName ( sort @Result ) {
 
                 my %Setting = $SysConfigObject->SettingGet(
-                    Name => $SettingName,
+                    Name            => $SettingName,
+                    OverriddenInXML => 1,
+                    UserID          => $Self->{UserID},
                 );
 
                 $Setting{HTMLStrg} = $SysConfigObject->SettingRender(
@@ -478,6 +520,7 @@ sub Run {
                 Results     => scalar @SettingList,
                 SettingList => \@SettingList,
                 %OutputData,
+                OTRSBusinessIsInstalled => $Kernel::OM->Get('Kernel::System::OTRSBusiness')->OTRSBusinessIsInstalled(),
             },
         );
         $Output .= $LayoutObject->Footer();
@@ -490,7 +533,10 @@ sub Run {
         my $Output = $LayoutObject->Header();
         $Output .= $LayoutObject->NavigationBar();
         $Output .= $LayoutObject->Output(
-            TemplateFile => 'AdminSystemConfigurationImportExport'
+            TemplateFile => 'AdminSystemConfigurationImportExport',
+            Data         => {
+                OTRSBusinessIsInstalled => $Kernel::OM->Get('Kernel::System::OTRSBusiness')->OTRSBusinessIsInstalled(),
+            },
         );
         $Output .= $LayoutObject->Footer();
         return $Output;
@@ -505,7 +551,7 @@ sub Run {
         my $ConfigurationDumpYAML = $Kernel::OM->Get('Kernel::System::SysConfig')->ConfigurationDump(
             SkipDefaultSettings  => 1,    # Default settings are not needed.
             SkipModifiedSettings => 0,    # Modified settings should always be present.
-            SkipUserSettings     => 1,    # Not user settings here.
+            SkipUserSettings => $ParamObject->GetParam( Param => 'SkipUserSettings' ) ? 0 : 1,
         );
 
         # Send the result to the browser.
@@ -571,8 +617,9 @@ sub Run {
         $Output .= $LayoutObject->Output(
             TemplateFile => 'AdminSystemConfiguration',
             Data         => {
-                ManualVersion => $ManualVersion,
-                SettingCount  => scalar @SettingList,
+                ManualVersion           => $ManualVersion,
+                SettingCount            => scalar @SettingList,
+                OTRSBusinessIsInstalled => $Kernel::OM->Get('Kernel::System::OTRSBusiness')->OTRSBusinessIsInstalled(),
                 %OutputData,
             },
         );

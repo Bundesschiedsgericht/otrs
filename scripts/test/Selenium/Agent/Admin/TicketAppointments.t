@@ -97,6 +97,20 @@ $Selenium->RunTest(
             $DynamicField->{DynamicFieldID} = $DynamicFieldID;
         }
 
+        my $SchedulerDBObject = $Kernel::OM->Get('Kernel::System::Daemon::SchedulerDB');
+
+        # Remove scheduled tasks from DB, as they may interfere with tests run later.
+        my @AllTasks = $SchedulerDBObject->TaskList();
+        for my $Task (@AllTasks) {
+            my $Success = $SchedulerDBObject->TaskDelete(
+                TaskID => $Task->{TaskID},
+            );
+            $Self->True(
+                $Success,
+                "TaskDelete - Removed scheduled task $Task->{TaskID}",
+            );
+        }
+
         my $Home           = $ConfigObject->Get('Home');
         my $Daemon         = $Home . '/bin/otrs.Daemon.pl';
         my $DaemonExitCode = 1;
@@ -276,7 +290,7 @@ $Selenium->RunTest(
             "ValueSet - $DynamicFields[1]->{DynamicFieldID} for ticket $TicketID",
         );
 
-        my $ScriptAlias = $Kernel::OM->Get('Kernel::Config')->Get('ScriptAlias');
+        my $ScriptAlias = $ConfigObject->Get('ScriptAlias');
 
         # Change resolution (desktop mode).
         $Selenium->set_window_size( 768, 1050 );
@@ -302,7 +316,7 @@ $Selenium->RunTest(
         $Selenium->find_element( '.SidebarColumn ul.ActionList a#Add',   'css' )->VerifiedClick();
         $Selenium->find_element( 'form#CalendarFrom input#CalendarName', 'css' )->send_keys($CalendarName);
         $Selenium->execute_script(
-            "return \$('#GroupID').val($GroupID).trigger('redraw.InputField').trigger('change');"
+            "\$('#GroupID').val($GroupID).trigger('redraw.InputField').trigger('change');"
         );
 
         $Selenium->find_element( 'form#CalendarFrom button#Submit', 'css' )->VerifiedClick();
@@ -317,6 +331,7 @@ $Selenium->RunTest(
         );
 
         my $AppointmentObject = $Kernel::OM->Get('Kernel::System::Calendar::Appointment');
+        my $CacheObject       = $Kernel::OM->Get('Kernel::System::Cache');
 
         my $SleepTime = 2;
 
@@ -474,21 +489,21 @@ $Selenium->RunTest(
             # Set start date module.
             if ( $Test->{Config}->{StartDate} ) {
                 $Selenium->execute_script(
-                    "return \$('#StartDate_1').val('$Test->{Config}->{StartDate}').trigger('redraw.InputField').trigger('change');"
+                    "\$('#StartDate_1').val('$Test->{Config}->{StartDate}').trigger('redraw.InputField').trigger('change');"
                 );
             }
 
             # Set end date module.
             if ( $Test->{Config}->{EndDate} ) {
                 $Selenium->execute_script(
-                    "return \$('#EndDate_1').val('$Test->{Config}->{EndDate}').trigger('redraw.InputField').trigger('change');"
+                    "\$('#EndDate_1').val('$Test->{Config}->{EndDate}').trigger('redraw.InputField').trigger('change');"
                 );
             }
 
             # Set a queue.
             if ( $Test->{Config}->{QueueID} ) {
                 $Selenium->execute_script(
-                    "return \$('#QueueID_1').val('$Test->{Config}->{QueueID}').trigger('redraw.InputField').trigger('change');"
+                    "\$('#QueueID_1').val('$Test->{Config}->{QueueID}').trigger('redraw.InputField').trigger('change');"
                 );
             }
 
@@ -496,7 +511,7 @@ $Selenium->RunTest(
             if ( $Test->{Config}->{SearchParams} ) {
                 for my $SearchParam ( sort keys %{ $Test->{Config}->{SearchParams} || {} } ) {
                     $Selenium->execute_script(
-                        "return \$('#SearchParams').val('$SearchParam').trigger('redraw.InputField').trigger('change');"
+                        "\$('#SearchParams').val('$SearchParam').trigger('redraw.InputField').trigger('change');"
                     );
                     $Selenium->find_element( '.AddButton',                  'css' )->VerifiedClick();
                     $Selenium->find_element( "#SearchParam_1_$SearchParam", 'css' )
@@ -514,7 +529,7 @@ $Selenium->RunTest(
             sleep $SleepTime;
 
             # Make sure the cache is correct.
-            $Kernel::OM->Get('Kernel::System::Cache')->CleanUp(
+            $CacheObject->CleanUp(
                 Type => "AppointmentList$Calendar{CalendarID}",
             );
 
@@ -532,8 +547,8 @@ $Selenium->RunTest(
             # Check appointment data.
             for my $Field ( sort keys %{ $Test->{Result} || {} } ) {
                 $Self->Is(
-                    $Appointment->{$Field},
-                    $Test->{Result}->{$Field},
+                    substr( $Appointment->{$Field},    0, -3 ),
+                    substr( $Test->{Result}->{$Field}, 0, -3 ),
                     "$Test->{Name} - Appointment field $Field"
                 );
             }
@@ -554,7 +569,7 @@ $Selenium->RunTest(
                 sleep $SleepTime;
 
                 # Make sure the cache is correct.
-                $Kernel::OM->Get('Kernel::System::Cache')->CleanUp(
+                $CacheObject->CleanUp(
                     Type => 'Ticket',
                 );
 
@@ -565,6 +580,14 @@ $Selenium->RunTest(
                     UserID        => 1,
                 );
                 for my $Field ( sort keys %{ $Test->{UpdateResult} || {} } ) {
+
+                    # In case of UntilTime, it can happen that there is an error of one second overall. This is
+                    #   acceptable, so in this case, divide the values with 100 and floor the result before comparing.
+                    if ( $Field eq 'UntilTime' ) {
+                        $Ticket{$Field} = sprintf( '%.0f', $Ticket{$Field} / 100 );
+                        $Test->{UpdateResult}->{$Field} = sprintf( '%.0f', $Test->{UpdateResult}->{$Field} / 100 );
+                    }
+
                     $Self->Is(
                         $Ticket{$Field},
                         $Test->{UpdateResult}->{$Field},
@@ -591,7 +614,7 @@ $Selenium->RunTest(
             sleep $SleepTime;
 
             # Make sure the cache is correct.
-            $Kernel::OM->Get('Kernel::System::Cache')->CleanUp(
+            $CacheObject->CleanUp(
                 Type => "AppointmentList$Calendar{CalendarID}",
             );
 
@@ -607,7 +630,7 @@ $Selenium->RunTest(
 
         # Stop daemon if it was started earlier in the test.
         if ( !$DaemonExitCode ) {
-            `$Daemon stop`;
+            `$^X $Daemon stop`;
 
             $Self->True(
                 1,
@@ -672,7 +695,7 @@ $Selenium->RunTest(
 
         # Make sure cache is correct.
         for my $Cache (qw(Calendar Ticket Queue Group)) {
-            $Kernel::OM->Get('Kernel::System::Cache')->CleanUp( Type => $Cache );
+            $CacheObject->CleanUp( Type => $Cache );
         }
     },
 );

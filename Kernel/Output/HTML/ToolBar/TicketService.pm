@@ -40,6 +40,8 @@ sub Run {
     my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
     return if !$ConfigObject->Get('Ticket::Service');
 
+    return if !$ConfigObject->Get('Frontend::Module')->{AgentTicketService};
+
     # Get viewable locks.
     my @ViewableLockIDs = $Kernel::OM->Get('Kernel::System::Lock')->LockViewableLock( Type => 'ID' );
 
@@ -55,6 +57,9 @@ sub Run {
         Type   => 'ro',
     );
     my @ViewableQueueIDs = sort keys %ViewableQueues;
+    if ( !@ViewableQueueIDs ) {
+        @ViewableQueueIDs = (999_999);
+    }
 
     # Get custom services.
     #   Set the service IDs to an array of non existing service ids (0).

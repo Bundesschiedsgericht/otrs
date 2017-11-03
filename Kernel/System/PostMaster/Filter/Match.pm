@@ -25,7 +25,8 @@ sub new {
     # get parser object
     $Self->{ParserObject} = $Param{ParserObject} || die "Got no ParserObject!";
 
-    $Self->{Debug} = $Param{Debug} || 0;
+    # Get communication log object.
+    $Self->{CommunicationLogObject} = $Param{CommunicationLogObject} || die "Got no CommunicationLogObject!";
 
     return $Self;
 }
@@ -36,9 +37,11 @@ sub Run {
     # check needed stuff
     for (qw(JobConfig GetParam)) {
         if ( !$Param{$_} ) {
-            $Kernel::OM->Get('Kernel::System::Log')->Log(
-                Priority => 'error',
-                Message  => "Need $_!"
+            $Self->{CommunicationLogObject}->ObjectLog(
+                ObjectLogType => 'Message',
+                Priority      => 'Error',
+                Key           => 'Kernel::System::PostMaster::Filter::Match',
+                Value         => "Need $_!",
             );
             return;
         }
@@ -83,18 +86,23 @@ sub Run {
             my $LocalMatched;
             RECIPIENTS:
             for my $Recipients (@EmailAddresses) {
+
                 my $Email = $Self->{ParserObject}->GetEmailAddress( Email => $Recipients );
+
                 if ( $Email =~ /^$SearchEmail$/i ) {
+
                     $LocalMatched = 1;
+
                     if ($SearchEmail) {
                         $MatchedResult = $SearchEmail;
                     }
-                    if ( $Self->{Debug} > 1 ) {
-                        $Kernel::OM->Get('Kernel::System::Log')->Log(
-                            Priority => 'debug',
-                            Message  => "$Prefix'$Param{GetParam}->{$Key}' =~ /$Value/i matched!",
-                        );
-                    }
+                    $Self->{CommunicationLogObject}->ObjectLog(
+                        ObjectLogType => 'Message',
+                        Priority      => 'Debug',
+                        Key           => 'Kernel::System::PostMaster::Filter::Match',
+                        Value         => "$Prefix'$Param{GetParam}->{$Key}' =~ /$Value/i matched!",
+                    );
+
                     last RECIPIENTS;
                 }
             }
@@ -112,24 +120,28 @@ sub Run {
             # don't lose older match values if more than one header is
             # used for matching.
             $Matched = 1;
+
             if ($1) {
                 $MatchedResult = $1;
             }
-            if ( $Self->{Debug} > 1 ) {
-                $Kernel::OM->Get('Kernel::System::Log')->Log(
-                    Priority => 'debug',
-                    Message  => "$Prefix'$Param{GetParam}->{$Key}' =~ /$Value/i matched!",
-                );
-            }
+
+            $Self->{CommunicationLogObject}->ObjectLog(
+                ObjectLogType => 'Message',
+                Priority      => 'Debug',
+                Key           => 'Kernel::System::PostMaster::Filter::Match',
+                Value         => "$Prefix'$Param{GetParam}->{$Key}' =~ /$Value/i matched!",
+            );
         }
         else {
+
             $MatchedNot = 1;
-            if ( $Self->{Debug} > 1 ) {
-                $Kernel::OM->Get('Kernel::System::Log')->Log(
-                    Priority => 'debug',
-                    Message  => "$Prefix'$Param{GetParam}->{$Key}' =~ /$Value/i matched NOT!",
-                );
-            }
+
+            $Self->{CommunicationLogObject}->ObjectLog(
+                ObjectLogType => 'Message',
+                Priority      => 'Debug',
+                Key           => 'Kernel::System::PostMaster::Filter::Match',
+                Value         => "$Prefix'$Param{GetParam}->{$Key}' =~ /$Value/i matched NOT!",
+            );
         }
     }
 
@@ -142,19 +154,22 @@ sub Run {
             $Value =~ s/\[\*\*\*\]/$MatchedResult/;
             $Param{GetParam}->{$Key} = $Value;
 
-            $Kernel::OM->Get('Kernel::System::Log')->Log(
-                Priority => 'notice',
-                Message  => $Prefix
-                    . "Set param '$Key' to '$Value' (Message-ID: $Param{GetParam}->{'Message-ID'}) ",
+            $Self->{CommunicationLogObject}->ObjectLog(
+                ObjectLogType => 'Message',
+                Priority      => 'Notice',
+                Key           => 'Kernel::System::PostMaster::Filter::Match',
+                Value => $Prefix . "Set param '$Key' to '$Value' (Message-ID: $Param{GetParam}->{'Message-ID'})",
             );
         }
 
         # stop after match
         if ($StopAfterMatch) {
-            $Kernel::OM->Get('Kernel::System::Log')->Log(
-                Priority => 'notice',
-                Message  => $Prefix
-                    . "Stopped filter processing because of used 'StopAfterMatch' (Message-ID: $Param{GetParam}->{'Message-ID'}) ",
+            $Self->{CommunicationLogObject}->ObjectLog(
+                ObjectLogType => 'Message',
+                Priority      => 'Notice',
+                Key           => 'Kernel::System::PostMaster::Filter::Match',
+                Value         => $Prefix
+                    . "Stopped filter processing because of used 'StopAfterMatch' (Message-ID: $Param{GetParam}->{'Message-ID'})",
             );
             return 1;
         }

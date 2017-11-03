@@ -154,7 +154,6 @@ sub Run {
 
                 my %Index = $BackendObject->ArticleAttachmentIndex(
                     ArticleID        => $Param{Data}->{ArticleID},
-                    UserID           => $Param{UserID},
                     ExcludePlainText => 1,
                     ExcludeHTMLBody  => 1,
                 );
@@ -164,7 +163,6 @@ sub Run {
                         my %Attachment = $BackendObject->ArticleAttachment(
                             ArticleID => $Param{Data}->{ArticleID},
                             FileID    => $FileID,
-                            UserID    => $Param{UserID},
                         );
                         next FILE_ID if !%Attachment;
                         push @Attachments, \%Attachment;
@@ -182,14 +180,14 @@ sub Run {
 
         my @NotificationBundle;
 
-        # get template generator object;
+        # get template generator object
         my $TemplateGeneratorObject = $Kernel::OM->Get('Kernel::System::TemplateGenerator');
 
         # parse all notification tags for each user
         for my $Recipient (@RecipientUsers) {
 
             my %ReplacedNotification = $TemplateGeneratorObject->NotificationEvent(
-                TicketID              => $Param{Data}->{TicketID},
+                TicketData            => \%Ticket,
                 Recipient             => $Recipient,
                 Notification          => \%Notification,
                 CustomerMessageParams => $Param{Data}->{CustomerMessageParams},
@@ -332,7 +330,7 @@ sub Run {
 
                 # replace all notification tags for each special recipient
                 my %ReplacedNotification = $TemplateGeneratorObject->NotificationEvent(
-                    TicketID              => $Param{Data}->{TicketID},
+                    TicketData            => \%Ticket,
                     Recipient             => $Recipient,
                     Notification          => \%Notification,
                     CustomerMessageParams => $Param{Data}->{CustomerMessageParams} || {},
@@ -399,6 +397,7 @@ sub _NotificationFilter {
     KEY:
     for my $Key ( sort keys %{ $Notification{Data} } ) {
 
+        # TODO: This function here should be fixed to not use hardcoded attribute values!
         # ignore not ticket related attributes
         next KEY if $Key eq 'Recipients';
         next KEY if $Key eq 'SkipRecipients';
@@ -429,8 +428,8 @@ sub _NotificationFilter {
         # ignore article searchable fields
         next KEY if $ArticleSearchableFields{$Key};
 
-        # check recipient fields from transport methods
-        if ( $Key =~ m{\A Recipient}xms ) {
+        # skip transport related attributes
+        if ( $Key =~ m{ \A ( Recipient | Transport ) }xms ) {
             next KEY;
         }
 
@@ -518,7 +517,6 @@ sub _NotificationFilter {
         my %Article = $BackendObject->ArticleGet(
             TicketID      => $Param{Data}->{TicketID},
             ArticleID     => $Param{Data}->{ArticleID},
-            UserID        => $Param{UserID},
             DynamicFields => 0,
         );
 
@@ -625,10 +623,9 @@ sub _RecipientsGet {
 
             if (
                 $Recipient
-                =~ /^Agent(Owner|Responsible|Watcher|WritePermissions|MyQueues|MyServices|MyQueuesMyServices)$/
+                =~ /^Agent(Owner|Responsible|Watcher|WritePermissions|MyQueues|MyServices|MyQueuesMyServices|CreateBy)$/
                 )
             {
-
                 if ( $Recipient eq 'AgentOwner' ) {
                     push @{ $Notification{Data}->{RecipientAgents} }, $Ticket{OwnerID};
                 }
@@ -730,6 +727,20 @@ sub _RecipientsGet {
 
                     push @{ $Notification{Data}->{RecipientAgents} }, @UserIDs;
                 }
+                elsif ( $Recipient eq 'AgentCreateBy' ) {
+
+                    # Check if the first article was created by an agent.
+                    my @Articles = $ArticleObject->ArticleList(
+                        TicketID   => $Param{Data}->{TicketID},
+                        SenderType => 'agent',
+                        OnlyFirst  => 1,
+                    );
+
+                    if ( $Articles[0] && $Articles[0]->{ArticleNumber} == 1 ) {
+                        push @{ $Notification{Data}->{RecipientAgents} }, $Ticket{CreateBy};
+                    }
+
+                }
             }
 
             # Other OTRS packages might add other kind of recipients that are normally handled by
@@ -752,7 +763,6 @@ sub _RecipientsGet {
                     %CustomerArticle = $ArticleObject->BackendForArticle( %{$Article} )->ArticleGet(
                         %{$Article},
                         DynamicFields => 0,
-                        UserID        => $Param{UserID},
                     );
                 }
 
@@ -777,7 +787,6 @@ sub _RecipientsGet {
                         %AgentArticle = $ArticleObject->BackendForArticle( %{$Article} )->ArticleGet(
                             %{$Article},
                             DynamicFields => 0,
-                            UserID        => $Param{UserID},
                         );
                     }
 
@@ -897,121 +906,10 @@ sub _RecipientsGet {
                     %Article = $ArticleBackend->ArticleGet(
                         %{ $MetaArticles[0] },
                         DynamicFields => 0,
-                        UserID        => $Param{UserID},
                     );
                 }
 
                 if ( !%Article ) {
-                    next RECIPIENT;
-                }
-
-                my %Recipient;
-                my @AllRecipients;
-                my @TmpRecipients;
-                my @TmpRecipientAgents;
-                my @RecipientAgents;
-
-                # Get recipient agents to prevent multiple notifications
-                if ( IsArrayRefWithData( $Notification{Data}->{RecipientAgents} ) ) {
-                    @RecipientAgents = @{ $Notification{Data}->{RecipientAgents} };
-                }
-
-                if (@RecipientAgents) {
-                    for my $UserID (@RecipientAgents) {
-
-                        my %User = $UserObject->GetUserData(
-                            UserID => $UserID,
-                        );
-
-                        push @TmpRecipientAgents, $User{UserEmail};
-                    }
-                }
-
-                # Get all recipients from the article.
-                ALLRECIPIENTS:
-                for my $Header (qw(From To Cc)) {
-
-                    next ALLRECIPIENTS if !$Article{$Header};
-
-                    push @TmpRecipients, split ',', $Article{$Header};
-                }
-
-                # Loop through recipients.
-                EMAIL:
-                for my $Email ( Mail::Address->parse(@TmpRecipients) ) {
-
-                    # Skip notification if email address is already used by other groups.
-                    next EMAIL if grep { $_ eq $Email->address() } @RecipientUserEmails;
-
-                    # Validate email address.
-                    my $Valid = $CheckItemObject->CheckEmail(
-                        Address => $Email->address(),
-                    );
-
-                    # Skip invalid.
-                    next EMAIL if !$Valid;
-
-                    # Check if email address is a local.
-                    my $IsLocal = $SystemAddressObject->SystemAddressIsLocalAddress(
-                        Address => $Email->address(),
-                    );
-
-                    # Skip local email address.
-                    next EMAIL if $IsLocal;
-
-                    # Skip email addresses from agents selected by other groups.
-                    next EMAIL if grep { $_ eq $Email->address() } @TmpRecipientAgents;
-
-                    push @AllRecipients, $Email->address();
-
-                    # Push Email Addresses into array to prevent multiple notifications.
-                    push @RecipientUserEmails, $Email->address();
-                }
-
-                # Merge recipients.
-                $Recipient{UserEmail} = join( ',', @AllRecipients );
-
-                $Recipient{Type} = 'Customer';
-
-                # Get user language.
-                $Recipient{Language} = $ConfigObject->Get('DefaultLanguage') || 'en';
-
-                push @RecipientUsers, \%Recipient;
-            }
-            elsif ( $Recipient eq 'AllRecipientsFirstArticle' || $Recipient eq 'AllRecipientsLastArticle' ) {
-
-                my @Articles = $ArticleObject->ArticleList(
-                    TicketID             => $Param{Data}->{TicketID},
-                    CommunicationChannel => 'Email',
-                );
-
-                # Filter out system articles.
-                @Articles = grep { $_->{SenderType} ne 'system' } @Articles;
-
-                my %Article;
-
-                # Get the first or the last article.
-                if ( $Recipient eq 'AllRecipientsFirstArticle' ) {
-                    %Article = $ArticleObject->BackendForArticle( $Articles[0] )->ArticleGet(
-                        %{ $Articles[0] },
-                        DynamicFields => 0,
-                        UserID        => $Param{UserID},
-                    );
-                }
-                elsif ( $Recipient eq 'AllRecipientsLastArticle' ) {
-                    %Article = $ArticleObject->BackendForArticle( $Articles[-1] )->ArticleGet(
-                        %{ $Articles[-1] },
-                        DynamicFields => 0,
-                        UserID        => $Param{UserID},
-                    );
-                }
-
-                if ( !%Article ) {
-                    $Kernel::OM->Get('Kernel::System::Log')->Log(
-                        Priority => 'info',
-                        Message  => 'Send no notification to the '
-                            . "$Recipient group because no suitable article was found!",
-                    );
                     next RECIPIENT;
                 }
 

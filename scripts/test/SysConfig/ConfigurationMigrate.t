@@ -84,12 +84,16 @@ for my $Settings ( @{$PreModifiedSettings} ) {
         NoValidation      => 1,
         UserID            => 1,
     );
+
+    $Self->True(
+        $Result{Success},
+        "Setting $Settings->{Name} was updated successfully.",
+    );
     $SysConfigObject->SettingUnlock(
         Name => $Settings->{Name},
     );
     my %Setting = $SysConfigObject->SettingGet(
-        Name    => $Settings->{Name},
-        Default => 0,
+        Name => $Settings->{Name},
     );
     $Self->Is(
         $Setting{EffectiveValue},
@@ -98,8 +102,52 @@ for my $Settings ( @{$PreModifiedSettings} ) {
     );
 }
 
-# migrate
+# migrate package setting
 my $Success = $Kernel::OM->Get('Kernel::System::SysConfig::Migration')->MigrateConfigEffectiveValues(
+    FileClass       => $TestFileClass,
+    FilePath        => $TestLocation,
+    PackageSettings => [
+        'SessionAgentOnlineThreshold',
+    ],
+    PackageLookupNewConfigName => {
+        'SessionAgentOnlineThreshold' => 'ChatEngine::AgentOnlineThreshold'
+    },
+    ReturnMigratedSettingsCounts => 1,
+);
+
+$Self->True(
+    $Success,
+    "Config was successfully migrated from otrs5 to 6."
+);
+
+# RebuildConfig
+my $Rebuild = $SysConfigObject->ConfigurationDeploy(
+    Comments => "UnitTest Configuration Rebuild",
+    Force    => 1,
+    UserID   => 1,
+);
+
+$Self->True(
+    $Rebuild,
+    "Setting Deploy was successfull."
+);
+
+my %ValueOld = $Kernel::OM->Get('Kernel::System::SysConfig')->SettingGet( Name => 'ChatEngine::AgentOnlineThreshold' );
+my %ValueNew = $Kernel::OM->Get('Kernel::System::SysConfig')->SettingGet( Name => 'SessionAgentOnlineThreshold' );
+
+$Self->False(
+    $ValueOld{EffectiveValue},
+    "TEST ChatEngine::AgentOnlineThreshold: ChatEngine::AgentOnlineThreshold is invalid.",
+);
+
+$Self->Is(
+    $ValueNew{EffectiveValue},
+    10,
+    "TEST SessionAgentOnlineThreshold: Value for SessionAgentOnlineThreshold is correct",
+);
+
+# migrate
+$Success = $Kernel::OM->Get('Kernel::System::SysConfig::Migration')->MigrateConfigEffectiveValues(
     FileClass                    => $TestFileClass,
     FilePath                     => $TestLocation,
     ReturnMigratedSettingsCounts => 1,
@@ -112,6 +160,7 @@ $Self->True(
 if ( ref $Success eq 'HASH' ) {
 
     my $AllSettingsCount      = $Success->{AllSettingsCount};
+    my $DisabledSettingsCount = $Success->{DisabledSettingsCount};
     my @MissingSettings       = @{ $Success->{MissingSettings} };
     my @UnsuccessfullSettings = @{ $Success->{UnsuccessfullSettings} };
 
@@ -119,12 +168,17 @@ if ( ref $Success eq 'HASH' ) {
         {
             Name        => 'AllSettingsCount',
             IsValue     => $AllSettingsCount,
-            ShouldValue => 42,
+            ShouldValue => 47,
+        },
+        {
+            Name        => 'DisabledSettingsCount',
+            IsValue     => $DisabledSettingsCount,
+            ShouldValue => 3,
         },
         {
             Name        => 'MissingSettings',
             IsValue     => scalar @MissingSettings,
-            ShouldValue => 1,
+            ShouldValue => 2,
         },
         {
             Name        => 'UnsuccessfullSettings',
@@ -150,13 +204,10 @@ else {
 }
 
 # RebuildConfig
-my $Rebuild = $SysConfigObject->ConfigurationDeploy(
+$Rebuild = $SysConfigObject->ConfigurationDeploy(
     Comments => "UnitTest Configuration Rebuild",
-
-    # AllSettings  => 1,
-    # Force        => 1,
-    # NoValidation => 1,
-    UserID => 1,
+    Force    => 1,
+    UserID   => 1,
 );
 
 $Self->True(
@@ -179,6 +230,30 @@ my @Tests = (
         NewName  => 'Frontend::NotifyModule###8000-Daemon-Check',
     },
     {
+        TestType => 'Renaming',
+        Name     => 'Renamed Setting 3',
+        OldName  => 'CustomerCompany::EventModulePost###110-UpdateTickets',
+        NewName  => 'CustomerCompany::EventModulePost###2300-UpdateTickets',
+    },
+    {
+        TestType => 'Disabled',
+        Name     => 'Disabled Setting',
+        Key      => 'PreferencesGroups###Comment',
+    },
+    {
+        TestType => 'Disabled',
+        Name     => 'Disabled renamed setting',
+        Key      => 'Ticket::EventModulePost###9700-GenericAgent',
+    },
+    {
+        TestType => 'Disabled',
+        Name     => 'Disabled setting with two sub levels',
+        Key      => 'Ticket::Frontend::AgentTicketSearch###Defaults###Fulltext',
+    },
+
+    # There are other renamed settings, this are included AllSetings,
+    #   and should not add any results in the MissingSettings above.
+    {
         TestType      => 'PreChanged',
         Name          => 'Was changed before 1',
         Key           => 'ProductName',
@@ -192,16 +267,16 @@ for my $TestData (@Tests) {
     next TESTS if !$TestData->{TestType};
 
     if ( $TestData->{TestType} eq 'Renaming' ) {
-        my $ValueOld = $Kernel::OM->Get('Kernel::System::SysConfig')->SettingGet( Name => $TestData->{OldName} );
-        my $ValueNew = $Kernel::OM->Get('Kernel::System::SysConfig')->SettingGet( Name => $TestData->{NewName} );
+        my %ValueOld = $Kernel::OM->Get('Kernel::System::SysConfig')->SettingGet( Name => $TestData->{OldName} );
+        my %ValueNew = $Kernel::OM->Get('Kernel::System::SysConfig')->SettingGet( Name => $TestData->{NewName} );
 
         $Self->False(
-            $ValueOld,
+            $ValueOld{EffectiveValue},
             "TEST $TestData->{Name}: $TestData->{OldName} is invalid.",
         );
 
         $Self->True(
-            $ValueNew,
+            $ValueNew{EffectiveValue},
             "TEST $TestData->{Name}: Value for $TestData->{NewName} found.",
         );
     }
@@ -212,6 +287,15 @@ for my $TestData (@Tests) {
             $Setting{EffectiveValue},
             $TestData->{ChangedValue},
             "TEST $TestData->{Name}: Value was changed before migration an not touched."
+        );
+    }
+    elsif ( $TestData->{TestType} eq 'Disabled' ) {
+        my %Setting = $Kernel::OM->Get('Kernel::System::SysConfig')->SettingGet( Name => $TestData->{Key} );
+
+        $Self->Is(
+            $Setting{IsValid},
+            0,
+            "TEST $TestData->{Name}: Setting is disabled."
         );
     }
 }

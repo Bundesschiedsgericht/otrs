@@ -100,6 +100,12 @@ sub Run {
         # challenge token check for write action
         $LayoutObject->ChallengeTokenCheck();
 
+        # TODO:
+        # Events, IsVisibleForCustomer, ArticleSenderTypeID, ArticleIsVisibleForCustomer,
+        # ArticleCommunicationChannelID, Transports are used twice! Why? See below.
+        # The same is done in the other subactions.
+        # Also check each transport (Email, SMS, Webview) template file for duplicate ids like IsVisibleForCustomer!
+
         my %GetParam;
         for my $Parameter (
             @ArticleSearchableFieldsKeys,
@@ -126,6 +132,8 @@ sub Run {
             $GetParam{Data}->{$Parameter} = \@Data;
         }
 
+        my $Error;
+
         # get the subject and body for all languages
         for my $LanguageID ( @{ $GetParam{Data}->{LanguageID} } ) {
 
@@ -141,9 +149,11 @@ sub Run {
             # set server error flag if field is empty
             if ( !$Subject ) {
                 $GetParam{ $LanguageID . '_SubjectServerError' } = "ServerError";
+                $Error = 1;
             }
-            if ( !$Body ) {
+            if ( !$Body || length $Body > 4000 ) {
                 $GetParam{ $LanguageID . '_BodyServerError' } = "ServerError";
+                $Error = 1;
             }
         }
 
@@ -235,7 +245,7 @@ sub Run {
 
         # required Article filter only on ArticleCreate and ArticleSend event
         # if isn't selected at least one of the article filter fields, notification isn't updated
-        if ( !$ArticleFilterMissing ) {
+        if ( !$ArticleFilterMissing && !$Error ) {
 
             $Ok = $NotificationEventObject->NotificationUpdate(
                 %GetParam,
@@ -253,7 +263,7 @@ sub Run {
             {
                 my $ID = $ParamObject->GetParam( Param => 'ID' ) || '';
                 return $LayoutObject->Redirect(
-                    OP => "Action=$Self->{Action};Subaction=Change;ID=$ID;Notification=Update"
+                    OP => "Action=$Self->{Action};Subaction=Change;ID=$ID;Notification=Update",
                 );
             }
             else {
@@ -355,6 +365,8 @@ sub Run {
             $GetParam{Data}->{$Parameter} = \@Data;
         }
 
+        my $Error;
+
         # get the subject and body for all languages
         for my $LanguageID ( @{ $GetParam{Data}->{LanguageID} } ) {
 
@@ -370,9 +382,11 @@ sub Run {
             # set server error flag if field is empty
             if ( !$Subject ) {
                 $GetParam{ $LanguageID . '_SubjectServerError' } = "ServerError";
+                $Error = 1;
             }
-            if ( !$Body ) {
+            if ( !$Body || length $Body > 4000 ) {
                 $GetParam{ $LanguageID . '_BodyServerError' } = "ServerError";
+                $Error = 1;
             }
         }
 
@@ -464,7 +478,7 @@ sub Run {
 
         # required Article filter only on ArticleCreate and Article Send event
         # if isn't selected at least one of the article filter fields, notification isn't added
-        if ( !$ArticleFilterMissing ) {
+        if ( !$ArticleFilterMissing && !$Error ) {
             $ID = $NotificationEventObject->NotificationAdd(
                 %GetParam,
                 UserID => $Self->{UserID},
@@ -730,6 +744,8 @@ sub Run {
             Data         => \%Param,
         );
         $Output .= $LayoutObject->Footer();
+
+        return $Output;
     }
 
     # ------------------------------------------------------------
@@ -750,6 +766,7 @@ sub Run {
         return $Output;
     }
 
+    return;
 }
 
 sub _Edit {
@@ -775,6 +792,7 @@ sub _Edit {
 
     $Param{RecipientsStrg} = $LayoutObject->BuildSelection(
         Data => {
+            AgentCreateBy             => Translatable('Agent who created the ticket'),
             AgentOwner                => Translatable('Agent who owns the ticket'),
             AgentResponsible          => Translatable('Agent who is responsible for the ticket'),
             AgentWatcher              => Translatable('All agents watching the ticket'),
@@ -1275,12 +1293,26 @@ sub _Edit {
     # set once per day checked value
     $Param{OncePerDayChecked} = ( $Param{Data}->{OncePerDay} ? 'checked="checked"' : '' );
 
+    my $OTRSBusinessObject      = $Kernel::OM->Get('Kernel::System::OTRSBusiness');
+    my $OTRSBusinessIsInstalled = $OTRSBusinessObject->OTRSBusinessIsInstalled();
+
+    # Third option is enabled only when OTRSBusiness is installed in the system.
     $Param{VisibleForAgentStrg} = $LayoutObject->BuildSelection(
-        Data => {
-            0 => Translatable('No'),
-            1 => Translatable('Yes'),
-            2 => Translatable('Yes, but require at least one active notification method'),
-        },
+        Data => [
+            {
+                Key   => '0',
+                Value => Translatable('No'),
+            },
+            {
+                Key   => '1',
+                Value => Translatable('Yes'),
+            },
+            {
+                Key      => '2',
+                Value    => Translatable('Yes, but require at least one active notification method.'),
+                Disabled => $OTRSBusinessIsInstalled ? 0 : 1,
+            }
+        ],
         Name       => 'VisibleForAgent',
         Sort       => 'NumericKey',
         Size       => 1,
@@ -1298,8 +1330,7 @@ sub _Edit {
 
     if ( IsHashRefWithData( \%RegisteredTransports ) ) {
 
-        my $MainObject         = $Kernel::OM->Get('Kernel::System::Main');
-        my $OTRSBusinessObject = $Kernel::OM->Get('Kernel::System::OTRSBusiness');
+        my $MainObject = $Kernel::OM->Get('Kernel::System::Main');
 
         TRANSPORT:
         for my $Transport (
@@ -1335,7 +1366,7 @@ sub _Edit {
                 if (
                     defined $RegisteredTransports{$Transport}->{IsOTRSBusinessTransport}
                     && $RegisteredTransports{$Transport}->{IsOTRSBusinessTransport} eq '1'
-                    && !$OTRSBusinessObject->OTRSBusinessIsInstalled()
+                    && !$OTRSBusinessIsInstalled
                     )
                 {
 
@@ -1352,45 +1383,69 @@ sub _Edit {
                 next TRANSPORT;
             }
             else {
-                my $TransportChecked = '';
-                if ( grep { $_ eq $Transport } @{ $Param{Data}->{Transports} } ) {
-                    $TransportChecked = 'checked="checked"';
+
+                my $TransportObject = $Kernel::OM->Get( $RegisteredTransports{$Transport}->{Module} );
+
+                my $IsActive = 1;
+
+                # Check only if function is available due backwards compatibility.
+                if ( $TransportObject->can('IsActive') ) {
+                    $IsActive = $TransportObject->IsActive();
                 }
 
-                # set Email transport selected on add screen
-                if ( $Transport eq 'Email' && !$Param{ID} ) {
-                    $TransportChecked = 'checked="checked"'
-                }
+                if ($IsActive) {
 
-                # get transport settings string from transport object
-                my $TransportSettings =
-                    $Kernel::OM->Get( $RegisteredTransports{$Transport}->{Module} )->TransportSettingsDisplayGet(
-                    %Param,
+                    my $TransportChecked = '';
+                    if ( grep { $_ eq $Transport } @{ $Param{Data}->{Transports} } ) {
+                        $TransportChecked = 'checked="checked"';
+                    }
+
+                    # set Email transport selected on add screen
+                    if ( $Transport eq 'Email' && !$Param{ID} ) {
+                        $TransportChecked = 'checked="checked"'
+                    }
+
+                    # get transport settings string from transport object
+                    my $TransportSettings =
+                        $TransportObject->TransportSettingsDisplayGet(
+                        %Param,
+                        );
+
+                    # it should decide if the default value for the
+                    # notification on AgentPreferences is enabled or not
+                    my $AgentEnabledByDefault = 0;
+                    if ( grep { $_ eq $Transport } @{ $Param{Data}->{AgentEnabledByDefault} } ) {
+                        $AgentEnabledByDefault = 1;
+                    }
+                    elsif ( !$Param{ID} && defined $RegisteredTransports{$Transport}->{AgentEnabledByDefault} ) {
+                        $AgentEnabledByDefault = $RegisteredTransports{$Transport}->{AgentEnabledByDefault};
+                    }
+                    my $AgentEnabledByDefaultChecked = ( $AgentEnabledByDefault ? 'checked="checked"' : '' );
+
+                    # transport
+                    $LayoutObject->Block(
+                        Name => 'TransportRowEnabled',
+                        Data => {
+                            Transport                    => $Transport,
+                            TransportName                => $RegisteredTransports{$Transport}->{Name},
+                            TransportChecked             => $TransportChecked,
+                            SettingsString               => $TransportSettings,
+                            AgentEnabledByDefaultChecked => $AgentEnabledByDefaultChecked,
+                            TransportsServerError        => $Param{TransportsServerError},
+                        },
                     );
-
-                # it should decide if the default value for the
-                # notification on AgentPreferences is enabled or not
-                my $AgentEnabledByDefault = 0;
-                if ( grep { $_ eq $Transport } @{ $Param{Data}->{AgentEnabledByDefault} } ) {
-                    $AgentEnabledByDefault = 1;
                 }
-                elsif ( !$Param{ID} && defined $RegisteredTransports{$Transport}->{AgentEnabledByDefault} ) {
-                    $AgentEnabledByDefault = $RegisteredTransports{$Transport}->{AgentEnabledByDefault};
-                }
-                my $AgentEnabledByDefaultChecked = ( $AgentEnabledByDefault ? 'checked="checked"' : '' );
+                else {
 
-                # transport
-                $LayoutObject->Block(
-                    Name => 'TransportRowEnabled',
-                    Data => {
-                        Transport                    => $Transport,
-                        TransportName                => $RegisteredTransports{$Transport}->{Name},
-                        TransportChecked             => $TransportChecked,
-                        SettingsString               => $TransportSettings,
-                        AgentEnabledByDefaultChecked => $AgentEnabledByDefaultChecked,
-                        TransportsServerError        => $Param{TransportsServerError},
-                    },
-                );
+                    # This trasnport needs to be active before use it.
+                    $LayoutObject->Block(
+                        Name => 'TransportRowNotActive',
+                        Data => {
+                            Transport     => $Transport,
+                            TransportName => $RegisteredTransports{$Transport}->{Name},
+                        },
+                    );
+                }
 
             }
 
@@ -1436,10 +1491,10 @@ sub _Overview {
 
         # get valid list
         my %ValidList = $Kernel::OM->Get('Kernel::System::Valid')->ValidList();
-        for ( sort { $List{$a} cmp $List{$b} } keys %List ) {
+        for my $NotificationID ( sort { $List{$a} cmp $List{$b} } keys %List ) {
 
             my %Data = $NotificationEventObject->NotificationGet(
-                ID => $_,
+                ID => $NotificationID,
             );
             $LayoutObject->Block(
                 Name => 'OverviewResultRow',

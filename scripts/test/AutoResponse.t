@@ -17,6 +17,8 @@ my $ConfigObject        = $Kernel::OM->Get('Kernel::Config');
 my $AutoResponseObject  = $Kernel::OM->Get('Kernel::System::AutoResponse');
 my $SystemAddressObject = $Kernel::OM->Get('Kernel::System::SystemAddress');
 my $QueueObject         = $Kernel::OM->Get('Kernel::System::Queue');
+my $MailQueueObject     = $Kernel::OM->Get('Kernel::System::MailQueue');
+my $ArticleObject       = $Kernel::OM->Get('Kernel::System::Ticket::Article');
 
 # get helper object
 $Kernel::OM->ObjectParamAdd(
@@ -84,9 +86,11 @@ $Self->True(
 
 # add system address
 my $SystemAddressNameRand = 'SystemAddress' . $HelperObject->GetRandomID();
+my $SystemAddressEmail    = $SystemAddressNameRand . '@example.com';
+my $SystemAddressRealname = "$SystemAddressNameRand, $SystemAddressNameRand";
 my $SystemAddressID       = $SystemAddressObject->SystemAddressAdd(
-    Name     => $SystemAddressNameRand . '@example.com',
-    Realname => $SystemAddressNameRand,
+    Name     => $SystemAddressEmail,
+    Realname => $SystemAddressRealname,
     ValidID  => 1,
     QueueID  => $QueueID,
     Comment  => 'Some Comment',
@@ -126,11 +130,11 @@ for my $TypeID ( sort keys %AutoResponseType ) {
             ContentType => 'text/html',
             ValidID     => 2,
         },
-        ExpextedData => {
+        ExpectedData => {
             AutoResponseID => '',
-            Address        => $SystemAddressNameRand . '@example.com',
-            Realname       => $SystemAddressNameRand,
-            }
+            Address        => $SystemAddressEmail,
+            Realname       => $SystemAddressRealname,
+        },
     );
 
     # add auto response
@@ -140,7 +144,7 @@ for my $TypeID ( sort keys %AutoResponseType ) {
     );
 
     # this will be used later to test function AutoResponseGetByTypeQueueID()
-    $Tests{ExpextedData}{AutoResponseID} = $AutoResponseID;
+    $Tests{ExpectedData}{AutoResponseID} = $AutoResponseID;
 
     $Self->True(
         $AutoResponseID,
@@ -214,7 +218,7 @@ for my $TypeID ( sort keys %AutoResponseType ) {
     for my $Item (qw/AutoResponseID Address Realname/) {
         $Self->Is(
             $AutoResponseData{$Item} || '',
-            $Tests{ExpextedData}{$Item},
+            $Tests{ExpectedData}{$Item},
             "AutoResponseGetByTypeQueueID() - $Item",
         );
     }
@@ -297,16 +301,29 @@ for my $TypeID ( sort keys %AutoResponseType ) {
             "Second article created."
         );
 
-        # check that email was sent
-        my $Emails = $TestEmailObject->EmailsGet();
+        # Auto response create a new article, so we need to get the article id generated
+        #   - supposedly it should be the last created article for the ticket.
+        my @Articles = $ArticleObject->ArticleList(
+            TicketID => $TicketID,
+            OnlyLast => 1,
+        );
+
+        # Get the mail queue element.
+        my $MailQueueElement = $MailQueueObject->Get( ArticleID => $Articles[0]->{ArticleID} );
 
         # Make sure that auto-response is not sent to the customer (in CC) - See bug#12293
         $Self->IsDeeply(
-            $Emails->[0]->{ToArray},
+            $MailQueueElement->{Recipient},
             [
                 'otrs@example.com'
             ],
             'Check AutoResponse recipients.'
+        );
+
+        # Check From header line if it was quoted correctly, please see bug#13130 for more information.
+        $Self->True(
+            ( $MailQueueElement->{Message}->{Header} =~ m{^From:\s+"$Tests{ExpectedData}->{Realname}"}sm ) // 0,
+            'Check From header line quoting'
         );
     }
 

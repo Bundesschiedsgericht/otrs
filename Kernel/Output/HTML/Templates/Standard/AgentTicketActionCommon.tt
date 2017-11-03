@@ -15,6 +15,9 @@
     <input type="hidden" name="ReplyToArticle" value="[% Data.ReplyToArticle | html %]"/>
     <input type="hidden" name="Expand" id="Expand" value=""/>
     <input type="hidden" name="FormID" value="[% Data.FormID | html %]"/>
+    <input type="hidden" name="FormDraftTitle" value="[% Data.FormDraftTitle | html %]"/>
+    <input type="hidden" name="FormDraftID" value="[% Data.FormDraftID | html %]"/>
+    <input type="hidden" name="FormDraftAction" id="FormDraftAction" />
 
     <div class="LayoutPopup ARIARoleMain">
         <div class="Header">
@@ -60,7 +63,7 @@
 
         </div>
         <div class="Content">
-
+            [% INCLUDE "FormElements/DraftNotifications.tt" %]
 [% RenderBlockStart("WidgetTicketActions") %]
             <div class="WidgetSimple Expanded">
                 <div class="Header">
@@ -323,7 +326,7 @@
 [% RenderBlockEnd("InvolvedAgent") %]
                             <div class="Field">
                                 <p class="FieldExplanation">
-                                    [% Translate("Here you can select additional agents which should receive a notification regarding the new article.") %]
+                                    [% Translate("Here you can select additional agents which should receive a notification regarding the new article.") | html %]
                                 </p>
                             </div>
                         </fieldset>
@@ -371,7 +374,7 @@
                             <label for="StandardTemplateID">[% Translate("Text Template") | html %]:</label>
                             <div class="Field">
                                 [% Data.StandardTemplateStrg %]
-                                <p class="FieldExplanation">[% Translate("Setting a template will overwrite any text or attachment.") %]</p>
+                                <p class="FieldExplanation">[% Translate("Setting a template will overwrite any text or attachment.") | html %]</p>
                             </div>
                             <div class="Clear"></div>
 [% RenderBlockEnd("StandardTemplate") %]
@@ -390,21 +393,9 @@
                             </div>
                             <div class="Clear"></div>
 
-                            <label>[% Translate("Attachment") | html %]:</label>
+                            <label>[% Translate("Attachments") | html %]:</label>
                             <div class="Field">
-                                <ul>
-[% RenderBlockStart("Attachment") %]
-                                    <li>
-                                        <button type="button" id="AttachmentDeleteButton[% Data.FileID | html %]" name="AttachmentDeleteButton[% Data.FileID | html %]" value="[% Translate("Delete") | html %]" class="SpacingRight CallForAction Inline Small"><span>[% Translate("Delete") | html %]</span></button>
-                                        <input type="hidden" id="AttachmentDelete[% Data.FileID | html %]" name="AttachmentDelete[% Data.FileID | html %]" />
-                                        [% Data.Filename | html %] ([% Data.Filesize | Localize('Filesize') | html %])
-                                    </li>
-[% RenderBlockEnd("Attachment") %]
-                                    <li>
-                                        <input name="FileUpload" id="FileUpload" type="file" size="40"/>
-                                        <input type="hidden" id="AttachmentUpload" name="AttachmentUpload" value="0" />
-                                    </li>
-                                </ul>
+[% INCLUDE "FormElements/AttachmentList.tt" %]
                             </div>
                             <div class="Clear"></div>
 
@@ -452,7 +443,10 @@
 
             </div>
             <div class="Footer">
-                <button class="CallForAction Primary" id="submitRichText" accesskey="g" title="[% Translate("Submit") | html %] (g)" type="submit" value="[% Translate("Submit") | html %]"><span><i class="fa fa-check-square-o"></i> [% Translate("Submit") | html %]</span></button>
+                <button class="CallForAction Primary" id="submitRichText" accesskey="g" title="[% Translate("Submit") | html %] (g)" type="submit" value="[% Translate("Submit") | html %]">
+                    <span><i class="fa fa-check-square-o"></i> [% Translate("Submit") | html %]</span>
+                </button>
+                [% INCLUDE "FormElements/DraftButtons.tt" %]
             </div>
         </div>
     </form>

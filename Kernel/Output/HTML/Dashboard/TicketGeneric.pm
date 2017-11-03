@@ -730,8 +730,8 @@ sub Run {
                 @TicketIDsArray = $TicketObject->TicketSearch(
                     Result => 'ARRAY',
                     %TicketSearch,
-                    %ColumnFilter,
                     %{ $TicketSearchSummary{ $Self->{Filter} } },
+                    %ColumnFilter,
                     Limit => $Self->{PageShown} + $Self->{StartHit} - 1,
                 );
             }
@@ -827,8 +827,8 @@ sub Run {
                     $Summary->{$Type} = $TicketObject->TicketSearch(
                         Result => 'COUNT',
                         %TicketSearch,
-                        %ColumnFilter,
                         %{ $TicketSearchSummary{$Type} },
+                        %ColumnFilter,
                     ) || 0;
                 }
             }
@@ -1159,7 +1159,13 @@ sub Run {
                 $TranslatedWord = $LayoutObject->{LanguageObject}->Translate('Pending till');
             }
             elsif ( $HeaderColumn eq 'CustomerCompanyName' ) {
-                $TranslatedWord = $LayoutObject->{LanguageObject}->Translate('Customer Company Name');
+                $TranslatedWord = $LayoutObject->{LanguageObject}->Translate('Customer Name');
+            }
+            elsif ( $HeaderColumn eq 'CustomerID' ) {
+                $TranslatedWord = $LayoutObject->{LanguageObject}->Translate('Customer ID');
+            }
+            elsif ( $HeaderColumn eq 'CustomerName' ) {
+                $TranslatedWord = $LayoutObject->{LanguageObject}->Translate('Customer User Name');
             }
             elsif ( $HeaderColumn eq 'CustomerUserID' ) {
                 $TranslatedWord = $LayoutObject->{LanguageObject}->Translate('Customer User ID');
@@ -1758,11 +1764,6 @@ sub Run {
                         Data => {%EscalationData},
                     );
                     next COLUMN;
-
-                    $DataValue = $LayoutObject->CustomerAge(
-                        Age   => $Ticket{'EscalationTime'},
-                        Space => ' '
-                    );
                 }
                 elsif ( $Column eq 'Age' ) {
                     $DataValue = $LayoutObject->CustomerAge(

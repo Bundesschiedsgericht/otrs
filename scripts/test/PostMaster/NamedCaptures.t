@@ -98,7 +98,7 @@ my $XHeaders          = $ConfigObject->Get('PostmasterX-Header');
 my @PostmasterXHeader = @{$XHeaders};
 HEADER:
 for my $Header ( sort keys %NeededXHeaders ) {
-    next HEADER if ( grep $_ eq $Header, @PostmasterXHeader );
+    next HEADER if ( grep { $_ eq $Header } @PostmasterXHeader );
     push @PostmasterXHeader, $Header;
 }
 $ConfigObject->Set(
@@ -187,11 +187,29 @@ The IP address: 192.168.0.1
 
     my @Return;
     {
+        my $CommunicationLogObject = $Kernel::OM->Create(
+            'Kernel::System::CommunicationLog',
+            ObjectParams => {
+                Transport => 'Email',
+                Direction => 'Incoming',
+            },
+        );
+        $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
+
         my $PostMasterObject = Kernel::System::PostMaster->new(
-            Email => \$Email,
+            CommunicationLogObject => $CommunicationLogObject,
+            Email                  => \$Email,
         );
 
         @Return = $PostMasterObject->Run();
+
+        $CommunicationLogObject->ObjectLogStop(
+            ObjectLogType => 'Message',
+            Status        => 'Successful',
+        );
+        $CommunicationLogObject->CommunicationStop(
+            Status => 'Successful',
+        );
     }
     $Self->Is(
         $Return[0] || 0,

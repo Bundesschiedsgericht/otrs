@@ -81,7 +81,6 @@ $ArticleHash{CreateTime}    = $TimeStamp;
 my %ResultHash = $EmailBackendObject->ArticleGet(
     TicketID  => $TicketID,
     ArticleID => $ArticleID,
-    UserID    => 1,
 );
 
 KEY:
@@ -125,6 +124,7 @@ my @SliceFields = qw(TicketID ArticleID ArticleNumber IsVisibleForCustomer Creat
 $MetaArticleHash{ChangeBy}               = 1;
 $MetaArticleHash{ChangeTime}             = $TimeStamp;
 $MetaArticleHash{CommunicationChannelID} = 1;
+$MetaArticleHash{SenderType}             = 'agent';
 $MetaArticleHash{SenderTypeID}           = 1;
 
 $Self->IsDeeply(

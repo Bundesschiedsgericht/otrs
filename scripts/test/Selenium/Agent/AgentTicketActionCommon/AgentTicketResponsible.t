@@ -107,10 +107,7 @@ $Selenium->RunTest(
         $Selenium->VerifiedGet("${ScriptAlias}index.pl?Action=AgentTicketZoom;TicketID=$TicketID");
 
         # force sub menus to be visible in order to be able to click one of the links
-        $Selenium->WaitFor(
-            JavaScript =>
-                'return typeof($) === "function" && $("#nav-People ul").css({ "height": "auto", "opacity": "100" });'
-        );
+        $Selenium->execute_script("\$('.Cluster ul ul').addClass('ForceVisible');");
 
         # click on 'Responsible' and switch window
         $Selenium->find_element("//a[contains(\@href, \'Action=AgentTicketResponsible;TicketID=$TicketID' )]")
@@ -142,7 +139,7 @@ $Selenium->RunTest(
         $Selenium->execute_script(
             "\$('#NewResponsibleID').val('').trigger('redraw.InputField').trigger('change');"
         );
-        $Selenium->find_element( "#submitRichText", 'css' )->VerifiedSubmit();
+        $Selenium->find_element( "#submitRichText", 'css' )->click();
 
         $Self->Is(
             $Selenium->execute_script(
@@ -201,6 +198,15 @@ $Selenium->RunTest(
             TicketID => $TicketID,
             UserID   => $UserID[0],
         );
+
+        # Ticket deletion could fail if apache still writes to ticket history. Try again in this case.
+        if ( !$Success ) {
+            sleep 3;
+            $Success = $TicketObject->TicketDelete(
+                TicketID => $TicketID,
+                UserID   => $UserID[0],
+            );
+        }
         $Self->True(
             $Success,
             "Ticket is deleted - ID $TicketID",

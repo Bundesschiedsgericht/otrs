@@ -7,6 +7,7 @@
 # --
 
 package Kernel::System::SysConfig::BaseValueType;
+## nofilter(TidyAll::Plugin::OTRS::Perl::LayoutObject)
 
 use strict;
 use warnings;
@@ -87,8 +88,8 @@ sub SettingEffectiveValueCheck {
 
     my $Regex = $Value->[0]->{Item}->[0]->{ValueRegex};
 
-    # RegEx check.
-    if ( $Regex && $Param{EffectiveValue} !~ m{$Regex}gsmx ) {
+    # RegEx check - do not use any modifiers for compatibility reasons.
+    if ( $Regex && $Param{EffectiveValue} !~ m{$Regex} ) {
         $Result{Error} = "EffectiveValue not valid - regex '$Regex'!";
         return %Result;
     }

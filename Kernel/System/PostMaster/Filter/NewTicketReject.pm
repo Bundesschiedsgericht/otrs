@@ -13,8 +13,8 @@ use warnings;
 
 our @ObjectDependencies = (
     'Kernel::Config',
-    'Kernel::System::Email',
     'Kernel::System::Log',
+    'Kernel::System::Email',
     'Kernel::System::Ticket',
 );
 
@@ -25,7 +25,8 @@ sub new {
     my $Self = {};
     bless( $Self, $Type );
 
-    $Self->{Debug} = $Param{Debug} || 0;
+    # Get communication log object.
+    $Self->{CommunicationLogObject} = $Param{CommunicationLogObject} || die "Got no CommunicationLogObject!";
 
     return $Self;
 }
@@ -36,9 +37,11 @@ sub Run {
     # check needed stuff
     for (qw(JobConfig GetParam)) {
         if ( !$Param{$_} ) {
-            $Kernel::OM->Get('Kernel::System::Log')->Log(
-                Priority => 'error',
-                Message  => "Need $_!"
+            $Self->{CommunicationLogObject}->ObjectLog(
+                ObjectLogType => 'Message',
+                Priority      => 'Error',
+                Key           => 'Kernel::System::PostMaster::Filter::NewTicketReject',
+                Value         => "Need $_!",
             );
             return;
         }
@@ -66,22 +69,26 @@ sub Run {
         my $Value = $Match[$Index]->{Value};
 
         if ( $Param{GetParam}->{$Key} && $Param{GetParam}->{$Key} =~ /$Value/i ) {
+
             $Matched = $1 || '1';
-            if ( $Self->{Debug} > 1 ) {
-                $Kernel::OM->Get('Kernel::System::Log')->Log(
-                    Priority => 'debug',
-                    Message  => "'$Param{GetParam}->{$Key}' =~ /$Value/i matched!",
-                );
-            }
+
+            $Self->{CommunicationLogObject}->ObjectLog(
+                ObjectLogType => 'Message',
+                Priority      => 'Debug',
+                Key           => 'Kernel::System::PostMaster::Filter::NewTicketReject',
+                Value         => "'$Param{GetParam}->{$Key}' =~ /$Value/i matched!",
+            );
         }
         else {
+
             $MatchedNot = 1;
-            if ( $Self->{Debug} > 1 ) {
-                $Kernel::OM->Get('Kernel::System::Log')->Log(
-                    Priority => 'debug',
-                    Message  => "'$Param{GetParam}->{$Key}' =~ /$Value/i matched NOT!",
-                );
-            }
+
+            $Self->{CommunicationLogObject}->ObjectLog(
+                ObjectLogType => 'Message',
+                Priority      => 'Debug',
+                Key           => 'Kernel::System::PostMaster::Filter::NewTicketReject',
+                Value         => "'$Param{GetParam}->{$Key}' =~ /$Value/i matched NOT!",
+            );
         }
     }
     if ( $Matched && !$MatchedNot ) {
@@ -100,10 +107,12 @@ sub Run {
             my $Value = $SetItem->{Value};
 
             $Param{GetParam}->{$Key} = $Value;
-            $Kernel::OM->Get('Kernel::System::Log')->Log(
-                Priority => 'notice',
-                Message =>
-                    "Set param '$Key' to '$Value' (Message-ID: $Param{GetParam}->{'Message-ID'}) ",
+
+            $Self->{CommunicationLogObject}->ObjectLog(
+                ObjectLogType => 'Message',
+                Priority      => 'Notice',
+                Key           => 'Kernel::System::PostMaster::Filter::NewTicketReject',
+                Value         => "Set param '$Key' to '$Value' (Message-ID: $Param{GetParam}->{'Message-ID'})",
             );
         }
 
@@ -138,9 +147,11 @@ sub Run {
             ],
         );
 
-        $Kernel::OM->Get('Kernel::System::Log')->Log(
-            Priority => 'notice',
-            Message  => "Send reject mail to '$Param{GetParam}->{From}'!",
+        $Self->{CommunicationLogObject}->ObjectLog(
+            ObjectLogType => 'Message',
+            Priority      => 'Notice',
+            Key           => 'Kernel::System::PostMaster::Filter::NewTicketReject',
+            Value         => "Send reject mail to '$Param{GetParam}->{From}'!",
         );
     }
 

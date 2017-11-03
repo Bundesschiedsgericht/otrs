@@ -180,7 +180,7 @@ sub SendNotification {
             EmailSecurity => $SecurityOptions || {},
         );
 
-        if ( !$Sent ) {
+        if ( !$Sent->{Success} ) {
             $Kernel::OM->Get('Kernel::System::Log')->Log(
                 Priority => 'error',
                 Message  => "'$Notification{Name}' notification could not be sent to agent '$Recipient{UserEmail} ",
@@ -225,7 +225,6 @@ sub SendNotification {
             %CustomerArticle = $ArticleObject->BackendForArticle( %{$Article} )->ArticleGet(
                 %{$Article},
                 DynamicFields => 0,
-                UserID        => $Param{UserID},
             );
         }
 
@@ -250,7 +249,6 @@ sub SendNotification {
                 %AgentArticle = $ArticleObject->BackendForArticle( %{$Article} )->ArticleGet(
                     %{$Article},
                     DynamicFields => 0,
-                    UserID        => $Param{UserID},
                 );
             }
 
@@ -416,7 +414,7 @@ sub TransportSettingsDisplayGet {
         Data        => \%Templates,
         Name        => 'TransportEmailTemplate',
         Translation => 0,
-        SelectedID  => $Param{Data}->{TransportEmailTemplate},
+        SelectedID  => $Param{Data}->{TransportEmailTemplate} || 'Default',
         Class       => 'Modernize W50pc',
     );
 
@@ -602,13 +600,16 @@ sub SecurityOptionsGet {
             Search => $NotificationSenderEmail,
         );
 
-        # take just valid keys
+        # Take just valid keys.
         @SignKeys = grep { $_->{Status} eq 'good' } @SignKeys;
 
         # get public keys
         @EncryptKeys = $PGPObject->PublicKeySearch(
             Search => $Param{Recipient}->{UserEmail},
         );
+
+        # Take just valid keys.
+        @EncryptKeys = grep { $_->{Status} eq 'good' } @EncryptKeys;
 
         # Get PGP method (Detached or In-line).
         if ( !$Kernel::OM->Get('Kernel::Output::HTML::Layout')->{BrowserRichText} ) {

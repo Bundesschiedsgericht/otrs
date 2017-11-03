@@ -43,7 +43,7 @@
         <Description Translatable="1">Defines the name of the application, shown in the web interface, tabs and title bar of the web browser.</Description>
         <Navigation>Core</Navigation>
         <Value>
-            <Item ValueType="String" ValueRegex="">OTRS 6</Item>
+            <Item ValueType="String" ValueRegex="">OTRS 7</Item>
         </Value>
     </Setting>
     <Setting Name="SystemID" Required="1" Valid="1" ConfigLevel="200">
@@ -102,7 +102,7 @@
         <Description Translatable="1">Defines the system administrator's email address. It will be displayed in the error screens of the application.</Description>
         <Navigation>Core::Email</Navigation>
         <Value>
-            <Item ValueType="String" ValueRegex="">admin@example.com</Item>
+            <Item ValueType="String" ValueRegex="">support@&lt;OTRS_CONFIG_FQDN&gt;</Item>
         </Value>
     </Setting>
     <Setting Name="Organization" Required="1" Valid="1">
@@ -153,7 +153,7 @@
                 <Item Key="lt" Translatable="1">Lithuanian</Item>
                 <Item Key="lv" Translatable="1">Latvian</Item>
                 <Item Key="ms" Translatable="1">Malay</Item>
-                <Item Key="nl" Translatable="1">Nederlands</Item>
+                <Item Key="nl" Translatable="1">Dutch</Item>
                 <Item Key="nb_NO" Translatable="1">Norwegian</Item>
                 <Item Key="pt_BR" Translatable="1">Portuguese (Brasil)</Item>
                 <Item Key="pt" Translatable="1">Portuguese</Item>
@@ -272,10 +272,10 @@
         <Value>
             <Hash>
                 <Item Key="URL">skins/Agent/default/img/logo_bg.png</Item>
-                <Item Key="StyleTop">4px</Item>
-                <Item Key="StyleRight">38px</Item>
-                <Item Key="StyleHeight">85px</Item>
-                <Item Key="StyleWidth">270px</Item>
+                <Item Key="StyleTop">21px</Item>
+                <Item Key="StyleRight">29px</Item>
+                <Item Key="StyleHeight">55px</Item>
+                <Item Key="StyleWidth">230px</Item>
             </Hash>
         </Value>
     </Setting>
@@ -285,49 +285,49 @@
         <Value>
             <Hash>
                 <Item Key="URL">skins/Agent/default/img/logo_bg.png</Item>
-                <Item Key="StyleTop">4px</Item>
-                <Item Key="StyleRight">38px</Item>
-                <Item Key="StyleHeight">67px</Item>
-                <Item Key="StyleWidth">270px</Item>
+                <Item Key="StyleTop">21px</Item>
+                <Item Key="StyleRight">29px</Item>
+                <Item Key="StyleHeight">55px</Item>
+                <Item Key="StyleWidth">230px</Item>
             </Hash>
         </Value>
     </Setting>
-    <Setting Name="AgentLogoCustom###slim" Required="0" Valid="0">
+    <Setting Name="AgentLogoCustom###slim" Required="0" Valid="1">
         <Description Translatable="1">The logo shown in the header of the agent interface for the skin "slim". See "AgentLogo" for further description.</Description>
         <Navigation>Frontend::Agent</Navigation>
         <Value>
             <Hash>
                 <Item Key="URL">skins/Agent/default/img/logo_bg.png</Item>
-                <Item Key="StyleTop">4px</Item>
-                <Item Key="StyleRight">38px</Item>
-                <Item Key="StyleHeight">67px</Item>
-                <Item Key="StyleWidth">270px</Item>
+                <Item Key="StyleTop">10px</Item>
+                <Item Key="StyleRight">45px</Item>
+                <Item Key="StyleHeight">45px</Item>
+                <Item Key="StyleWidth">220px</Item>
             </Hash>
         </Value>
     </Setting>
-    <Setting Name="AgentLogoCustom###ivory" Required="0" Valid="0">
+    <Setting Name="AgentLogoCustom###ivory" Required="0" Valid="1">
         <Description Translatable="1">The logo shown in the header of the agent interface for the skin "ivory". See "AgentLogo" for further description.</Description>
         <Navigation>Frontend::Agent</Navigation>
         <Value>
             <Hash>
                 <Item Key="URL">skins/Agent/default/img/logo_bg.png</Item>
-                <Item Key="StyleTop">4px</Item>
-                <Item Key="StyleRight">38px</Item>
-                <Item Key="StyleHeight">67px</Item>
-                <Item Key="StyleWidth">270px</Item>
+                <Item Key="StyleTop">21px</Item>
+                <Item Key="StyleRight">29px</Item>
+                <Item Key="StyleHeight">55px</Item>
+                <Item Key="StyleWidth">230px</Item>
             </Hash>
         </Value>
     </Setting>
-    <Setting Name="AgentLogoCustom###ivory-slim" Required="0" Valid="0">
+    <Setting Name="AgentLogoCustom###ivory-slim" Required="0" Valid="1">
         <Description Translatable="1">The logo shown in the header of the agent interface for the skin "ivory-slim". See "AgentLogo" for further description.</Description>
         <Navigation>Frontend::Agent</Navigation>
         <Value>
             <Hash>
                 <Item Key="URL">skins/Agent/default/img/logo_bg.png</Item>
-                <Item Key="StyleTop">4px</Item>
-                <Item Key="StyleRight">38px</Item>
-                <Item Key="StyleHeight">67px</Item>
-                <Item Key="StyleWidth">270px</Item>
+                <Item Key="StyleTop">10px</Item>
+                <Item Key="StyleRight">45px</Item>
+                <Item Key="StyleHeight">45px</Item>
+                <Item Key="StyleWidth">220px</Item>
             </Hash>
         </Value>
     </Setting>
@@ -464,16 +464,16 @@
         </Value>
     </Setting>
     <Setting Name="TimeInputMinutesStep" Required="1" Valid="1">
-        <Description Translatable="1">Defines the available steps in time selections. Select "Minute" to be able to select all minutes of one hour from 1-59. Select "30 Minutes" to only make full and half hours available.</Description>
+        <Description Translatable="1">Defines the available steps in time selections. Select "1 minute" to be able to select all minutes of one hour from 1-59. Select "30 minutes" to only make full and half hours available.</Description>
         <Navigation>Core::Time</Navigation>
         <Value>
             <Item ValueType="Select" SelectedID="1">
-                <Item ValueType="Option" Value="1" Translatable="1">Minute</Item>
-                <Item ValueType="Option" Value="2" Translatable="1">2 Minutes</Item>
-                <Item ValueType="Option" Value="5" Translatable="1">5 Minutes</Item>
-                <Item ValueType="Option" Value="10" Translatable="1">10 Minutes</Item>
-                <Item ValueType="Option" Value="15" Translatable="1">15 Minutes</Item>
-                <Item ValueType="Option" Value="30" Translatable="1">30 Minutes</Item>
+                <Item ValueType="Option" Value="1" Translatable="1">1 minute</Item>
+                <Item ValueType="Option" Value="2" Translatable="1">2 minutes</Item>
+                <Item ValueType="Option" Value="5" Translatable="1">5 minutes</Item>
+                <Item ValueType="Option" Value="10" Translatable="1">10 minutes</Item>
+                <Item ValueType="Option" Value="15" Translatable="1">15 minutes</Item>
+                <Item ValueType="Option" Value="30" Translatable="1">30 minutes</Item>
             </Item>
         </Value>
     </Setting>
@@ -714,6 +714,57 @@
             </Hash>
         </Value>
     </Setting>
+    <Setting Name="CommunicationLog::Transport###Email" Required="1" Valid="1">
+        <Description Translatable="1">Registers a log module, that can be used to log communication related information.</Description>
+        <Navigation>Core::CommunicationLog</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Name">Email</Item>
+                <Item Key="Module">Kernel::System::CommunicationLog::Transport::Email</Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="CommunicationLog::PurgeAfterHours::SuccessfulCommunications" Required="1" Valid="1">
+        <Description Translatable="1">Defines the number of hours a successful communication will be stored.</Description>
+        <Navigation>Core::CommunicationLog</Navigation>
+        <Value>
+            <Item ValueType="String" ValueRegex="^\d+$">168</Item>
+        </Value>
+    </Setting>
+    <Setting Name="CommunicationLog::PurgeAfterHours::AllCommunications" Required="1" Valid="1">
+        <Description Translatable="1">Defines the number of hours a communication will be stored, whichever its status.</Description>
+        <Navigation>Core::CommunicationLog</Navigation>
+        <Value>
+            <Item ValueType="String" ValueRegex="^\d+$">744</Item>
+        </Value>
+    </Setting>
+    <Setting Name="MailQueue" Required="1" Valid="1">
+        <Description Translatable="1">MailQueue configuration settings.</Description>
+        <Navigation>Core::MailQueue</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="ItemMaxAttempts">3</Item>
+                <Item Key="IncrementAttemptDelayInMinutes">2</Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="Frontend::AvatarEngine" Required="1" Valid="1" ConfigLevel="200">
+        <Description Translatable="1">Define which avatar engine should be used for the agent avatar on the header and the sender images in AgentTicketZoom. If 'None' is selected, initials will be displayed instead. Please note that selecting anything other than 'None' will transfer the encrypted email address of the particular user to an external service.</Description>
+        <Navigation>Frontend::Agent</Navigation>
+        <Value>
+            <Item ValueType="Select" SelectedID="Gravatar">
+                <Item ValueType="Option" Value="None" Translatable="1">None</Item>
+                <Item ValueType="Option" Value="Gravatar">Gravatar.com</Item>
+            </Item>
+        </Value>
+    </Setting>
+    <Setting Name="Frontend::Gravatar::DefaultImage" Required="1" Valid="1" ConfigLevel="200">
+        <Description Translatable="1">Define which avatar default image should be used for the current agent if no gravatar is assigned to the mail address of the agent. Check http://gravatar.com/site/implement/images/ for further information.</Description>
+        <Navigation>Frontend::Agent</Navigation>
+        <Value>
+           <Item ValueType="String" ValueRegex="">mm</Item>
+        </Value>
+    </Setting>
     <Setting Name="LoginURL" Required="0" Valid="0" ConfigLevel="200">
         <Description Translatable="1">Defines an alternate URL, where the login link refers to.</Description>
         <Navigation>Frontend::Agent</Navigation>
@@ -802,7 +853,6 @@
             <Hash>
                 <Item Key="Module">Kernel::Output::HTML::Notification::AgentOnline</Item>
                 <Item Key="ShowEmail">1</Item>
-                <Item Key="IdleMinutes">60</Item>
             </Hash>
         </Value>
     </Setting>
@@ -813,7 +863,6 @@
             <Hash>
                 <Item Key="Module">Kernel::Output::HTML::Notification::CustomerOnline</Item>
                 <Item Key="ShowEmail">1</Item>
-                <Item Key="IdleMinutes">60</Item>
             </Hash>
         </Value>
     </Setting>
@@ -933,7 +982,7 @@
         <Description Translatable="1">Sets the inactivity time (in seconds) to pass before a session is killed and a user is logged out.</Description>
         <Navigation>Core::Session</Navigation>
         <Value>
-            <Item ValueType="String" ValueRegex="^[0-9]{1,8}$">21600</Item>
+            <Item ValueType="String" ValueRegex="^[0-9]{1,8}$">7200</Item>
         </Value>
     </Setting>
     <Setting Name="SessionDeleteIfTimeToOld" Required="1" Valid="1">
@@ -1011,6 +1060,20 @@
         <Navigation>Core::Session</Navigation>
         <Value>
             <Item ValueType="String" ValueRegex="">sessions</Item>
+        </Value>
+    </Setting>
+    <Setting Name="SessionAgentOnlineThreshold" Required="1" Valid="1">
+        <Description Translatable="1">Defines the period of time (in minutes) before agent is marked as "away" due to inactivity (e.g. in the "Logged-In Users" widget or for the chat).</Description>
+        <Navigation>Core::Session</Navigation>
+        <Value>
+            <Item ValueType="String" ValueRegex="^\d+$">5</Item>
+        </Value>
+    </Setting>
+    <Setting Name="SessionCustomerOnlineThreshold" Required="1" Valid="1">
+        <Description Translatable="1">Defines the period of time (in minutes) before customer is marked as "away" due to inactivity (e.g. in the "Logged-In Users" widget or for the chat).</Description>
+        <Navigation>Core::Session</Navigation>
+        <Value>
+            <Item ValueType="String" ValueRegex="^\d+$">5</Item>
         </Value>
     </Setting>
     <Setting Name="TimeZone" Required="0" Valid="0">
@@ -7522,6 +7585,8 @@ You can log in via the following URL:
                 <Item Key="Key" Translatable="1">Shared Secret</Item>
                 <Item Key="Block">Input</Item>
                 <Item Key="PrefKey">UserGoogleAuthenticatorSecretKey</Item>
+                <Item Key="ValidateRegex">^([A-Z2-7]{16}|)$</Item>
+                <Item Key="ValidateRegexMessage" Translatable="1">The secret you supplied is invalid. The secret must only contain letters (A-Z, uppercase) and numbers (2-7) and must consist of 16 characters.</Item>
                 <Item Key="Prio">0600</Item>
                 <Item Key="Active">0</Item>
             </Hash>
@@ -7535,6 +7600,7 @@ You can log in via the following URL:
                 <Item Key="Module">Kernel::Output::HTML::Preferences::Generic</Item>
                 <Item Key="PreferenceGroup">Miscellaneous</Item>
                 <Item Key="Label" Translatable="1">Comment</Item>
+                <Item Key="Desc" Translatable="1">This is a Description for Comment on Framework.</Item>
                 <Item Key="Key" Translatable="1">Comment</Item>
                 <Item Key="Block">Input</Item>
                 <Item Key="Data">[% Env("UserComment") %]</Item>
@@ -7552,6 +7618,7 @@ You can log in via the following URL:
                 <Item Key="Module">Kernel::Output::HTML::Preferences::Generic</Item>
                 <Item Key="PreferenceGroup">Miscellaneous</Item>
                 <Item Key="Label" Translatable="1">NameX</Item>
+                <Item Key="Desc" Translatable="1">This is a Description for DynamicField on Framework.</Item>
                 <Item Key="Key" Translatable="1">Default value for NameX</Item>
                 <Item Key="Block">Input</Item>
                 <Item Key="Data">[% Env("UserDynamicField_NameX") %]</Item>
@@ -7572,6 +7639,7 @@ You can log in via the following URL:
                 <Item Key="Desc" Translatable="1">Select the main interface language.</Item>
                 <Item Key="Key" Translatable="1"></Item>
                 <Item Key="PrefKey">UserLanguage</Item>
+                <Item Key="NeedsReload">1</Item>
                 <Item Key="Prio">1000</Item>
                 <Item Key="Active">1</Item>
             </Hash>
@@ -7588,6 +7656,7 @@ You can log in via the following URL:
                 <Item Key="Desc" Translatable="1">Select your preferred layout for the software.</Item>
                 <Item Key="Key" Translatable="1"></Item>
                 <Item Key="PrefKey">UserSkin</Item>
+                <Item Key="NeedsReload">1</Item>
                 <Item Key="Prio">100</Item>
                 <Item Key="Active">1</Item>
             </Hash>
@@ -7599,11 +7668,12 @@ You can log in via the following URL:
         <Value>
             <Hash>
                 <Item Key="Module">Kernel::Output::HTML::Preferences::Theme</Item>
-                <Item Key="PreferenceGroup">UserProfile</Item>
+                <Item Key="PreferenceGroup">Miscellaneous</Item>
                 <Item Key="Label" Translatable="1">Theme</Item>
                 <Item Key="Desc" Translatable="1">Select your preferred theme for OTRS.</Item>
-                <Item Key="Key" Translatable="1">Frontend theme</Item>
+                <Item Key="Key" Translatable="1"></Item>
                 <Item Key="PrefKey">UserTheme</Item>
+                <Item Key="NeedsReload">1</Item>
                 <Item Key="Prio">3000</Item>
                 <Item Key="Active">1</Item>
             </Hash>
@@ -7664,6 +7734,22 @@ You can log in via the following URL:
                 <Item Key="DataSelected">0</Item>
                 <Item Key="PrefKey">UserCSVSeparator</Item>
                 <Item Key="Prio">4000</Item>
+                <Item Key="Active">1</Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="PreferencesGroups###Avatar" Required="0" Valid="1">
+        <Description Translatable="1">Defines the users avatar.</Description>
+        <Navigation>Frontend::Agent::View::Preferences</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Module">Kernel::Output::HTML::Preferences::Avatar</Item>
+                <Item Key="PreferenceGroup">UserProfile</Item>
+                <Item Key="Label" Translatable="1">Avatar</Item>
+                <Item Key="Key" Translatable="1">Avatar</Item>
+                <Item Key="Desc" Translatable="1">Change your avatar image.</Item>
+                <Item Key="Block">Avatar</Item>
+                <Item Key="Prio">1000</Item>
                 <Item Key="Active">1</Item>
             </Hash>
         </Value>
@@ -7738,7 +7824,6 @@ You can log in via the following URL:
             <Hash>
                 <Item Key="Module">Kernel::Output::HTML::Notification::AgentOnline</Item>
                 <Item Key="ShowEmail">1</Item>
-                <Item Key="IdleMinutes">60</Item>
             </Hash>
         </Value>
     </Setting>
@@ -7999,6 +8084,13 @@ via the Preferences button after logging in.
             </Item>
         </Value>
     </Setting>
+    <Setting Name="Customer::AuthModule::DB::bcryptCost" Required="1" Valid="1" ConfigLevel="200">
+        <Description Translatable="1">If "bcrypt" was selected for CryptType, use cost specified here for bcrypt hashing. Currently max. supported cost value is 31.</Description>
+        <Navigation>Core::Auth::Customer</Navigation>
+        <Value>
+            <Item ValueType="String" ValueRegex="^[0-9]{1,2}$">12</Item>
+        </Value>
+    </Setting>
     <Setting Name="Customer::AuthModule::DB::Table" Required="1" Valid="1" ConfigLevel="200">
         <Description Translatable="1">If "DB" was selected for Customer::AuthModule, the name of the table where your customer data should be stored must be specified.</Description>
         <Navigation>Core::Auth::Customer</Navigation>
@@ -8253,6 +8345,8 @@ via the Preferences button after logging in.
                 <Item Key="Desc" Translatable="1">Enter your shared secret to enable two factor authentication.</Item>
                 <Item Key="Block">Input</Item>
                 <Item Key="PrefKey">UserGoogleAuthenticatorSecretKey</Item>
+                <Item Key="ValidateRegex">^([A-Z2-7]{16}|)$</Item>
+                <Item Key="ValidateRegexMessage" Translatable="1">The secret you supplied is invalid. The secret must only contain letters (A-Z, uppercase) and numbers (2-7) and must consist of 16 characters.</Item>
                 <Item Key="Prio">1100</Item>
                 <Item Key="Active">0</Item>
             </Hash>
@@ -8338,6 +8432,33 @@ via the Preferences button after logging in.
             </Hash>
         </Value>
     </Setting>
+    <Setting Name="PreferencesGroups###CommunicationLogPageShown" Required="0" Valid="1">
+        <Description Translatable="1">Parameters for the pages (in which the communication log entries are shown) of the communication log overview.</Description>
+        <Navigation>Frontend::Agent::View::Preferences</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Module">Kernel::Output::HTML::Preferences::Generic</Item>
+                <Item Key="PreferenceGroup">Miscellaneous</Item>
+                <Item Key="Label" Translatable="1">CommunicationLog Overview Limit</Item>
+                <Item Key="Key" Translatable="1">Communication log limit per page for CommunicationLog Overview</Item>
+                <Item Key="Data">
+                    <Hash>
+                        <Item Key="10">10</Item>
+                        <Item Key="15">15</Item>
+                        <Item Key="20">20</Item>
+                        <Item Key="25">25</Item>
+                        <Item Key="30">30</Item>
+                        <Item Key="35">35</Item>
+                        <Item Key="50">50</Item>
+                    </Hash>
+                </Item>
+                <Item Key="DataSelected">25</Item>
+                <Item Key="PrefKey">AdminCommunicationLogPageShown</Item>
+                <Item Key="Prio">8100</Item>
+                <Item Key="Active">0</Item>
+            </Hash>
+        </Value>
+    </Setting>
     <Setting Name="Frontend::Module###Logout" Required="0" Valid="1">
         <Description Translatable="1">Frontend module registration for the agent interface.</Description>
         <Navigation>Frontend::Agent::ModuleRegistration</Navigation>
@@ -8353,6 +8474,27 @@ via the Preferences button after logging in.
                         </Array>
                     </Item>
                     <Item Key="Description">Logout</Item>
+                    <Item Key="Title"></Item>
+                    <Item Key="NavBarName"></Item>
+                </Hash>
+            </Item>
+        </Value>
+    </Setting>
+    <Setting Name="Frontend::Module###AjaxAttachment" Required="0" Valid="1">
+        <Description Translatable="1">Frontend module registration for the agent interface.</Description>
+        <Navigation>Frontend::Agent::ModuleRegistration</Navigation>
+        <Value>
+            <Item ValueType="FrontendRegistration">
+                <Hash>
+                    <Item Key="Group">
+                        <Array>
+                        </Array>
+                    </Item>
+                    <Item Key="GroupRo">
+                        <Array>
+                        </Array>
+                    </Item>
+                    <Item Key="Description">AjaxAttachment</Item>
                     <Item Key="Title"></Item>
                     <Item Key="NavBarName"></Item>
                 </Hash>
@@ -8659,7 +8801,7 @@ via the Preferences button after logging in.
                 <Item Key="NavBar">Customers</Item>
                 <Item Key="Type"></Item>
                 <Item Key="Block">ItemArea</Item>
-                <Item Key="AccessKey">u</Item>
+                <Item Key="AccessKey">y</Item>
                 <Item Key="Prio">55</Item>
             </Hash>
         </Value>
@@ -9026,7 +9168,6 @@ via the Preferences button after logging in.
                 <Item Key="Description"></Item>
                 <Item Key="IconBig"></Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio"></Item>
             </Hash>
         </Value>
     </Setting>
@@ -9153,7 +9294,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Create and manage agents.</Item>
                 <Item Key="IconBig">fa-user</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">100</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9212,7 +9352,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Create and manage groups.</Item>
                 <Item Key="IconBig">fa-users</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">150</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9271,7 +9410,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Link agents to groups.</Item>
                 <Item Key="IconBig">fa-user</Item>
                 <Item Key="IconSmall">fa-users</Item>
-                <Item Key="Prio">200</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9360,7 +9498,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Create and manage customer users.</Item>
                 <Item Key="IconBig">fa-male</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">300</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9448,7 +9585,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Create and manage customers.</Item>
                 <Item Key="IconBig">fa-building-o</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">310</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9516,7 +9652,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Link customer users to groups.</Item>
                 <Item Key="IconBig">fa-male</Item>
                 <Item Key="IconSmall">fa-users</Item>
-                <Item Key="Prio">400</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9575,7 +9710,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Link customers to groups.</Item>
                 <Item Key="IconBig">fa-building-o</Item>
                 <Item Key="IconSmall">fa-users</Item>
-                <Item Key="Prio">410</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9634,7 +9768,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Link customer users to services.</Item>
                 <Item Key="IconBig">fa-male</Item>
                 <Item Key="IconSmall">fa-wrench</Item>
-                <Item Key="Prio">500</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9693,7 +9826,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Link customer users to customers.</Item>
                 <Item Key="IconBig">fa-male</Item>
                 <Item Key="IconSmall">fa-building-o</Item>
-                <Item Key="Prio">510</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9752,7 +9884,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Create and manage roles.</Item>
                 <Item Key="IconBig">fa-circle-o</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">600</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9811,7 +9942,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Link agents to roles.</Item>
                 <Item Key="IconBig">fa-user</Item>
                 <Item Key="IconSmall">fa-circle-o</Item>
-                <Item Key="Prio">700</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9870,7 +10000,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Link roles to groups.</Item>
                 <Item Key="IconBig">fa-circle-o</Item>
                 <Item Key="IconSmall">fa-users</Item>
-                <Item Key="Prio">800</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9929,7 +10058,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Manage S/MIME certificates for email encryption.</Item>
                 <Item Key="IconBig">fa-user-secret</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">1100</Item>
             </Hash>
         </Value>
     </Setting>
@@ -9975,7 +10103,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Manage PGP keys for email encryption.</Item>
                 <Item Key="IconBig">fa-user-secret</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">1200</Item>
             </Hash>
         </Value>
     </Setting>
@@ -10034,7 +10161,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Manage POP3 or IMAP accounts to fetch email from.</Item>
                 <Item Key="IconBig">fa-envelope-o</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">100</Item>
             </Hash>
         </Value>
     </Setting>
@@ -10098,7 +10224,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Filter incoming emails.</Item>
                 <Item Key="IconBig">fa-filter</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">200</Item>
             </Hash>
         </Value>
     </Setting>
@@ -10144,7 +10269,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Send notifications to users.</Item>
                 <Item Key="IconBig">fa-quote-right</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">400</Item>
             </Hash>
         </Value>
     </Setting>
@@ -10203,7 +10327,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Manage existing sessions.</Item>
                 <Item Key="IconBig">fa-clock-o</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">500</Item>
             </Hash>
         </Value>
     </Setting>
@@ -10262,7 +10385,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">View performance benchmark results.</Item>
                 <Item Key="IconBig">fa-bar-chart</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">550</Item>
             </Hash>
         </Value>
     </Setting>
@@ -10326,7 +10448,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Manage system registration.</Item>
                 <Item Key="IconBig">fa-edit</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">350</Item>
             </Hash>
         </Value>
     </Setting>
@@ -10385,7 +10506,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Deploy and manage OTRS Business Solution™.</Item>
                 <Item Key="IconBig">fa-angle-double-up</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">360</Item>
                 <Item Key="CssClass">OTRSBusiness</Item>
             </Hash>
         </Value>
@@ -10484,7 +10604,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Manage support data.</Item>
                 <Item Key="IconBig">fa-search</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">370</Item>
             </Hash>
         </Value>
     </Setting>
@@ -10543,7 +10662,71 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Manage OTRS Group cloud services.</Item>
                 <Item Key="IconBig">fa-cloud</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">380</Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="Frontend::Module###AdminCommunicationLog" Required="0" Valid="1">
+        <Description Translatable="1">Frontend module registration for the agent interface.</Description>
+        <Navigation>Frontend::Admin::ModuleRegistration</Navigation>
+        <Value>
+            <Item ValueType="FrontendRegistration">
+                <Hash>
+                    <Item Key="GroupRo">
+                        <Array>
+                        </Array>
+                    </Item>
+                    <Item Key="Group">
+                        <Array>
+                            <Item>admin</Item>
+                        </Array>
+                    </Item>
+                    <Item Key="Description" Translatable="1">This module is part of the admin area of OTRS.</Item>
+                    <Item Key="Title" Translatable="1">Communication Log GUI</Item>
+                    <Item Key="NavBarName">Admin</Item>
+                </Hash>
+            </Item>
+        </Value>
+    </Setting>
+    <Setting Name="Loader::Module::AdminCommunicationLog###001-Framework" Required="0" Valid="1">
+        <Description Translatable="1">Loader module registration for the agent interface.</Description>
+        <Navigation>Frontend::Admin::ModuleRegistration::Loader</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="CSS">
+                    <Array>
+                        <Item>Core.Agent.Admin.CommunicationLog.css</Item>
+                    </Array>
+                </Item>
+                <Item Key="JavaScript">
+                    <Array>
+                        <Item>Core.Agent.Admin.CommunicationLog.js</Item>
+                        <Item>thirdparty/jquery-tablesorter-2.28.14/jquery.tablesorter.js</Item>
+                        <Item>Core.UI.Table.Sort.js</Item>
+                    </Array>
+                </Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="Frontend::NavigationModule###AdminCommunicationLog" Required="0" Valid="1">
+        <Description Translatable="1">Admin area navigation for the agent interface.</Description>
+        <Navigation>Frontend::Admin::ModuleRegistration::AdminOverview</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Group">
+                    <Array>
+                        <Item>admin</Item>
+                    </Array>
+                </Item>
+                <Item Key="GroupRo">
+                    <Array>
+                    </Array>
+                </Item>
+                <Item Key="Module">Kernel::Output::HTML::NavBar::ModuleAdmin</Item>
+                <Item Key="Name" Translatable="1">Communication Log</Item>
+                <Item Key="Block">Communication</Item>
+                <Item Key="Description" Translatable="1">Display communication log entries.</Item>
+                <Item Key="IconBig">fa-table</Item>
+                <Item Key="IconSmall"></Item>
             </Hash>
         </Value>
     </Setting>
@@ -10602,7 +10785,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">View system log messages.</Item>
                 <Item Key="IconBig">fa-file-text-o</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">600</Item>
             </Hash>
         </Value>
     </Setting>
@@ -10661,7 +10843,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Execute SQL statements.</Item>
                 <Item Key="IconBig">fa-terminal</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">700</Item>
             </Hash>
         </Value>
     </Setting>
@@ -10687,6 +10868,24 @@ via the Preferences button after logging in.
             </Item>
         </Value>
     </Setting>
+    <Setting Name="Loader::Module::AdminPackageManager###001-Framework" Required="0" Valid="1">
+        <Description Translatable="1">Loader module registration for the agent interface.</Description>
+        <Navigation>Frontend::Admin::ModuleRegistration::Loader</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="CSS">
+                    <Array>
+                        <Item>Core.Agent.Admin.PackageManager.css</Item>
+                    </Array>
+                </Item>
+                <Item Key="JavaScript">
+                    <Array>
+                        <Item>Core.Agent.Admin.PackageManager.js</Item>
+                    </Array>
+                </Item>
+            </Hash>
+        </Value>
+    </Setting>
     <Setting Name="Frontend::NavigationModule###AdminPackageManager" Required="0" Valid="1">
         <Description Translatable="1">Admin area navigation for the agent interface.</Description>
         <Navigation>Frontend::Admin::ModuleRegistration::AdminOverview</Navigation>
@@ -10707,7 +10906,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Update and extend your system with software packages.</Item>
                 <Item Key="IconBig">fa-plug</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">1000</Item>
             </Hash>
         </Value>
     </Setting>
@@ -10766,7 +10964,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Schedule a maintenance period.</Item>
                 <Item Key="IconBig">fa-wrench</Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">501</Item>
             </Hash>
         </Value>
     </Setting>
@@ -10785,6 +10982,27 @@ via the Preferences button after logging in.
                         </Array>
                     </Item>
                     <Item Key="Description" Translatable="1">Logout of customer panel.</Item>
+                    <Item Key="Title"></Item>
+                    <Item Key="NavBarName"></Item>
+                </Hash>
+            </Item>
+        </Value>
+    </Setting>
+    <Setting Name="CustomerFrontend::Module###AjaxAttachment" Required="0" Valid="1">
+        <Description Translatable="1">Frontend module registration for the agent interface.</Description>
+        <Navigation>Frontend::Customer::ModuleRegistration</Navigation>
+        <Value>
+            <Item ValueType="FrontendRegistration">
+                <Hash>
+                    <Item Key="Group">
+                        <Array>
+                        </Array>
+                    </Item>
+                    <Item Key="GroupRo">
+                        <Array>
+                        </Array>
+                    </Item>
+                    <Item Key="Description">AjaxAttachment</Item>
                     <Item Key="Title"></Item>
                     <Item Key="NavBarName"></Item>
                 </Hash>
@@ -11302,7 +11520,7 @@ via the Preferences button after logging in.
         </Value>
     </Setting>
     <Setting Name="DashboardBackend###0000-ProductNotify" Required="0" Valid="1">
-        <Description Translatable="1">Defines the parameters for the dashboard backend. "Group" is used to restrict access to the plugin (e. g. Group: admin;group1;group2;). "Default" indicates if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" defines the cache expiration period in minutes for the plugin.</Description>
+        <Description Translatable="1">Defines the parameters for the dashboard backend. "Group" is used to restrict access to the plugin (e. g. Group: admin;group1;group2;). "Default" indicates if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" defines the cache expiration period in minutes for the plugin. "Mandatory" determines if the plugin is always shown and can not be removed by agents.</Description>
         <Navigation>Frontend::Agent::View::Dashboard</Navigation>
         <Value>
             <Hash>
@@ -11313,37 +11531,37 @@ via the Preferences button after logging in.
                 <Item Key="Group">admin</Item>
                 <Item Key="Default">1</Item>
                 <Item Key="CacheTTLLocal">1440</Item>
+                <Item Key="Mandatory">0</Item>
             </Hash>
         </Value>
     </Setting>
     <Setting Name="DashboardBackend###0390-UserOutOfOffice" Required="0" Valid="1">
-        <Description Translatable="1">Defines the parameters for the dashboard backend. "Limit" defines the number of entries displayed by default. "Group" is used to restrict access to the plugin (e. g. Group: admin;group1;group2;). "Default" indicates if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" defines the cache expiration period in minutes for the plugin.</Description>
+        <Description Translatable="1">Defines the parameters for the dashboard backend. "Limit" defines the number of entries displayed by default. "Group" is used to restrict access to the plugin (e. g. Group: admin;group1;group2;). "Default" indicates if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" defines the cache expiration period in minutes for the plugin. "Mandatory" determines if the plugin is always shown and can not be removed by agents.</Description>
         <Navigation>Frontend::Agent::View::Dashboard</Navigation>
         <Value>
             <Hash>
                 <Item Key="Module">Kernel::Output::HTML::Dashboard::UserOutOfOffice</Item>
                 <Item Key="Title" Translatable="1">Out Of Office</Item>
                 <Item Key="Description"></Item>
-                <Item Key="IdleMinutes">60</Item>
                 <Item Key="SortBy">UserFullname</Item>
                 <Item Key="Block">ContentSmall</Item>
                 <Item Key="Limit">10</Item>
                 <Item Key="Group"></Item>
                 <Item Key="Default">1</Item>
                 <Item Key="CacheTTLLocal">5</Item>
+                <Item Key="Mandatory">0</Item>
             </Hash>
         </Value>
     </Setting>
     <Setting Name="DashboardBackend###0400-UserOnline" Required="0" Valid="1">
-        <Description Translatable="1">Defines the parameters for the dashboard backend. "Limit" defines the number of entries displayed by default. "Group" is used to restrict access to the plugin (e. g. Group: admin;group1;group2;). "Default" indicates if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" defines the cache expiration period in minutes for the plugin.</Description>
+        <Description Translatable="1">Defines the parameters for the dashboard backend. "Limit" defines the number of entries displayed by default. "Group" is used to restrict access to the plugin (e. g. Group: admin;group1;group2;). "Default" indicates if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTLLocal" defines the cache expiration period in minutes for the plugin. "Mandatory" determines if the plugin is always shown and can not be removed by agents.</Description>
         <Navigation>Frontend::Agent::View::Dashboard</Navigation>
         <Value>
             <Hash>
                 <Item Key="Module">Kernel::Output::HTML::Dashboard::UserOnline</Item>
-                <Item Key="Title" Translatable="1">Online</Item>
+                <Item Key="Title" Translatable="1">Logged-In Users</Item>
                 <Item Key="Description"></Item>
                 <Item Key="ShowEmail">0</Item>
-                <Item Key="IdleMinutes">60</Item>
                 <Item Key="SortBy">UserFullname</Item>
                 <Item Key="Filter">Agent</Item>
                 <Item Key="Block">ContentSmall</Item>
@@ -11351,11 +11569,12 @@ via the Preferences button after logging in.
                 <Item Key="Group"></Item>
                 <Item Key="Default">0</Item>
                 <Item Key="CacheTTLLocal">5</Item>
+                <Item Key="Mandatory">0</Item>
             </Hash>
         </Value>
     </Setting>
     <Setting Name="DashboardBackend###0405-News" Required="0" Valid="1">
-        <Description Translatable="1">Defines the parameters for the dashboard backend. "Limit" defines the number of entries displayed by default. "Group" is used to restrict access to the plugin (e. g. Group: admin;group1;group2;). "Default" indicates if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTL" indicates the cache expiration period in minutes for the plugin.</Description>
+        <Description Translatable="1">Defines the parameters for the dashboard backend. "Limit" defines the number of entries displayed by default. "Group" is used to restrict access to the plugin (e. g. Group: admin;group1;group2;). "Default" indicates if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTL" indicates the cache expiration period in minutes for the plugin. "Mandatory" determines if the plugin is always shown and can not be removed by agents.</Description>
         <Navigation>Frontend::Agent::View::Dashboard</Navigation>
         <Value>
             <Hash>
@@ -11367,11 +11586,12 @@ via the Preferences button after logging in.
                 <Item Key="Group"></Item>
                 <Item Key="Default">1</Item>
                 <Item Key="CacheTTL">360</Item>
+                <Item Key="Mandatory">0</Item>
             </Hash>
         </Value>
     </Setting>
     <Setting Name="DashboardBackend###0410-RSS" Required="0" Valid="0">
-        <Description Translatable="1">Defines the parameters for the dashboard backend. "Limit" defines the number of entries displayed by default. "Group" is used to restrict access to the plugin (e. g. Group: admin;group1;group2;). "Default" indicates if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTL" indicates the cache expiration period in minutes for the plugin.</Description>
+        <Description Translatable="1">Defines the parameters for the dashboard backend. "Limit" defines the number of entries displayed by default. "Group" is used to restrict access to the plugin (e. g. Group: admin;group1;group2;). "Default" indicates if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTL" indicates the cache expiration period in minutes for the plugin. "Mandatory" determines if the plugin is always shown and can not be removed by agents.</Description>
         <Navigation>Frontend::Agent::View::Dashboard</Navigation>
         <Value>
             <Hash>
@@ -11389,11 +11609,12 @@ via the Preferences button after logging in.
                 <Item Key="Group"></Item>
                 <Item Key="Default">1</Item>
                 <Item Key="CacheTTL">360</Item>
+                <Item Key="Mandatory">0</Item>
             </Hash>
         </Value>
     </Setting>
     <Setting Name="DashboardBackend###0420-CmdOutput" Required="0" Valid="0">
-        <Description Translatable="1">Defines the parameters for the dashboard backend. "Cmd" is used to specify command with parameters. "Group" is used to restrict access to the plugin (e. g. Group: admin;group1;group2;). "Default" indicates if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTL" indicates the cache expiration period in minutes for the plugin.</Description>
+        <Description Translatable="1">Defines the parameters for the dashboard backend. "Cmd" is used to specify command with parameters. "Group" is used to restrict access to the plugin (e. g. Group: admin;group1;group2;). "Default" indicates if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTL" indicates the cache expiration period in minutes for the plugin. "Mandatory" determines if the plugin is always shown and can not be removed by agents.</Description>
         <Navigation>Frontend::Agent::View::Dashboard</Navigation>
         <Value>
             <Hash>
@@ -11405,11 +11626,12 @@ via the Preferences button after logging in.
                 <Item Key="Default">0</Item>
                 <Item Key="CacheTTL">60</Item>
                 <Item Key="Cmd">/bin/echo Configure me please.</Item>
+                <Item Key="Mandatory">0</Item>
             </Hash>
         </Value>
     </Setting>
     <Setting Name="DashboardBackend###0200-Image" Required="0" Valid="0">
-        <Description Translatable="1">Defines the parameters for the dashboard backend. "Group" is used to restrict access to the plugin (e. g. Group: admin;group1;group2;). "Default" indicates if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTL" indicates the cache expiration period in minutes for the plugin.</Description>
+        <Description Translatable="1">Defines the parameters for the dashboard backend. "Group" is used to restrict access to the plugin (e. g. Group: admin;group1;group2;). "Default" indicates if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTL" indicates the cache expiration period in minutes for the plugin. "Mandatory" determines if the plugin is always shown and can not be removed by agents.</Description>
         <Navigation>Frontend::Agent::View::Dashboard</Navigation>
         <Value>
             <Hash>
@@ -11424,11 +11646,12 @@ via the Preferences button after logging in.
                 <Item Key="LinkTitle">http://otrs.org/</Item>
                 <Item Key="Width">198</Item>
                 <Item Key="Height">140</Item>
+                <Item Key="Mandatory">0</Item>
             </Hash>
         </Value>
     </Setting>
     <Setting Name="DashboardBackend###0210-MOTD" Required="0" Valid="0">
-        <Description Translatable="1">Shows the message of the day (MOTD) in the agent dashboard. "Group" is used to restrict access to the plugin (e. g. Group: admin;group1;group2;). "Default" indicates if the plugin is enabled by default or if the user needs to enable it manually.</Description>
+        <Description Translatable="1">Shows the message of the day (MOTD) in the agent dashboard. "Group" is used to restrict access to the plugin (e. g. Group: admin;group1;group2;). "Default" indicates if the plugin is enabled by default or if the user needs to enable it manually. "Mandatory" determines if the plugin is always shown and can not be removed by agents.</Description>
         <Navigation>Frontend::Agent::View::Dashboard</Navigation>
         <Value>
             <Hash>
@@ -11437,11 +11660,12 @@ via the Preferences button after logging in.
                 <Item Key="Group"></Item>
                 <Item Key="Default">1</Item>
                 <Item Key="Title">Message of the Day</Item>
+                <Item Key="Mandatory">0</Item>
             </Hash>
         </Value>
     </Setting>
     <Setting Name="DashboardBackend###0300-IFrame" Required="0" Valid="0">
-        <Description Translatable="1">Defines the parameters for the dashboard backend. "Group" is used to restrict access to the plugin (e. g. Group: admin;group1;group2;). "Default" indicates if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTL" indicates the cache expiration period in minutes for the plugin.</Description>
+        <Description Translatable="1">Defines the parameters for the dashboard backend. "Group" is used to restrict access to the plugin (e. g. Group: admin;group1;group2;). "Default" indicates if the plugin is enabled by default or if the user needs to enable it manually. "CacheTTL" indicates the cache expiration period in minutes for the plugin. "Mandatory" determines if the plugin is always shown and can not be removed by agents.</Description>
         <Navigation>Frontend::Agent::View::Dashboard</Navigation>
         <Value>
             <Hash>
@@ -11461,6 +11685,7 @@ via the Preferences button after logging in.
                 <Item Key="Frameborder">1</Item>
                 <Item Key="Align">left</Item>
                 <Item Key="Scrolling">auto</Item>
+                <Item Key="Mandatory">0</Item>
             </Hash>
         </Value>
     </Setting>
@@ -11908,7 +12133,7 @@ via the Preferences button after logging in.
     </Setting>
     <Setting Name="FirstnameLastnameOrder" Required="1" Valid="1">
         <Description Translatable="1">Specifies the order in which the firstname and the lastname of agents will be displayed.</Description>
-        <Navigation>Frontend::Agent</Navigation>
+        <Navigation>Frontend::Base</Navigation>
         <Value>
             <Item ValueType="Select" SelectedID="0">
                 <Item ValueType="Option" Value="0" Translatable="1">Firstname Lastname</Item>
@@ -12305,46 +12530,6 @@ via the Preferences button after logging in.
             </Hash>
         </Value>
     </Setting>
-    <Setting Name="CustomerUser::Frontend::AgentCustomerUserAddressBook###PageShown" Required="1" Valid="1">
-        <Description Translatable="1">Defines the number of entries per page for the AgentCustomerUserAddressBook result screen.</Description>
-        <Navigation>Frontend::Agent::View::CustomerUserAddressBook</Navigation>
-        <Value>
-            <Item ValueType="String" ValueRegex="^\d+$">50</Item>
-        </Value>
-    </Setting>
-    <Setting Name="CustomerUser::Frontend::AgentCustomerUserAddressBook###DefaultFields" Required="1" Valid="1">
-        <Description Translatable="1">Defines the default filter fields in the customer user address book search (CustomerUser or CustomerCompany). For the CustomerCompany fields a prefix 'CustomerCompany_' must be added.</Description>
-        <Navigation>Frontend::Agent::View::CustomerUserAddressBook</Navigation>
-        <Value>
-            <Array>
-                <Item>UserLogin</Item>
-                <Item>UserFirstname</Item>
-                <Item>UserLastname</Item>
-                <Item>UserEmail</Item>
-                <Item>UserCustomerID</Item>
-            </Array>
-        </Value>
-    </Setting>
-    <Setting Name="CustomerUser::Frontend::AgentCustomerUserAddressBook###ShowColumns" Required="1" Valid="1">
-        <Description Translatable="1">Defines the shown columns and the position in the AgentCustomerUserAddressBook result screen.</Description>
-        <Navigation>Frontend::Agent::View::CustomerUserAddressBook</Navigation>
-        <Value>
-            <Array>
-                <Item>UserFirstname</Item>
-                <Item>UserLastname</Item>
-                <Item>UserLogin</Item>
-                <Item>UserEmail</Item>
-                <Item>UserCustomerID</Item>
-            </Array>
-        </Value>
-    </Setting>
-    <Setting Name="CustomerUser::Frontend::AgentCustomerUserAddressBook###SearchLimit" Required="1" Valid="1">
-        <Description Translatable="1">Defines the search limit for the AgentCustomerUserAddressBook screen.</Description>
-        <Navigation>Frontend::Agent::View::CustomerUserAddressBook</Navigation>
-        <Value>
-            <Item ValueType="String" ValueRegex="^\d+$">10000</Item>
-        </Value>
-    </Setting>
     <Setting Name="Frontend::Module###AdminSystemConfigurationDeployment" Required="0" Valid="1">
         <Description Translatable="1">Frontend module registration for the agent interface.</Description>
         <Navigation>Frontend::Admin::ModuleRegistration</Navigation>
@@ -12456,7 +12641,6 @@ via the Preferences button after logging in.
                 <Item Key="Description" Translatable="1">Edit the system configuration settings.</Item>
                 <Item Key="IconBig"></Item>
                 <Item Key="IconSmall"></Item>
-                <Item Key="Prio">800</Item>
             </Hash>
         </Value>
     </Setting>

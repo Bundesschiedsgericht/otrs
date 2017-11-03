@@ -234,7 +234,8 @@ $Selenium->RunTest(
 
                 # wait for autocomplete to load
                 $Selenium->WaitFor(
-                    JavaScript => 'return typeof($) === "function" && $("li.ui-menu-item:visible").length'
+                    JavaScript =>
+                        "return typeof(\$) === 'function' && \$('li.ui-menu-item:visible').length === $AutoCompleteExpected{$AutocompleteInput}->{Expected}"
                 );
             }
             else {
@@ -262,7 +263,7 @@ $Selenium->RunTest(
             if ( $AutoCompleteExpected{$AutocompleteInput}->{Expected} ) {
 
                 # select customer user
-                $Selenium->find_element("//*[text()='$AutocompleteInput']")->VerifiedClick();
+                $Selenium->execute_script("\$('li.ui-menu-item:contains($AutocompleteInput)').click()");
 
                 # Wait until customer data is loading (CustomerID is filled after CustomerAutoComplete)
                 $Selenium->WaitFor( JavaScript => 'return typeof($) === "function" && $("#CustomerID").val().length' );
@@ -317,18 +318,23 @@ $Selenium->RunTest(
                         );
                     }
 
+                    $Selenium->find_element( "#SelectionCustomerIDAll", 'css' )->clear();
                     $Selenium->find_element( "#SelectionCustomerIDAll", 'css' )
                         ->send_keys( $AutoCompleteExpected{$AutocompleteInput}->{SelectAllCustomerID} );
 
                     # Wait for autocomplete to load.
                     $Selenium->WaitFor(
+                        JavaScript => 'return typeof($) === "function" && !$(".AJAXLoader:visible").length'
+                    );
+                    $Selenium->WaitFor(
                         JavaScript => 'return typeof($) === "function" && $("li.ui-menu-item:visible").length'
                     );
 
                     # select customer id
-                    $Selenium->find_element(
-                        "//*[text()='$AutoCompleteExpected{$AutocompleteInput}->{SelectAllCustomerID}']"
-                    )->click();
+                    $Selenium->execute_script(
+                        "\$('li.ui-menu-item:contains($AutoCompleteExpected{$AutocompleteInput}->{SelectAllCustomerID})').click()"
+                    );
+
                 }
 
                 $Selenium->WaitFor(

@@ -11,8 +11,6 @@ package Kernel::System::Console::Command::Maint::Ticket::FulltextIndex;
 use strict;
 use warnings;
 
-use Time::HiRes();
-
 use parent qw(Kernel::System::Console::BaseCommand);
 
 our @ObjectDependencies = (
@@ -26,7 +24,7 @@ sub Configure {
     $Self->Description('Flag articles to automatically rebuild the article search index or displays the index status.');
     $Self->AddOption(
         Name        => 'status',
-        Description => "Displays the current status of the index.",
+        Description => "Display the current status of the index.",
         Required    => 0,
         HasValue    => 0,
     );

@@ -408,9 +408,8 @@ Default setting lookup.
 Returns:
 
     %Result = (
-        DefaultID      => 1,
+        DefaultID      => 4,
         Name           => 'TheName',
-        XMLContentRaw  => '',           # XML Data
     );
 
 =cut
@@ -430,7 +429,7 @@ sub DefaultSettingLookup {
     my @Bind;
 
     my $SQL = '
-        SELECT id, name, xml_content_raw
+        SELECT id, name
         FROM sysconfig_default
         WHERE
     ';
@@ -448,17 +447,17 @@ sub DefaultSettingLookup {
 
     # db query
     return if !$DBObject->Prepare(
-        SQL  => $SQL,
-        Bind => \@Bind,
+        SQL   => $SQL,
+        Bind  => \@Bind,
+        Limit => 1,
     );
 
     my %Result;
 
     ROW:
     while ( my @Row = $DBObject->FetchrowArray() ) {
-        $Result{DefaultID}     = $Row[0];
-        $Result{Name}          = $Row[1];
-        $Result{XMLContentRaw} = $Row[2];
+        $Result{DefaultID} = $Row[0];
+        $Result{Name}      = $Row[1];
         last ROW;
     }
 
@@ -989,7 +988,7 @@ sub DefaultSettingListGet {
     my @Bind;
 
     my $CacheType = 'SysConfigDefaultListGet';
-    my $CacheKey  = 'DefaultSettingListGet';
+    my $CacheKey  = 'DefaultSettingListGet';     # this cache key gets more elements
 
     # Check params have a default value.
     for my $Key ( sort keys %FieldFilters ) {
@@ -1053,32 +1052,60 @@ sub DefaultSettingListGet {
 
     return @{$Cache} if ref $Cache eq 'ARRAY';
 
-    # Start SQL statement.
     my $SQL = '
-        SELECT id, name
+        SELECT id, name, description, navigation, is_invisible, is_readonly, is_required, is_valid, has_configlevel,
+            user_modification_possible, user_modification_active, user_preferences_group, xml_content_raw,
+            xml_content_parsed, xml_filename, effective_value, is_dirty, exclusive_lock_guid, exclusive_lock_user_id,
+            exclusive_lock_expiry_time, create_time, create_by, change_time, change_by
         FROM sysconfig_default';
 
     $SQLFilter //= '';
 
     $SQL .= $SQLFilter . ' ORDER BY id';
 
-    my @Data;
     return if !$DBObject->Prepare(
         SQL  => $SQL,
         Bind => \@Bind,
     );
 
-    my @DefaultNames;
+    my @Data;
+    my $YAMLObject = $Kernel::OM->Get('Kernel::System::YAML');
+
     while ( my @Row = $DBObject->FetchrowArray() ) {
-        push @DefaultNames, $Row[1];
-    }
 
-    # Get default settings.
-    for my $Name (@DefaultNames) {
+        # De-serialize default data.
+        my $XMLContentParsed = $YAMLObject->Load( Data => $Row[13] );
+        my $EffectiveValue   = $YAMLObject->Load( Data => $Row[15] );
 
-        my %DefaultSetting = $Self->DefaultSettingGet(
-            Name    => $Name,
-            NoCache => $Param{NoCache},
+        my $TimeStamp = $Row[22];
+        $TimeStamp =~ s{:|-|[ ]}{}gmsx;
+
+        my %DefaultSetting = (
+            DefaultID                => $Row[0],
+            Name                     => $Row[1],
+            Description              => $Row[2],
+            Navigation               => $Row[3],
+            IsInvisible              => $Row[4],
+            IsReadonly               => $Row[5],
+            IsRequired               => $Row[6],
+            IsValid                  => $Row[7],
+            HasConfigLevel           => $Row[8],
+            UserModificationPossible => $Row[9],
+            UserModificationActive   => $Row[10],
+            UserPreferencesGroup     => $Row[11] || '',
+            XMLContentRaw            => $Row[12],
+            XMLContentParsed         => $XMLContentParsed,
+            XMLFilename              => $Row[14],
+            EffectiveValue           => $EffectiveValue,
+            IsDirty                  => $Row[16] ? 1 : 0,
+            ExclusiveLockGUID        => $Row[17],
+            ExclusiveLockUserID      => $Row[18],
+            ExclusiveLockExpiryTime  => $Row[19],
+            CreateTime               => $Row[20],
+            CreateBy                 => $Row[21],
+            ChangeTime               => $Row[22],
+            ChangeBy                 => $Row[23],
+            SettingUID               => "Default$Row[0]$TimeStamp",
         );
         push @Data, \%DefaultSetting;
     }
@@ -1207,7 +1234,7 @@ Lock Default setting(s) to the particular user.
                                             #    or
         LockAll   => 1,                     # system locks all settings.
         Force     => 1,                     # (optional) Force locking (do not check if it's already locked by another user). Default: 0.
-        UserID    => 1,
+        UserID    => 1,                     # (required)
     );
 
 Returns:
@@ -1344,6 +1371,10 @@ sub DefaultSettingLock {
     }
     $CacheObject->CleanUp(
         Type => 'SysConfigDefaultListGet',
+    );
+    $CacheObject->Delete(
+        Type => 'SysConfigDefaultList',
+        Key  => 'DefaultSettingList',
     );
 
     return $ExclusiveLockGUID;
@@ -1601,6 +1632,10 @@ sub DefaultSettingUnlock {
     $CacheObject->CleanUp(
         Type => 'SysConfigDefaultListGet',
     );
+    $CacheObject->Delete(
+        Type => 'SysConfigDefaultList',
+        Key  => 'DefaultSettingList',
+    );
 
     return 1;
 }
@@ -1653,8 +1688,9 @@ sub DefaultSettingDirtyCleanUp {
     $CacheObject->CleanUp(
         Type => 'SysConfigDefaultListGet',
     );
-    $CacheObject->CleanUp(
+    $CacheObject->Delete(
         Type => 'SysConfigDefaultList',
+        Key  => 'DefaultSettingList',
     );
     $CacheObject->CleanUp(
         Type => 'SysConfigIsDirty',
@@ -2549,7 +2585,7 @@ sub ModifiedSettingGet {
     }
 
     my $CacheType = "SysConfigModified";
-    my $CacheKey  = 'ModifiedSettingGet::'
+    my $CacheKey  = 'ModifiedSettingGet::'    # this cache key gets more elements
         . $FieldName . '::'
         . $FieldValue . '::'
         . $Param{IsGlobal} . '::'
@@ -2710,7 +2746,7 @@ sub ModifiedSettingListGet {
     my @Bind;
 
     my $CacheType = 'SysConfigModifiedList';
-    my $CacheKey  = 'ModifiedSettingList';
+    my $CacheKey  = 'ModifiedSettingList';     # this cache key gets more elements
 
     # Check params have a default value.
     for my $Key ( sort keys %FieldFilters ) {
@@ -2747,32 +2783,50 @@ sub ModifiedSettingListGet {
 
     return @{$Cache} if ref $Cache eq 'ARRAY';
 
-    # Start SQL statement.
     my $SQL = '
-        SELECT id, name
+        SELECT id, sysconfig_default_id, name, user_id, is_valid, user_modification_active,
+            effective_value, is_dirty, reset_to_default, create_time, create_by, change_time, change_by
         FROM sysconfig_modified';
 
     $SQL .= $SQLFilter . ' ORDER BY id';
 
     my $DBObject = $Kernel::OM->Get('Kernel::System::DB');
 
-    my @Data;
+    # Get modified from database.
     return if !$DBObject->Prepare(
         SQL  => $SQL,
         Bind => \@Bind,
     );
 
-    my @ModifiedIDs;
+    my @Data;
+
+    my $YAMLObject = $Kernel::OM->Get('Kernel::System::YAML');
+
     while ( my @Row = $DBObject->FetchrowArray() ) {
-        push @ModifiedIDs, $Row[0];
-    }
 
-    # Get default settings.
-    for my $ItemID (@ModifiedIDs) {
+        # De-serialize modified data.
+        my $EffectiveValue = $YAMLObject->Load( Data => $Row[6] );
 
-        my %ModifiedSetting = $Self->ModifiedSettingGet(
-            ModifiedID => $ItemID,
+        my $TimeStamp = $Row[11];
+        $TimeStamp =~ s{:|-|[ ]}{}gmsx;
+
+        my %ModifiedSetting = (
+            ModifiedID             => $Row[0],
+            DefaultID              => $Row[1],
+            Name                   => $Row[2],
+            TargetUserID           => $Row[3],
+            IsValid                => $Row[4],
+            UserModificationActive => $Row[5],
+            EffectiveValue         => $EffectiveValue,
+            IsDirty                => $Row[7] ? 1 : 0,
+            ResetToDefault         => $Row[8] ? 1 : 0,
+            CreateTime             => $Row[9],
+            CreateBy               => $Row[10],
+            ChangeTime             => $Row[11],
+            ChangeBy               => $Row[12],
+            SettingUID             => "Modified$Row[0]$TimeStamp",
         );
+
         push @Data, \%ModifiedSetting;
     }
 
@@ -2927,6 +2981,9 @@ sub ModifiedSettingUpdate {
         }
     }
 
+    # Set is dirty to 1 if not defined.
+    $Param{IsDirty} //= 1;
+
     # Get modified setting.
     my %ModifiedSetting = $Self->ModifiedSettingGet(
         ModifiedID => $Param{ModifiedID},
@@ -2942,6 +2999,10 @@ sub ModifiedSettingUpdate {
         if ($DataIsDifferent) {
             $IsDifferent = 1;
         }
+    }
+
+    if ( $ModifiedSetting{IsDirty} != $Param{IsDirty} ) {
+        $IsDifferent = 1;
     }
 
     return 1 if !$IsDifferent;
@@ -2997,9 +3058,6 @@ sub ModifiedSettingUpdate {
     $Param{EffectiveValue} = $Kernel::OM->Get('Kernel::System::YAML')->Dump(
         Data => $Param{EffectiveValue},
     );
-
-    # Set is dirty to 1 if not defined.
-    $Param{IsDirty} //= 1;
 
     $Param{ResetToDefault} = $Param{ResetToDefault} ? 1 : 0;
 
@@ -3787,11 +3845,11 @@ sub ConfigurationIsDirty {
             LEFT OUTER JOIN sysconfig_modified sm ON sm.name = sd.name
         WHERE ';
 
-    my $SQLWhere = 'sd.is_dirty = 1 OR sm.is_dirty = 1';
+    my $SQLWhere = 'sd.is_dirty = 1 OR (sm.user_id IS NULL AND sm.is_dirty = 1)';
 
     my @Bind;
     if ( $Param{UserID} ) {
-        $SQLWhere = 'sd.is_dirty = 1 OR ( sm.is_dirty = 1 and sm.change_by = ? )';
+        $SQLWhere = 'sd.is_dirty = 1 OR (sm.user_id IS NULL AND sm.is_dirty = 1 AND sm.change_by = ? )';
         push @Bind, \$Param{UserID};
     }
 
@@ -4425,12 +4483,13 @@ sub DeploymentLock {
                 },
             );
 
-            my $Locked = $LockedDateTimeObject > $CurrentDateTimeObject ? 1 : 0;
+            my $IsLocked = $LockedDateTimeObject > $CurrentDateTimeObject ? 1 : 0;
 
-            if ($Locked) {
+            if ($IsLocked) {
                 $Kernel::OM->Get('Kernel::System::Log')->Log(
                     Priority => 'error',
-                    Message  => "It's not possible to lock a deployment if a setting is currently locked.",
+                    Message =>
+                        "It's not possible to lock a deployment if a setting is currently locked ($Locked->{Name}).",
                 );
                 return;
             }

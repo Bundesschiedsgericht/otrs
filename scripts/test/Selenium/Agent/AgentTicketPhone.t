@@ -121,7 +121,7 @@ $Selenium->RunTest(
         # Check client side validation.
         my $Element = $Selenium->find_element( "#Subject", 'css' );
         $Element->send_keys("");
-        $Element->VerifiedSubmit();
+        $Selenium->find_element( "#submitRichText", 'css' )->VerifiedClick();
 
         $Self->Is(
             $Selenium->execute_script(
@@ -139,8 +139,10 @@ $Selenium->RunTest(
         my $TicketBody    = "Selenium body test";
         $Selenium->find_element( "#FromCustomer", 'css' )->send_keys($TestCustomer);
         $Selenium->WaitFor( JavaScript => 'return typeof($) === "function" && $("li.ui-menu-item:visible").length' );
-        $Selenium->find_element("//*[text()='$TestCustomer']")->VerifiedClick();
+        $Selenium->execute_script("\$('li.ui-menu-item:contains($TestCustomer)').click()");
         $Selenium->execute_script("\$('#Dest').val('2||Raw').trigger('redraw.InputField').trigger('change');");
+        $Selenium->WaitFor( JavaScript => 'return typeof($) === "function" && !$(".AJAXLoader:visible").length' );
+
         $Selenium->find_element( "#Subject",  'css' )->send_keys($TicketSubject);
         $Selenium->find_element( "#RichText", 'css' )->send_keys($TicketBody);
 
@@ -177,12 +179,12 @@ $Selenium->RunTest(
         );
 
         # remove customer
-        $Selenium->find_element( "#TicketCustomerContentFromCustomer a.CustomerTicketRemove", "css" )->VerifiedClick();
+        $Selenium->find_element( "#TicketCustomerContentFromCustomer a.CustomerTicketRemove", "css" )->click();
 
         # add customer again
         $Selenium->find_element( "#FromCustomer", 'css' )->send_keys($TestCustomer);
         $Selenium->WaitFor( JavaScript => 'return typeof($) === "function" && $("li.ui-menu-item:visible").length' );
-        $Selenium->find_element("//*[text()='$TestCustomer']")->VerifiedClick();
+        $Selenium->execute_script("\$('li.ui-menu-item:contains($TestCustomer)').click()");
 
         # Make sure that Customer email is not a link.
         $LinkVisible = $Selenium->execute_script("return \$('.SidebarColumn fieldset a.AsPopup').length;");
@@ -191,7 +193,12 @@ $Selenium->RunTest(
             "Customer email is not a link with class AsPopup."
         );
 
-        $Selenium->find_element( "#Subject", 'css' )->VerifiedSubmit();
+        # Use 'Enter' press instead of 'VerifiedSubmit' on 'Subject' field to check if works (see bug#13056).
+        $Selenium->find_element( "#Subject", 'css' )->send_keys("\N{U+E007}");
+        $Selenium->WaitFor(
+            JavaScript =>
+                'return typeof($) === "function" && $(".MessageBox a[href*=\'AgentTicketZoom;TicketID=\']").length !== 0'
+        );
 
         my $TicketObject = $Kernel::OM->Get('Kernel::System::Ticket');
 
@@ -319,6 +326,15 @@ $Selenium->RunTest(
             TicketID => $TicketID,
             UserID   => 1,
         );
+
+        # Ticket deletion could fail if apache still writes to ticket history. Try again in this case.
+        if ( !$Success ) {
+            sleep 3;
+            $Success = $TicketObject->TicketDelete(
+                TicketID => $TicketID,
+                UserID   => 1,
+            );
+        }
         $Self->True(
             $Success,
             "Ticket with ticket ID $TicketID is deleted",

@@ -315,7 +315,13 @@ sub ActionRow {
                 $TranslatedWord = Translatable('Pending till');
             }
             elsif ( $Column eq 'CustomerCompanyName' ) {
-                $TranslatedWord = Translatable('Customer Company Name');
+                $TranslatedWord = Translatable('Customer Name');
+            }
+            elsif ( $Column eq 'CustomerID' ) {
+                $TranslatedWord = Translatable('Customer ID');
+            }
+            elsif ( $Column eq 'CustomerName' ) {
+                $TranslatedWord = Translatable('Customer User Name');
             }
             elsif ( $Column eq 'CustomerUserID' ) {
                 $TranslatedWord = Translatable('Customer User ID');
@@ -459,7 +465,6 @@ sub Run {
                 %Article = $ArticleObject->BackendForArticle( %{$Article} )->ArticleGet(
                     %{$Article},
                     DynamicFields => 0,
-                    UserID        => $Self->{UserID},
                 );
             }
 
@@ -471,6 +476,19 @@ sub Run {
             );
 
             %Article = ( %Article, %Ticket );
+
+            # Get channel specific fields.
+            if ( $Article{ArticleID} ) {
+                my %ArticleFields = $LayoutObject->ArticleFields(
+                    TicketID  => $TicketID,
+                    ArticleID => $Article{ArticleID},
+                );
+                FIELD:
+                for my $FieldKey (qw(Sender Subject)) {
+                    next FIELD if !defined $ArticleFields{$FieldKey}->{Value};
+                    $Article{$FieldKey} = $ArticleFields{$FieldKey}->{Realname} // $ArticleFields{$FieldKey}->{Value};
+                }
+            }
 
             # Fallback for tickets without articles: get at least basic ticket data.
             if ( !%Article ) {
@@ -486,28 +504,11 @@ sub Run {
             # show ticket create time in small view
             $Article{Created} = $Ticket{Created};
 
-            # prepare a "long" version of the subject to show in the title attribute. We don't take
-            # the whole string (which could be VERY long) to avoid polluting the DOM and having too
-            # much data to be transferred on large ticket lists
-            $Article{SubjectLong} = $TicketObject->TicketSubjectClean(
-                TicketNumber => $Article{TicketNumber},
-                Subject      => $Article{Subject} || '',
-                Size         => 500,
-            );
-
-            # prepare subject
-            $Article{Subject} = $TicketObject->TicketSubjectClean(
-                TicketNumber => $Article{TicketNumber},
-                Subject      => $Article{Subject} || '',
-            );
-
             # create human age
             $Article{Age} = $LayoutObject->CustomerAge(
                 Age   => $Article{Age},
                 Space => ' ',
             );
-
-            $Article{Sender} = $Article{From} // '';
 
             # get ACL restrictions
             my %PossibleActions;
@@ -774,7 +775,13 @@ sub Run {
                 }
 
                 # translate the column name to write it in the current language
-                my $TranslatedWord = $LayoutObject->{LanguageObject}->Translate($Column);
+                my $TranslatedWord;
+                if ( $Column eq 'CustomerID' ) {
+                    $TranslatedWord = $LayoutObject->{LanguageObject}->Translate('Customer ID');
+                }
+                else {
+                    $TranslatedWord = $LayoutObject->{LanguageObject}->Translate($Column);
+                }
 
                 my $FilterTitle     = $TranslatedWord;
                 my $FilterTitleDesc = Translatable('filter not active');
@@ -970,7 +977,10 @@ sub Run {
                     $TranslatedWord = $LayoutObject->{LanguageObject}->Translate('Pending till');
                 }
                 elsif ( $Column eq 'CustomerCompanyName' ) {
-                    $TranslatedWord = $LayoutObject->{LanguageObject}->Translate('Customer Company Name');
+                    $TranslatedWord = $LayoutObject->{LanguageObject}->Translate('Customer Name');
+                }
+                elsif ( $Column eq 'CustomerName' ) {
+                    $TranslatedWord = $LayoutObject->{LanguageObject}->Translate('Customer User Name');
                 }
                 elsif ( $Column eq 'CustomerUserID' ) {
                     $TranslatedWord = $LayoutObject->{LanguageObject}->Translate('Customer User ID');

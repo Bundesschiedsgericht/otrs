@@ -53,14 +53,21 @@ $Selenium->RunTest(
         );
 
         # create and login test user
+        my $Language      = 'de';
         my $TestUserLogin = $Helper->TestUserCreate(
-            Groups => [ 'admin', 'users' ],
+            Groups   => [ 'admin', 'users' ],
+            Language => $Language,
         ) || die "Did not get test user";
 
         $Selenium->Login(
             Type     => 'Agent',
             User     => $TestUserLogin,
             Password => $TestUserLogin,
+        );
+
+        # Get language object.
+        my $LanguageObject = Kernel::Language->new(
+            UserLanguage => $Language,
         );
 
         # create test customer
@@ -149,6 +156,22 @@ $Selenium->RunTest(
             $Element->is_displayed();
         }
 
+        my $OTRSBusinessIsInstalled = $Kernel::OM->Get('Kernel::System::OTRSBusiness')->OTRSBusinessIsInstalled();
+        my $OBTeaser                = $LanguageObject->Translate('All attachments (OTRS Business Solution™)');
+        my $OBTeaserFound           = index( $Selenium->get_page_source(), $OBTeaser ) > -1;
+        if ( !$OTRSBusinessIsInstalled ) {
+            $Self->True(
+                $OBTeaserFound,
+                "OTRSBusiness teaser found on page",
+            );
+        }
+        else {
+            $Self->False(
+                $OBTeaserFound,
+                "OTRSBusiness teaser not found on page",
+            );
+        }
+
         # verify article order in zoom screen
         $Self->Is(
             $Selenium->execute_script(
@@ -189,15 +212,17 @@ $Selenium->RunTest(
             JavaScript =>
                 'return typeof($) === "function" && $(".SidebarColumn div:nth-of-type(2) a.AsPopup").length'
         );
-        $Selenium->find_element( ".SidebarColumn div:nth-of-type(2) a.AsPopup", "css" )->VerifiedClick();
+        $Selenium->find_element( ".SidebarColumn div:nth-of-type(2) a.AsPopup", "css" )->click();
 
         # Wait for popup and switch.
         $Selenium->WaitFor( WindowCount => 2 );
         my $Handles = $Selenium->get_window_handles();
         $Selenium->switch_to_window( $Handles->[1] );
 
-        # wait until page has loaded, if necessary
-        $Selenium->WaitFor( JavaScript => 'return typeof($) === "function" && $("a.UndoClosePopup").length' );
+        # Wait until page has loaded, if necessary.
+        $Selenium->WaitFor(
+            JavaScript => 'return typeof(Core) == "object" && typeof(Core.App) == "object" && Core.App.PageLoadComplete'
+        );
 
         # close note pop-up window
         $Selenium->close();
@@ -207,6 +232,15 @@ $Selenium->RunTest(
             TicketID => $TicketID,
             UserID   => 1,
         );
+
+        # Ticket deletion could fail if apache still writes to ticket history. Try again in this case.
+        if ( !$Success ) {
+            sleep 3;
+            $Success = $TicketObject->TicketDelete(
+                TicketID => $TicketID,
+                UserID   => 1,
+            );
+        }
         $Self->True(
             $Success,
             "Ticket is deleted - ID $TicketID"

@@ -64,7 +64,7 @@ if ( $NodeID !~ m{ \A \d+ \z }xms && $NodeID > 0 && $NodeID < 1000 ) {
 }
 
 # get pid directory
-my $PIDDir  = $ConfigObject->Get('Home') . '/var/run/';
+my $PIDDir = $ConfigObject->Get('Daemon::PID::Path') || $ConfigObject->Get('Home') . '/var/run/';
 my $PIDFile = $PIDDir . "Daemon-NodeID-$NodeID.pid";
 my $PIDFH;
 
@@ -176,18 +176,18 @@ sub PrintUsage {
 
 sub Start {
 
-    # create a fork of the current process
-    # parent gets the PID of the child
-    # child gets PID = 0
+    # Create a fork of the current process.
+    #   Parent gets the PID of the child.
+    #   Child gets PID = 0.
     my $DaemonPID = fork;
 
-    # check if fork was not possible
+    # Check if fork was not possible.
     die "Can not create daemon process: $!" if !defined $DaemonPID || $DaemonPID < 0;
 
-    # close parent gracefully
+    # Close parent gracefully.
     exit 0 if $DaemonPID;
 
-    # lock PID
+    # Lock PID.
     my $LockSuccess = _PIDLock();
 
     if ( !$LockSuccess ) {
@@ -195,76 +195,73 @@ sub Start {
         exit 0;
     }
 
-    # get daemon modules from SysConfig
+    # Get daemon modules from SysConfig.
     my $DaemonModuleConfig = $Kernel::OM->Get('Kernel::Config')->Get('DaemonModules') || {};
 
-    # create daemon module hash
-    my %DaemonModules;
-    MODULE:
-    for my $Module ( sort keys %{$DaemonModuleConfig} ) {
-
-        next MODULE if !$Module;
-        next MODULE if !$DaemonModuleConfig->{$Module};
-        next MODULE if ref $DaemonModuleConfig->{$Module} ne 'HASH';
-        next MODULE if !$DaemonModuleConfig->{$Module}->{Module};
-
-        $DaemonModules{ $DaemonModuleConfig->{$Module}->{Module} } = {
-            PID  => 0,
-            Name => $Module,
-        };
-    }
+    # Create daemon module hash.
+    my %DaemonModules = _GetDaemonModules();
 
     my $DaemonChecker = 1;
-    local $SIG{INT} = sub { $DaemonChecker = 0; };
-    local $SIG{TERM} = sub { $DaemonChecker = 0; $DaemonStopWait = 5; };
+    my $DaemonSuspend;
+    local $SIG{INT} = sub { $DaemonChecker = 0; $DaemonSuspend = 0; };
+    local $SIG{TERM} = sub { $DaemonChecker = 0; $DaemonStopWait = 5; $DaemonSuspend = 0; };
     local $SIG{CHLD} = "IGNORE";
+    local $SIG{HUP}  = sub {
+
+        # Stop current daemon run loop.
+        $DaemonSuspend = 1;
+
+        # Stop all daemon processes.
+        my %DaemonModulesCopy = %DaemonModules;
+        %DaemonModules = ();
+        _StopDaemonModules( DaemonModules => \%DaemonModulesCopy );
+
+        # Get all daemon modules using a refreshed configuration.
+        %DaemonModules = _GetDaemonModules();
+
+        # Continue the current daemon run.
+        $DaemonSuspend = 0;
+    };
 
     print STDOUT "Daemon started\n";
     if ($Debug) {
         print STDOUT "\nDebug information is stored in the daemon log files localed under: $LogDir\n\n";
     }
 
+    LOOP:
     while ($DaemonChecker) {
+
+        if ($DaemonSuspend) {
+            sleep .5;
+            next LOOP;
+        }
 
         MODULE:
         for my $Module ( sort keys %DaemonModules ) {
 
+            last MODULE if $DaemonSuspend;
             next MODULE if !$Module;
 
-            # check if daemon is still alive
+            # Check if daemon is still alive.
             if ( $DaemonModules{$Module}->{PID} && !kill 0, $DaemonModules{$Module}->{PID} ) {
                 $DaemonModules{$Module}->{PID} = 0;
             }
 
             next MODULE if $DaemonModules{$Module}->{PID};
 
-            # fork daemon process
+            # Fork daemon process.
             my $ChildPID = fork;
 
             if ( !$ChildPID ) {
 
                 my $ChildRun = 1;
+
                 local $SIG{INT}  = sub { $ChildRun = 0; };
                 local $SIG{TERM} = sub { $ChildRun = 0; };
                 local $SIG{CHLD} = "IGNORE";
 
-                # define the ZZZ files
-                my @ZZZFiles = (
-                    'ZZZAAuto.pm',
-                    'ZZZAuto.pm',
-                );
-
-                # reload the ZZZ files (mod_perl workaround)
-                for my $ZZZFile (@ZZZFiles) {
-
-                    PREFIX:
-                    for my $Prefix (@INC) {
-                        my $File = $Prefix . '/Kernel/Config/Files/' . $ZZZFile;
-                        next PREFIX if !-f $File;
-                        do $File;
-                        last PREFIX;
-                    }
-                }
+                # Remove the ZZZAAuto.pm from %INC to force reloading it.
+                delete $INC{'Kernel/Config/Files/ZZZAAuto.pm'};
 
                 local $Kernel::OM = Kernel::System::ObjectManager->new(
                     'Kernel::System::Log' => {
@@ -272,13 +269,13 @@ sub Start {
                     },
                 );
 
-                # disable in memory cache because many processes runs at the same time
+                # Disable in memory cache because many processes runs at the same time.
                 $Kernel::OM->Get('Kernel::System::Cache')->Configure(
                     CacheInMemory  => 0,
                     CacheInBackend => 1,
                 );
 
-                # set daemon log files
+                # Set daemon log files.
                 _LogFilesSet(
                     Module => $DaemonModules{$Module}->{Name}
                 );
@@ -287,7 +284,7 @@ sub Start {
                 LOOP:
                 while ($ChildRun) {
 
-                    # create daemon object if not exists
+                    # Create daemon object if not exists.
                     eval {
 
                         if (
@@ -305,7 +302,7 @@ sub Start {
                         $DaemonObject ||= $Kernel::OM->Get($Module);
                     };
 
-                    # wait 10 seconds if creation of object is not possible
+                    # Wait 10 seconds if creation of object is not possible.
                     if ( !$DaemonObject ) {
                         sleep 10;
                         last LOOP;
@@ -329,70 +326,15 @@ sub Start {
             }
         }
 
-        # sleep 0.1 seconds to protect the system of a 100% CPU usage if one daemon
-        # module is damaged and produces hard errors
+        # Sleep 0.1 seconds to protect the system of a 100% CPU usage if one daemon
+        #   module is damaged and produces hard errors.
         sleep 0.1;
     }
 
-    # send all daemon processes a stop signal
-    MODULE:
-    for my $Module ( sort keys %DaemonModules ) {
+    # Stop all daemon modules, first try soft otherwise hard.
+    _StopDaemonModules( DaemonModules => \%DaemonModules );
 
-        next MODULE if !$Module;
-        next MODULE if !$DaemonModules{$Module}->{PID};
-
-        if ($Debug) {
-            print STDOUT "Send stop signal to $Module with PID $DaemonModules{$Module}->{PID}\n";
-        }
-
-        kill 2, $DaemonModules{$Module}->{PID};
-    }
-
-    # wait for active daemon processes to stop (typically 30 secs, or just 5 if forced)
-    WAITTIME:
-    for my $WaitTime ( 1 .. $DaemonStopWait ) {
-
-        my $ProcessesStillRunning;
-        MODULE:
-        for my $Module ( sort keys %DaemonModules ) {
-
-            next MODULE if !$Module;
-            next MODULE if !$DaemonModules{$Module}->{PID};
-
-            # check if PID is still alive
-            if ( !kill 0, $DaemonModules{$Module}->{PID} ) {
-
-                # remove daemon pid from list
-                $DaemonModules{$Module}->{PID} = 0;
-            }
-            else {
-
-                $ProcessesStillRunning = 1;
-
-                if ($Debug) {
-                    print STDOUT "Waiting to stop $Module with PID $DaemonModules{$Module}->{PID}\n";
-                }
-            }
-        }
-
-        last WAITTIME if !$ProcessesStillRunning;
-
-        sleep 1;
-    }
-
-    # hard kill of all children witch are not stopped after 30 seconds
-    MODULE:
-    for my $Module ( sort keys %DaemonModules ) {
-
-        next MODULE if !$Module;
-        next MODULE if !$DaemonModules{$Module}->{PID};
-
-        print STDOUT "Killing $Module with PID $DaemonModules{$Module}->{PID}\n";
-
-        kill 9, $DaemonModules{$Module};
-    }
-
-    # remove current log files without content
+    # Remove current log files without content.
     _LogFilesCleanup();
 
     return 0;
@@ -407,12 +349,12 @@ sub Stop {
 
         if ($ForceStop) {
 
-            # send TERM signal to running daemon
+            # Send TERM signal to running daemon.
             kill 15, $RunningDaemonPID;
         }
         else {
 
-            # send INT signal to running daemon
+            # Send INT signal to running daemon.
             kill 2, $RunningDaemonPID;
         }
     }
@@ -515,13 +457,13 @@ sub _PIDLock {
 
     # create new PID file (set exclusive lock while writing the PIDFile)
     open my $FH, '>', $PIDFile || die "Can not create PID file: $PIDFile\n";    ## no critic
-    return if !flock( $FH, LOCK_EX | LOCK_NB );
+    flock( $FH, LOCK_EX | LOCK_NB ) || die "Can not get exclusive lock for writing PID file: $PIDFile\n";
     print $FH $$;
     close $FH;
 
     # keep PIDFile shared locked forever
-    open $PIDFH, '<', $PIDFile || die "Can not create PID file: $PIDFile\n";    ## no critic
-    return if !flock( $PIDFH, LOCK_SH | LOCK_NB );
+    open $PIDFH, '<', $PIDFile || die "Can not read PID file: $PIDFile\n";      ## no critic
+    flock( $PIDFH, LOCK_SH | LOCK_NB ) || die "Can not get shared lock for reading PID file: $PIDFile\n";
 
     return 1;
 }
@@ -636,6 +578,101 @@ sub _LogFilesCleanup {
                 Message  => "Daemon: could not delete empty log file $LogFile! $!",
             );
         }
+    }
+
+    return 1;
+}
+
+sub _GetDaemonModules {
+    my %Param = @_;
+
+    $Kernel::OM->ObjectsDiscard(
+        Objects => [ 'Kernel::Config', ],
+    );
+
+    # Get daemon modules from SysConfig.
+    my $DaemonModuleConfig = $Kernel::OM->Get('Kernel::Config')->Get('DaemonModules') || {};
+
+    # Create daemon module hash.
+    my %DaemonModules;
+    MODULE:
+    for my $Module ( sort keys %{$DaemonModuleConfig} ) {
+
+        next MODULE if !$Module;
+        next MODULE if !$DaemonModuleConfig->{$Module};
+        next MODULE if ref $DaemonModuleConfig->{$Module} ne 'HASH';
+        next MODULE if !$DaemonModuleConfig->{$Module}->{Module};
+
+        $DaemonModules{ $DaemonModuleConfig->{$Module}->{Module} } = {
+            PID  => 0,
+            Name => $Module,
+        };
+    }
+
+    return %DaemonModules;
+}
+
+sub _StopDaemonModules {
+    my %Param = @_;
+
+    my %DaemonModules = %{ $Param{DaemonModules} };
+
+    # Send all daemon processes a stop signal.
+    MODULE:
+    for my $Module ( sort keys %DaemonModules ) {
+
+        next MODULE if !$Module;
+        next MODULE if !$DaemonModules{$Module}->{PID};
+
+        if ($Debug) {
+            print STDOUT "Send stop signal to $Module with PID $DaemonModules{$Module}->{PID}\n";
+        }
+
+        kill 2, $DaemonModules{$Module}->{PID};
+    }
+
+    # Wait for active daemon processes to stop (typically 30 secs, or just 5 if forced).
+    WAITTIME:
+    for my $WaitTime ( 1 .. $DaemonStopWait ) {
+
+        my $ProcessesStillRunning;
+        MODULE:
+        for my $Module ( sort keys %DaemonModules ) {
+
+            next MODULE if !$Module;
+            next MODULE if !$DaemonModules{$Module}->{PID};
+
+            # Check if PID is still alive.
+            if ( !kill 0, $DaemonModules{$Module}->{PID} ) {
+
+                # Remove daemon pid from list.
+                $DaemonModules{$Module}->{PID} = 0;
+            }
+            else {
+
+                $ProcessesStillRunning = 1;
+
+                if ($Debug) {
+                    print STDOUT "Waiting to stop $Module with PID $DaemonModules{$Module}->{PID}\n";
+                }
+            }
+        }
+
+        last WAITTIME if !$ProcessesStillRunning;
+
+        sleep 1;
+    }
+
+    # Hard kill of all children witch are not stopped after 30 seconds.
+    MODULE:
+    for my $Module ( sort keys %DaemonModules ) {
+
+        next MODULE if !$Module;
+        next MODULE if !$DaemonModules{$Module}->{PID};
+
+        print STDOUT "Killing $Module with PID $DaemonModules{$Module}->{PID}\n";
+
+        kill 9, $DaemonModules{$Module}->{PID};
     }
 
     return 1;

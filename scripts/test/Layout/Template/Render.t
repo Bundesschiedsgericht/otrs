@@ -461,21 +461,28 @@ EOF
     {
         Name     => 'HumanReadableDataSize',
         Template => <<'EOF',
-[% 123 | Localize( 'Filesize' ) %] [% Localize( 456 * 1024, 'Filesize' ) %]
+[% 123 | Localize( 'Filesize' ) %] [% Localize( 456 * 1024, 'Filesize' ) %] [% Localize( 789.5 * 1024 * 1024, 'Filesize' ) %]
 EOF
-        Result => '123 B 456 KB
+        Result => '123 B 456 KB 789,5 MB
 ',
         Data => {},
     },
     {
-        Name     => 'RelativeTime',
+        Name     => 'Replace',
         Template => <<'EOF',
-[% '2017-01-09 00:00:00' | Localize( 'RelativeTime' ) %] [% Localize( '2017-01-11 00:00:00', 'RelativeTime' ) %]
+[% "This is %s" | ReplacePlaceholders("<strong>bold text</strong>") %]
+[% ReplacePlaceholders("This is %s", "<em>italic text</em>") %]
+[% "This string has %s and %s placeholder" | ReplacePlaceholders("<strong>first</strong>", "<em>second</em>") %]
+[% ReplacePlaceholders("This string has neither %s or %s text", "bold", "italic") %]
+[% "This is an <unsafe> string with %s placeholder" | html | ReplacePlaceholders("<strong>safe</strong>") %]
 EOF
-        Result => 'a day ago in a day
+        Result => 'This is <strong>bold text</strong>
+This is <em>italic text</em>
+This string has <strong>first</strong> and <em>second</em> placeholder
+This string has neither bold or italic text
+This is an &lt;unsafe&gt; string with <strong>safe</strong> placeholder
 ',
-        Data         => {},
-        FixedTimeSet => '2017-01-10 00:00:00',
+        Data => {},
     },
 );
 

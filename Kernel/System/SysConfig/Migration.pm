@@ -488,7 +488,7 @@ sub MigrateXMLStructure {
                 }
 
                 NAVBARTAG:
-                for my $NavBarTag (qw(Module Name Block Description IconBig IconSmall Prio CssClass)) {
+                for my $NavBarTag (qw(Module Name Block Description IconBig IconSmall CssClass)) {
                     my $Value      = '';
                     my $Attributes = '';
 
@@ -787,21 +787,33 @@ sub MigrateXMLStructure {
                     {$LinkBackendReplace}gsmx;
                 }
 
-                # fill dropdowns with existing values
+                # Fill dropdowns with existing values.
                 $Setting =~ s{<\/DefaultItem>(\s*?)<Item\sKey="(.*?)">(0|1|2)<}
                 {<\/DefaultItem>$1\t\t<Item Key="$2" SelectedID="$3"><}gsmx;
-                while (
-                    $Setting =~ m{"(0|1|2)"><\/Item>(\s*)<Item\sKey="(.*?)">(0|1|2)<}
-                    )
-                {
-                    if ( $2 ne 'Default' ) {
-                        $Setting =~ s{><\/Item>(\s*)<Item\sKey="(.*?)">(0|1|2)<}
-                        {></Item>$1<Item Key="$2" SelectedID="$3"><}gsmx;
+
+                # Only alter <Items> right after </DefaultItem> and before the closing the hash </Hash>
+                my $DropdownItems;
+                if ( $Setting =~ m{<\/DefaultItem>(.+)<\/Hash>\s+^[\s]}smx ) {
+
+                    $DropdownItems = $1;
+
+                    while (
+                        $DropdownItems =~ m{"(0|1|2)"><\/Item>(\s*)<Item\sKey="(.*?)">(0|1|2)<}
+                        )
+                    {
+                        if ( $2 ne 'Default' ) {
+                            $DropdownItems =~ s{><\/Item>(\s*)<Item\sKey="(.*?)">(0|1|2)<}
+                            {></Item>$1<Item Key="$2" SelectedID="$3"><}gsmx;
+                        }
                     }
+
+                    $DropdownItems =~ s{><\/Item>(\s*)<Item\sKey="Default"\sSelectedID="(0|1)"><}
+                        {></Item>\n\t\t\t\t<Item Key="Default">$2<}gsmx;
                 }
 
-                $Setting =~ s{><\/Item>(\s*)<Item\sKey="Default"\sSelectedID="(0|1)"><}
-                    {></Item>\n\t\t\t\t<Item Key="Default">$2<}gsmx;
+                if ($DropdownItems) {
+                    $Setting =~ s{(<\/DefaultItem>).+(<\/Hash>\s+^[\s])}{$1$DropdownItems$2}msx;
+                }
 
                 # replace tab with spaces
                 $Setting =~ s{\t}{    }gsmx;
@@ -1340,6 +1352,10 @@ sub MigrateXMLStructure {
             $Setting
                 =~ s{(ConfigItem\sName=".*?")}{$1 UserPreferencesGroup="$SettingsUserPreferencesGroup{$SettingName}"}gsmx;
         }
+
+        if ( $Setting =~ m{Name=\"DashboardBackend\#\#\#} ) {
+            $Setting =~ s{\n([ ]*)(<\/Hash>\n[ ]*<\/Value>)}{\n$1    <Item Key="Mandatory">0</Item>\n$1$2}xms;
+        }
     }
 
     my $Result = join( "", @Settings );
@@ -1376,6 +1392,9 @@ Migrate the configs effective values to the new format for OTRS 6.
             'GeneralCatalogPreferences###Permissions',
             'Loader::Agent::CommonJS###100-GeneralCatalog'
         ],
+        PackageLookupNewConfigName => {
+            'Ticket::EventModulePost###999-GenericInterface' => 'Ticket::EventModulePost###9900-GenericInterface',
+        },
         ReturnMigratedSettingsCounts => 1,                          # (optional) returns an array with counts of un/successful migrated settings
     );
 
@@ -1412,6 +1431,23 @@ sub MigrateConfigEffectiveValues {
     $Kernel::OM->Get('Kernel::System::Main')->Require( $Param{FileClass} );
     $Param{FileClass}->Load( \%OTRS5Config );
 
+    my $OTRS5ConfigFileContentList = $Kernel::OM->Get('Kernel::System::Main')->FileRead(
+        Location => $Param{FilePath},
+        Result   => 'ARRAY',
+    );
+
+    my @DisabledOTRS5Config;
+    for my $Line ( @{$OTRS5ConfigFileContentList} ) {
+
+        # Check if the line starts with a delete.
+        if ( $Line =~ m{ \A delete[ ]\$Self->\{(.+)\};}xms ) {
+            my $DisabledSettingString = $1;
+            $DisabledSettingString =~ s{['"]}{}xmsg;
+            $DisabledSettingString =~ s{\}->\{}{###}xmsg;
+            push @DisabledOTRS5Config, $DisabledSettingString;
+        }
+    }
+
     # get all OTRS 6 default settings
     my @DefaultSettings = $SysConfigObject->ConfigurationList();
 
@@ -1428,7 +1464,13 @@ sub MigrateConfigEffectiveValues {
         my $FirstLevelKey = shift @SettingNameParts;
         my $LastLevelKey  = pop @SettingNameParts;
 
-        if (@SettingNameParts) {
+        if (
+            @SettingNameParts
+
+            # Skip any setting with more than one sub-levels in hash key (unsupported in OTRS 5).
+            && !defined $SettingsWithSubLevels{$FirstLevelKey}->{ $SettingNameParts[0] }
+            )
+        {
             $SettingsWithSubLevels{$FirstLevelKey}->{ $SettingNameParts[0] }->{$LastLevelKey} = 1;
         }
         else {
@@ -1501,8 +1543,9 @@ sub MigrateConfigEffectiveValues {
 
                         # check and convert config name if it has been renamed in OTRS 6
                         # otherwise it will use the given old name
-                        $NewSettingKey = _LookupNewConfigName(
-                            OldName => $NewSettingKey,
+                        $NewSettingKey = $Self->_LookupNewConfigName(
+                            OldName                    => $NewSettingKey,
+                            PackageLookupNewConfigName => $Param{PackageLookupNewConfigName},
                         );
 
                         # skip settings which are not in the given package settings
@@ -1541,26 +1584,11 @@ sub MigrateConfigEffectiveValues {
                             next SETTINGKEYSECONDLEVEL;
                         }
 
-                        # lock the setting
-                        my $ExclusiveLockGUID = $SysConfigObject->SettingLock(
-                            Name   => $NewSettingKey,
-                            Force  => 1,
-                            UserID => 1,
-                        );
-
-                        # update the setting
-                        %Result = $SysConfigObject->SettingUpdate(
-                            Name              => $NewSettingKey,
-                            IsValid           => 1,
-                            EffectiveValue    => $OTRS5EffectiveValue,
-                            ExclusiveLockGUID => $ExclusiveLockGUID,
-                            NoValidation      => 1,
-                            UserID            => 1,
-                        );
-
-                        # unlock the setting again
-                        $SysConfigObject->SettingUnlock(
-                            Name => $NewSettingKey,
+                        # update the setting.
+                        %Result = $Self->_SettingUpdate(
+                            Name           => $NewSettingKey,
+                            IsValid        => 1,
+                            EffectiveValue => $OTRS5EffectiveValue,
                         );
 
                         if ( !$Result{Success} ) {
@@ -1580,10 +1608,16 @@ sub MigrateConfigEffectiveValues {
                     # build the new setting key
                     my $NewSettingKey = $SettingName . '###' . $SettingKeyFirstLevel;
 
+                    # Skip not longer existing settings.
+                    if ( $NewSettingKey eq 'Ticket::Frontend::OverviewSmall###ColumnHeader' ) {
+                        next SETTINGKEYFIRSTLEVEL;
+                    }
+
                     # check and convert config name if it has been renamed in OTRS 6
                     # otherwise it will use the given old name
-                    $NewSettingKey = _LookupNewConfigName(
-                        OldName => $NewSettingKey,
+                    $NewSettingKey = $Self->_LookupNewConfigName(
+                        OldName                    => $NewSettingKey,
+                        PackageLookupNewConfigName => $Param{PackageLookupNewConfigName},
                     );
 
                     # skip settings which are not in the given package settings
@@ -1618,7 +1652,7 @@ sub MigrateConfigEffectiveValues {
                     {
 
                         # migrate (and split) the frontend module settings
-                        my $Result = _MigrateFrontendModuleSetting(
+                        my $Result = $Self->_MigrateFrontendModuleSetting(
                             FrontendModuleName  => $SettingKeyFirstLevel,
                             OTRS5EffectiveValue => $OTRS5EffectiveValue,
                             OTRS6Setting        => \%OTRS6Setting,
@@ -1655,26 +1689,11 @@ sub MigrateConfigEffectiveValues {
                         next SETTINGKEYFIRSTLEVEL;
                     }
 
-                    # lock the setting
-                    my $ExclusiveLockGUID = $SysConfigObject->SettingLock(
-                        Name   => $NewSettingKey,
-                        Force  => 1,
-                        UserID => 1,
-                    );
-
-                    # update the setting
-                    %Result = $SysConfigObject->SettingUpdate(
-                        Name              => $NewSettingKey,
-                        IsValid           => 1,
-                        EffectiveValue    => $OTRS5EffectiveValue,
-                        ExclusiveLockGUID => $ExclusiveLockGUID,
-                        NoValidation      => 1,
-                        UserID            => 1,
-                    );
-
-                    # unlock the setting again
-                    $SysConfigObject->SettingUnlock(
-                        Name => $NewSettingKey,
+                    # update the setting.
+                    %Result = $Self->_SettingUpdate(
+                        Name           => $NewSettingKey,
+                        IsValid        => 1,
+                        EffectiveValue => $OTRS5EffectiveValue,
                     );
 
                     if ( !$Result{Success} ) {
@@ -1694,7 +1713,7 @@ sub MigrateConfigEffectiveValues {
 
             # check and convert config name if it has been renamed in OTRS 6
             # otherwise it will use the given old name
-            my $NewSettingName = _LookupNewConfigName(
+            my $NewSettingName = $Self->_LookupNewConfigName(
                 OldName => $SettingName,
             );
 
@@ -1721,7 +1740,7 @@ sub MigrateConfigEffectiveValues {
                 next SETTINGNAME;
             }
 
-            my $OTRS5EffectiveValue = $OTRS5Config{$NewSettingName};
+            my $OTRS5EffectiveValue = $OTRS5Config{$SettingName};
 
             # the ticket number generator random is dropped from OTRS 6, enforce that DateChecksum is set instead
             if (
@@ -1746,26 +1765,11 @@ sub MigrateConfigEffectiveValues {
                 next SETTINGNAME;
             }
 
-            # lock the setting
-            my $ExclusiveLockGUID = $SysConfigObject->SettingLock(
-                Name   => $NewSettingName,
-                Force  => 1,
-                UserID => 1,
-            );
-
-            # update the setting
-            %Result = $SysConfigObject->SettingUpdate(
-                Name              => $NewSettingName,
-                IsValid           => 1,
-                EffectiveValue    => $OTRS5EffectiveValue,
-                ExclusiveLockGUID => $ExclusiveLockGUID,
-                NoValidation      => 1,
-                UserID            => 1,
-            );
-
-            # unlock the setting again
-            $SysConfigObject->SettingUnlock(
-                Name => $NewSettingName,
+            # update the setting.
+            %Result = $Self->_SettingUpdate(
+                Name           => $NewSettingName,
+                IsValid        => 1,
+                EffectiveValue => $OTRS5EffectiveValue,
             );
 
             if ( !$Result{Success} ) {
@@ -1775,18 +1779,67 @@ sub MigrateConfigEffectiveValues {
         }
     }
 
+    my $DisabledSettingsCount = 0;
+
+    # Set all settings which are disabled in OTRS 5 to disabled.
+    DISABLEDSETTINGNAME:
+    for my $DisabledSettingKey (@DisabledOTRS5Config) {
+
+        # Check and convert config name if it has been renamed in OTRS 6
+        #   otherwise it will use the given old name.
+        my $NewSettingKey = $Self->_LookupNewConfigName(
+            OldName                    => $DisabledSettingKey,
+            PackageLookupNewConfigName => $Param{PackageLookupNewConfigName},
+        );
+
+        # Skip settings which are not in the given package settings.
+        if ( %PackageSettingLookup && !$PackageSettingLookup{$NewSettingKey} ) {
+            next DISABLEDSETTINGNAME;
+        }
+
+        # Try to get the default setting from OTRS 6 for the modified setting name.
+        my %OTRS6Setting = $SysConfigObject->SettingGet(
+            Name  => $NewSettingKey,
+            NoLog => 1,
+        );
+
+        # Skip settings which already have been modified in the meantime.
+        next DISABLEDSETTINGNAME if $OTRS6Setting{ModifiedID};
+
+        # Skip this setting if it is a readonly setting.
+        next DISABLEDSETTINGNAME if $OTRS6Setting{IsReadonly};
+
+        # Log if there is a setting that can not be found in OTRS 6 (might come from packages).
+        if ( !%OTRS6Setting ) {
+            push @MissingSettings, $NewSettingKey;
+            next DISABLEDSETTINGNAME;
+        }
+
+        # Disable the setting.
+        my %Result = $Self->_SettingUpdate(
+            Name    => $NewSettingKey,
+            IsValid => 0,
+        );
+
+        if ( !$Result{Success} ) {
+            push @UnsuccessfullSettings, $NewSettingKey;
+            next DISABLEDSETTINGNAME;
+        }
+
+        $DisabledSettingsCount++;
+    }
+
     # do not print the following status output if not wanted
     return 1 if $Param{NoOutput};
 
     my $AllSettingsCount = scalar keys %OTRS5Config;
 
-    # TODO: Add explanation for the following output values
     print "\n";
     print "        - AllSettingsCount: " . $AllSettingsCount . "\n";
+    print "        - DisabledCount: " . $DisabledSettingsCount . "\n";
     print "        - MissingCount: " . scalar @MissingSettings . "\n";
     print "        - UnsuccessfullCount: " . scalar @UnsuccessfullSettings . "\n\n";
 
-    # TODO: Maybe do not show the missing settings in the final version, just the Missing count above.
     if (@MissingSettings) {
         print "\nMissing Settings: \n";
         for my $Setting (@MissingSettings) {
@@ -1804,6 +1857,7 @@ sub MigrateConfigEffectiveValues {
     if ( $Param{ReturnMigratedSettingsCounts} ) {
         return {
             AllSettingsCount      => $AllSettingsCount,
+            DisabledSettingsCount => $DisabledSettingsCount,
             MissingSettings       => \@MissingSettings,
             UnsuccessfullSettings => \@UnsuccessfullSettings,
         };
@@ -1978,7 +2032,9 @@ sub NavigationLookupGet {
         'SystemMaintenance'                                   => 'Core::SystemMaintenance',
 
         # Packages
-        'OutputFilter' => 'Frontend::Base::OutputFilter',
+        'OutputFilter'                       => 'Frontend::Base::OutputFilter',
+        'Frontend::Customer::ModuleMetaHead' => 'Frontend::Customer',
+        'Frontend::Public::ModuleMetaHead'   => 'Frontend::Public',
 
         # OTRSBusiness
         'Core::NotificationEvent'               => 'Frontend::Agent::View::NotificationView',
@@ -2008,7 +2064,7 @@ Returns:
 =cut
 
 sub _LookupNewConfigName {
-    my (%Param) = @_;
+    my ( $Self, %Param ) = @_;
 
     # check needed stuff
     if ( !$Param{OldName} ) {
@@ -2024,11 +2080,14 @@ sub _LookupNewConfigName {
         'CustomerCompany::EventModulePost###100-UpdateCustomerUsers' =>
             'CustomerCompany::EventModulePost###2000-UpdateCustomerUsers',
 
+        'CustomerCompany::EventModulePost###110-UpdateTickets' =>
+            'CustomerCompany::EventModulePost###2300-UpdateTickets',
+
         'CustomerCompany::EventModulePost###1000-GenericInterface' =>
             'CustomerCompany::EventModulePost###9900-GenericInterface',
 
-        'CustomerCompany::EventModulePost###110-UpdateTickets' =>
-            'CustomerCompany::EventModulePost###2300-UpdateTickets',
+        'CustomerUser::EventModulePost###100-UpdateDynamicFieldObjectName' =>
+            'CustomerUser::EventModulePost###2000-UpdateDynamicFieldObjectName',
 
         'CustomerUser::EventModulePost###100-UpdateSearchProfiles' =>
             'CustomerUser::EventModulePost###2100-UpdateSearchProfiles',
@@ -2045,6 +2104,9 @@ sub _LookupNewConfigName {
         'DynamicField::EventModulePost###1000-GenericInterface' =>
             'DynamicField::EventModulePost###9900-GenericInterface',
 
+        'Frontend::NotifyModule###5-Ticket::TicketEscalation' =>
+            'Frontend::NotifyModule###5000-Ticket::TicketEscalation',
+
         'Frontend::NotifyModule###100-CloudServicesDisabled' =>
             'Frontend::NotifyModule###1000-CloudServicesDisabled',
 
@@ -2057,14 +2119,44 @@ sub _LookupNewConfigName {
         'Frontend::NotifyModule###250-AgentSessionLimit' =>
             'Frontend::NotifyModule###2500-AgentSessionLimit',
 
+        'Frontend::NotifyModule###300-ShowAgentOnline' =>
+            'Frontend::NotifyModule###3000-ShowAgentOnline',
+
+        'Frontend::NotifyModule###400-ShowCustomerOnline' =>
+            'Frontend::NotifyModule###4000-ShowCustomerOnline',
+
         'Frontend::NotifyModule###500-OutofOffice-Check' =>
             'Frontend::NotifyModule###5500-OutofOffice-Check',
 
         'Frontend::NotifyModule###600-SystemMaintenance-Check' =>
             'Frontend::NotifyModule###6000-SystemMaintenance-Check',
 
+        'Frontend::NotifyModule###700-AgentTimeZone-Check' =>
+            'Frontend::NotifyModule###7000-AgentTimeZone-Check',
+
         'Frontend::NotifyModule###800-Daemon-Check' =>
             'Frontend::NotifyModule###8000-Daemon-Check',
+
+        'Frontend::NotifyModule###900-Generic' =>
+            'Frontend::NotifyModule###9000-Generic',
+
+        'Frontend::ToolBarModule###1-Ticket::AgentTicketQueue' =>
+            'Frontend::ToolBarModule###110-Ticket::AgentTicketQueue',
+
+        'Frontend::ToolBarModule###2-Ticket::AgentTicketStatus' =>
+            'Frontend::ToolBarModule###120-Ticket::AgentTicketStatus',
+
+        'Frontend::ToolBarModule###3-Ticket::AgentTicketEscalation' =>
+            'Frontend::ToolBarModule###130-Ticket::AgentTicketEscalation',
+
+        'Frontend::ToolBarModule###4-Ticket::AgentTicketPhone' =>
+            'Frontend::ToolBarModule###140-Ticket::AgentTicketPhone',
+
+        'Frontend::ToolBarModule###5-Ticket::AgentTicketEmail' =>
+            'Frontend::ToolBarModule###150-Ticket::AgentTicketEmail',
+
+        'Frontend::ToolBarModule###6-Ticket::AgentTicketProcess' =>
+            'Frontend::ToolBarModule###160-Ticket::AgentTicketProcess',
 
         'Frontend::ToolBarModule###7-Ticket::TicketResponsible' =>
             'Frontend::ToolBarModule###170-Ticket::TicketResponsible',
@@ -2074,6 +2166,21 @@ sub _LookupNewConfigName {
 
         'Frontend::ToolBarModule###9-Ticket::TicketLocked' =>
             'Frontend::ToolBarModule###190-Ticket::TicketLocked',
+
+        'Frontend::ToolBarModule###10-Ticket::AgentTicketService' =>
+            'Frontend::ToolBarModule###200-Ticket::AgentTicketService',
+
+        'Frontend::ToolBarModule###11-Ticket::TicketSearchProfile' =>
+            'Frontend::ToolBarModule###210-Ticket::TicketSearchProfile',
+
+        'Frontend::ToolBarModule###12-Ticket::TicketSearchFulltext' =>,
+        'Frontend::ToolBarModule###220-Ticket::TicketSearchFulltext',
+
+        'Frontend::ToolBarModule###13-CICSearchCustomerID' =>
+            'Frontend::ToolBarModule###230-CICSearchCustomerID',
+
+        'Frontend::ToolBarModule###14-CICSearchCustomerUser' =>
+            'Frontend::ToolBarModule###240-CICSearchCustomerUser',
 
         'Package::EventModulePost###1000-GenericInterface' =>
             'Package::EventModulePost###9900-GenericInterface',
@@ -2134,6 +2241,14 @@ sub _LookupNewConfigName {
 
         'Ticket::Frontend::ArticlePreViewModule###1-SMIME' =>
             'Ticket::Frontend::ArticlePreViewModule###2-SMIME',
+
+        # Moved and renamed config setting from OTRSBusiness.xml to Framework.xml
+        'ChatEngine::AgentOnlineThreshold' => 'SessionAgentOnlineThreshold',
+
+        # Moved and renamed config setting from OTRSBusiness.xml to Framework.xml
+        'ChatEngine::CustomerOnlineThreshold' => 'SessionCustomerOnlineThreshold',
+
+        %{ $Param{PackageLookupNewConfigName} // {} },
     );
 
     # get the new name if found, otherwise use the given old name
@@ -2199,7 +2314,7 @@ Returns:
 =cut
 
 sub _MigrateFrontendModuleSetting {
-    my (%Param) = @_;
+    my ( $Self, %Param ) = @_;
 
     # check needed stuff
     for my $Needed (qw(FrontendModuleName OTRS5EffectiveValue OTRS6Setting)) {
@@ -2272,7 +2387,13 @@ sub _MigrateFrontendModuleSetting {
     # ###########################################################################
     # migrate the NavBar settings
     # ###########################################################################
-    if ( $Param{OTRS5EffectiveValue}->{NavBar} ) {
+
+    # Skip navbar items if name is empty.
+    my @OTRS5NavBar = grep {
+        defined $_->{Name} && length $_->{Name}
+    } @{ $Param{OTRS5EffectiveValue}->{NavBar} || [] };
+
+    if (@OTRS5NavBar) {
 
         # get all OTRS 6 default settings
         my @DefaultSettings = $SysConfigObject->ConfigurationList();
@@ -2288,7 +2409,7 @@ sub _MigrateFrontendModuleSetting {
         my @SearchResult = grep { $_->{Name} =~ m{$Search} } @DefaultSettings;
 
         # check that the number of navbar settings is the same in OTRS 5 and 6 for this frontend module
-        if ( @SearchResult && scalar @SearchResult == scalar @{ $Param{OTRS5EffectiveValue}->{NavBar} } ) {
+        if ( @SearchResult && scalar @SearchResult == scalar @OTRS5NavBar ) {
 
             my $Counter = 0;
             for my $NavBarSetting (@SearchResult) {
@@ -2313,9 +2434,8 @@ sub _MigrateFrontendModuleSetting {
                 $OTRS6NavBarSetting{EffectiveValue}->{GroupRo} = \@GroupRo;
 
                 # take NavBar settings from OTRS 5
-                for my $Attribute ( sort keys %{ $Param{OTRS5EffectiveValue}->{NavBar}->[$Counter] } ) {
-                    $OTRS6NavBarSetting{EffectiveValue}->{$Attribute}
-                        = $Param{OTRS5EffectiveValue}->{NavBar}->[$Counter]->{$Attribute};
+                for my $Attribute ( sort keys %{ $OTRS5NavBar[$Counter] } ) {
+                    $OTRS6NavBarSetting{EffectiveValue}->{$Attribute} = $OTRS5NavBar[$Counter]->{$Attribute};
                 }
 
                 # lock the setting
@@ -2418,6 +2538,57 @@ sub _MigrateFrontendModuleSetting {
     }
 
     return 1;
+}
+
+=head2 _SettingUpdate()
+
+This method locks provided settings(by force), updates them and unlock the setting.
+
+    my %Result = $SysConfigMigrationObject->_SettingUpdate(
+        Name           => 'Setting::Name',
+        IsValid        => 1,                         # (optional) 1 or 0, modified 0
+        EffectiveValue => $SettingEffectiveValue,    # (optional)
+    );
+
+Returns:
+
+    %Result = (
+        Success => 1,        # or false in case of an error
+        Error   => undef,    # error message
+    );
+
+=cut
+
+sub _SettingUpdate {
+    my ( $Self, %Param ) = @_;
+
+    return if !$Param{Name};
+
+    my $SysConfigObject = $Kernel::OM->Get('Kernel::System::SysConfig');
+
+    # lock the setting
+    my $ExclusiveLockGUID = $SysConfigObject->SettingLock(
+        Name   => $Param{Name},
+        Force  => 1,
+        UserID => 1,
+    );
+
+    # Disable the setting.
+    my %Result = $SysConfigObject->SettingUpdate(
+        Name              => $Param{Name},
+        IsValid           => $Param{IsValid},
+        EffectiveValue    => $Param{EffectiveValue},
+        ExclusiveLockGUID => $ExclusiveLockGUID,
+        NoValidation      => 1,
+        UserID            => 1,
+    );
+
+    # unlock the setting again
+    $SysConfigObject->SettingUnlock(
+        Name => $Param{Name},
+    );
+
+    return %Result;
 }
 
 1;

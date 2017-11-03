@@ -354,6 +354,7 @@ sub Run {
             %UserData,
             UserLastRequest => $DateTimeObj->ToEpoch(),
             UserType        => 'User',
+            SessionSource   => 'AgentInterface',
         );
 
         # show error message if no session id has been created
@@ -537,9 +538,7 @@ sub Run {
             # show login screen
             $LayoutObject->Print(
                 Output => \$LayoutObject->Login(
-                    Title       => 'Logout',
-                    Message     => Translatable('Session invalid. Please log in again.'),
-                    MessageType => 'Error',
+                    Title => 'Logout',
                     %Param,
                 ),
             );
@@ -697,7 +696,7 @@ sub Run {
                 MimeType => 'text/plain',
                 Body     => $Body
             );
-            if ( !$Sent ) {
+            if ( !$Sent->{Success} ) {
                 $LayoutObject->FatalError(
                     Comment => Translatable('Please contact the administrator.'),
                 );
@@ -757,7 +756,7 @@ sub Run {
             Body     => $Body
         );
 
-        if ( !$Sent ) {
+        if ( !$Sent->{Success} ) {
             $LayoutObject->FatalError(
                 Comment => Translatable('Please contact the administrator.'),
             );

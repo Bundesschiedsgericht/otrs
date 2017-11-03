@@ -24,7 +24,7 @@ our @ObjectDependencies = (
 sub Configure {
     my ( $Self, %Param ) = @_;
 
-    $Self->Description('Displays help for an existing command or search for commands.');
+    $Self->Description('Display help for an existing command or search for commands.');
     $Self->AddArgument(
         Name => 'command',
         Description =>
@@ -32,6 +32,7 @@ sub Configure {
         ValueRegex => qr/[a-zA-Z0-9:_]+/,
         Required   => 1,
     );
+    return;
 }
 
 sub Run {

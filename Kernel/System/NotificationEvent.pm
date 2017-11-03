@@ -309,7 +309,7 @@ sub NotificationAdd {
     if (%Check) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
-            Message  => "Can't add notification '$Param{Name}', notification already exists!",
+            Message  => "A notification with the name '$Param{Name}' already exists.",
         );
         return;
     }
@@ -774,11 +774,23 @@ sub NotificationImport {
         };
     }
 
+    # Check if notification message in any language has more characters than limit (4000 characters).
+    for my $Language ( sort keys %{ $NotificationData->[0]->{Message} } ) {
+        if ( length $NotificationData->[0]->{Message}->{$Language}->{Body} > 4000 ) {
+            return {
+                Success => 0,
+                Message =>
+                    Translatable("Imported notification has body text with more than 4000 characters."),
+            };
+        }
+    }
+
     my @UpdatedNotifications;
     my @AddedNotifications;
     my @NotificationErrors;
 
     my %CurrentNotifications = $Self->NotificationList(
+        %Param,
         UserID => $Param{UserID},
     );
     my %ReverseCurrentNotifications = reverse %CurrentNotifications;
@@ -802,7 +814,6 @@ sub NotificationImport {
             else {
                 push @NotificationErrors, $Notification->{Name};
             }
-
         }
         else {
 

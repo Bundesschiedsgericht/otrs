@@ -175,7 +175,6 @@ sub _ReplaceAdditionalAttributes {
     if (@ArticleListCustomer) {
         %ArticleCustomer = $ArticleObject->BackendForArticle( %{ $ArticleListCustomer[0] } )->ArticleGet(
             %{ $ArticleListCustomer[0] },
-            UserID        => $Param{UserID},
             DynamicFields => 0,
         );
     }
@@ -191,7 +190,6 @@ sub _ReplaceAdditionalAttributes {
     if (@ArticleListAgent) {
         %ArticleAgent = $ArticleObject->BackendForArticle( %{ $ArticleListAgent[0] } )->ArticleGet(
             %{ $ArticleListAgent[0] },
-            UserID        => $Param{UserID},
             DynamicFields => 0,
         );
     }
@@ -221,7 +219,6 @@ sub _ReplaceAdditionalAttributes {
             # check if there are HTML body attachments
             my %AttachmentIndexHTMLBody = $ArticleBackendObject->ArticleAttachmentIndex(
                 ArticleID    => $ArticleData->{ArticleID},
-                UserID       => $Param{UserID},
                 OnlyHTMLBody => 1,
             );
 
@@ -233,7 +230,6 @@ sub _ReplaceAdditionalAttributes {
                     TicketID  => $Param{Ticket}->{TicketID},
                     ArticleID => $ArticleData->{ArticleID},
                     FileID    => $HTMLBodyAttachmentIDs[0],
-                    UserID    => $Param{UserID},
                 );
 
                 my $Charset = $AttachmentHTML{ContentType} || '';
@@ -290,13 +286,13 @@ sub _ReplaceAdditionalAttributes {
             }
 
             $ConfigValue = $TemplateGeneratorObject->_Replace(
-                RichText  => $RichText,
-                Text      => $ConfigValue,
-                Data      => \%ArticleCustomer,
-                DataAgent => \%ArticleAgent,
-                TicketID  => $Param{Ticket}->{TicketID},
-                UserID    => $Param{UserID},
-                Language  => $Language,
+                RichText   => $RichText,
+                Text       => $ConfigValue,
+                Data       => \%ArticleCustomer,
+                DataAgent  => \%ArticleAgent,
+                TicketData => $Param{Ticket},
+                UserID     => $Param{UserID},
+                Language   => $Language,
             );
 
             # Convert quoted body to Ascii and create a completed

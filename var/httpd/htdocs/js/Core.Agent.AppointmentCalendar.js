@@ -98,6 +98,7 @@ Core.Agent.AppointmentCalendar = (function (TargetNS) {
             weekNumberTitle: '#',
             weekNumberCalculation: 'ISO',
             eventLimit: true,
+            eventLimitText: Core.Language.Translate('more'),
             height: 600,
             editable: true,
             selectable: true,
@@ -794,7 +795,7 @@ Core.Agent.AppointmentCalendar = (function (TargetNS) {
                     },
                     {
                         Type: 'Close',
-                        Label: Core.Language.Translate('Close')
+                        Label: Core.Language.Translate('Close this dialog')
                     }
                 ]
             });
@@ -928,7 +929,7 @@ Core.Agent.AppointmentCalendar = (function (TargetNS) {
                     },
                     {
                         Type: 'Close',
-                        Label: Core.Language.Translate('Close'),
+                        Label: Core.Language.Translate('Close this dialog'),
                         Function: function() {
                             Core.UI.Dialog.CloseDialog($('.Dialog:visible'));
                             AppointmentData.RevertFunc();

@@ -156,6 +156,15 @@ $ConfigObject->Set(
     Key => 'Ticket::EventModulePost###9600-TicketDynamicFieldDefault',
 );
 
+my $CommunicationLogObject = $Kernel::OM->Create(
+    'Kernel::System::CommunicationLog',
+    ObjectParams => {
+        Transport => 'Email',
+        Direction => 'Incoming',
+    },
+);
+$CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
+
 # use different subject format
 for my $TicketSubjectConfig ( 'Right', 'Left' ) {
     $ConfigObject->Set(
@@ -375,7 +384,8 @@ for my $TicketSubjectConfig ( 'Right', 'Left' ) {
                 );
                 {
                     my $PostMasterObject = Kernel::System::PostMaster->new(
-                        Email => \@Content,
+                        CommunicationLogObject => $CommunicationLogObject,
+                        Email                  => \@Content,
                     );
 
                     @Return = $PostMasterObject->Run();
@@ -470,7 +480,6 @@ for my $TicketSubjectConfig ( 'Right', 'Left' ) {
                         TicketID      => $Ticket{TicketID},
                         ArticleID     => $ArticleIDs[0],
                         DynamicFields => 1,
-                        UserID        => 1,
                     );
                     my $MD5 = $MainObject->MD5sum( String => $Article{Body} ) || '';
                     $Self->Is(
@@ -482,12 +491,10 @@ for my $TicketSubjectConfig ( 'Right', 'Left' ) {
                     # check attachments
                     my %Index = $ArticleBackendObject->ArticleAttachmentIndex(
                         ArticleID => $ArticleIDs[0],
-                        UserID    => 1,
                     );
                     my %Attachment = $ArticleBackendObject->ArticleAttachment(
                         ArticleID => $ArticleIDs[0],
                         FileID    => 2,
-                        UserID    => 1,
                     );
                     $MD5 = $MainObject->MD5sum( String => $Attachment{Content} ) || '';
                     $Self->Is(
@@ -558,7 +565,6 @@ for my $TicketSubjectConfig ( 'Right', 'Left' ) {
                         TicketID      => $Ticket{TicketID},
                         ArticleID     => $ArticleIDs[0],
                         DynamicFields => 1,
-                        UserID        => 1,
                     );
                     my $MD5 = $MainObject->MD5sum( String => $Article{Body} ) || '';
                     $Self->Is(
@@ -570,12 +576,10 @@ for my $TicketSubjectConfig ( 'Right', 'Left' ) {
                     # check attachments
                     my %Index = $ArticleBackendObject->ArticleAttachmentIndex(
                         ArticleID => $ArticleIDs[0],
-                        UserID    => 1,
                     );
                     my %Attachment = $ArticleBackendObject->ArticleAttachment(
                         ArticleID => $ArticleIDs[0],
                         FileID    => 2,
-                        UserID    => 1,
                     );
                     $MD5 = $MainObject->MD5sum( String => $Attachment{Content} ) || '';
                     $Self->Is(
@@ -592,7 +596,6 @@ for my $TicketSubjectConfig ( 'Right', 'Left' ) {
                         TicketID      => $Ticket{TicketID},
                         ArticleID     => $ArticleIDs[0],
                         DynamicFields => 1,
-                        UserID        => 1,
                     );
                     my $MD5 = $MainObject->MD5sum( String => $Article{Body} ) || '';
 
@@ -620,7 +623,8 @@ for my $TicketSubjectConfig ( 'Right', 'Left' ) {
                 );
                 {
                     my $PostMasterObject = Kernel::System::PostMaster->new(
-                        Email => \@Content,
+                        CommunicationLogObject => $CommunicationLogObject,
+                        Email                  => \@Content,
                     );
 
                     @Return = $PostMasterObject->Run();
@@ -671,7 +675,8 @@ for my $TicketSubjectConfig ( 'Right', 'Left' ) {
                 }
                 {
                     my $PostMasterObject = Kernel::System::PostMaster->new(
-                        Email => \@Content,
+                        CommunicationLogObject => $CommunicationLogObject,
+                        Email                  => \@Content,
                     );
 
                     @Return = $PostMasterObject->Run();
@@ -698,7 +703,8 @@ for my $TicketSubjectConfig ( 'Right', 'Left' ) {
                 }
                 {
                     my $PostMasterObject = Kernel::System::PostMaster->new(
-                        Email => \@Content,
+                        CommunicationLogObject => $CommunicationLogObject,
+                        Email                  => \@Content,
                     );
 
                     @Return = $PostMasterObject->Run();
@@ -725,7 +731,8 @@ for my $TicketSubjectConfig ( 'Right', 'Left' ) {
                 }
                 {
                     my $PostMasterObject = Kernel::System::PostMaster->new(
-                        Email => \@Content,
+                        CommunicationLogObject => $CommunicationLogObject,
+                        Email                  => \@Content,
                     );
 
                     @Return = $PostMasterObject->Run();
@@ -752,7 +759,8 @@ for my $TicketSubjectConfig ( 'Right', 'Left' ) {
                 }
                 {
                     my $PostMasterObject = Kernel::System::PostMaster->new(
-                        Email => \@Content,
+                        CommunicationLogObject => $CommunicationLogObject,
+                        Email                  => \@Content,
                     );
 
                     @Return = $PostMasterObject->Run();
@@ -807,7 +815,8 @@ for my $TicketSubjectConfig ( 'Right', 'Left' ) {
                 );
                 {
                     my $PostMasterObject = Kernel::System::PostMaster->new(
-                        Email => \@Content,
+                        CommunicationLogObject => $CommunicationLogObject,
+                        Email                  => \@Content,
                     );
 
                     @Return = $PostMasterObject->Run();
@@ -1161,7 +1170,8 @@ Some Content in Body
     my @Return;
     {
         my $PostMasterObject = Kernel::System::PostMaster->new(
-            Email => \$Email,
+            CommunicationLogObject => $CommunicationLogObject,
+            Email                  => \$Email,
         );
 
         @Return = $PostMasterObject->Run();
@@ -1321,7 +1331,8 @@ for my $Test (@Tests) {
         my @Return;
         {
             my $PostMasterObject = Kernel::System::PostMaster->new(
-                Email => \$Test->{Email},
+                CommunicationLogObject => $CommunicationLogObject,
+                Email                  => \$Test->{Email},
             );
 
             @Return = $PostMasterObject->Run();
@@ -1457,7 +1468,8 @@ for my $Test ( sort keys %OwnerResponsibleTests ) {
     }
 
     my $PostMasterObject = Kernel::System::PostMaster->new(
-        Email => $ContentRef,
+        CommunicationLogObject => $CommunicationLogObject,
+        Email                  => $ContentRef,
     );
 
     my @Return = $PostMasterObject->Run();
@@ -1489,6 +1501,14 @@ for my $Test ( sort keys %OwnerResponsibleTests ) {
         );
     }
 }
+
+$CommunicationLogObject->ObjectLogStop(
+    ObjectLogType => 'Message',
+    Status        => 'Successful',
+);
+$CommunicationLogObject->CommunicationStop(
+    Status => 'Successful',
+);
 
 # cleanup is done by RestoreDatabase
 

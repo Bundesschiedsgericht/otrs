@@ -61,7 +61,7 @@ sub new {
 
     # Die if someone tries to instantiate the base class.
     if ( $Type eq __PACKAGE__ ) {
-        ...;    # yada-yada (unimplemented) operator
+        die 'Virtual method in base class must not be called.';
     }
 
     my $Self = {};
@@ -86,7 +86,7 @@ backend class.
 =cut
 
 sub ChannelNameGet {
-    ...;    # yada-yada (unimplemented) operator
+    die 'Virtual method in base class must not be called.';
 }
 
 =head2 ArticleHasHTMLContent()
@@ -106,7 +106,7 @@ Result:
 =cut
 
 sub ArticleHasHTMLContent {
-    ...;    # yada-yada (unimplemented) operator
+    die 'Virtual method in base class must not be called.';
 }
 
 =head2 ChannelIDGet()
@@ -168,7 +168,7 @@ Events:
 =cut
 
 sub ArticleCreate {
-    ...;    # yada-yada (unimplemented) operator
+    die 'Virtual method in base class must not be called.';
 }
 
 =head2 ArticleUpdate()
@@ -189,7 +189,7 @@ Events:
 =cut
 
 sub ArticleUpdate {
-    ...;    # yada-yada (unimplemented) operator
+    die 'Virtual method in base class must not be called.';
 }
 
 =head2 ArticleGet()
@@ -200,7 +200,6 @@ Returns article data. Override this method in your class.
         TicketID      => 123,
         ArticleID     => 123,
         DynamicFields => 1,
-        UserID        => 123,
 
         # Backend specific parameters:
         # RealNames => 1,
@@ -209,7 +208,7 @@ Returns article data. Override this method in your class.
 =cut
 
 sub ArticleGet {
-    ...;    # yada-yada (unimplemented) operator
+    die 'Virtual method in base class must not be called.';
 }
 
 =head2 ArticleDelete()
@@ -225,7 +224,7 @@ Delete an article. Override this method in your class.
 =cut
 
 sub ArticleDelete {
-    ...;    # yada-yada (unimplemented) operator
+    die 'Virtual method in base class must not be called.';
 }
 
 =head2 BackendSearchableFieldsGet()
@@ -247,7 +246,7 @@ Returns:
 =cut
 
 sub BackendSearchableFieldsGet {
-    ...;    # yada-yada (unimplemented) operator
+    die 'Virtual method in base class must not be called.';
 }
 
 =head2 ArticleSearchableContentGet()
@@ -278,7 +277,7 @@ Returns:
 =cut
 
 sub ArticleSearchableContentGet {
-    ...;    # yada-yada (unimplemented) operator
+    die 'Virtual method in base class must not be called.';
 }
 
 =head1 PRIVATE FUNCTIONS
@@ -439,7 +438,7 @@ sub _MetaArticleUpdate {
         }
     }
 
-    if ( $Param{Key} eq 'SenderType' ) {
+    if ( $Param{Key} && $Param{Key} eq 'SenderType' ) {
         $Param{Key}   = 'SenderTypeID';
         $Param{Value} = $Self->ArticleSenderTypeLookup(
             SenderType => $Param{Value},
@@ -565,7 +564,7 @@ sub _MetaArticleDelete {
         }
     }
 
-    $Kernel::OM->Get('Kernel::System::DynamicFieldValue')->ObjectValuesDelete(
+    return if !$Kernel::OM->Get('Kernel::System::DynamicFieldValue')->ObjectValuesDelete(
         ObjectType => 'Article',
         ObjectID   => $Param{ArticleID},
         UserID     => $Param{UserID},
@@ -573,23 +572,21 @@ sub _MetaArticleDelete {
 
     my $ArticleObject = $Kernel::OM->Get('Kernel::System::Ticket::Article');
 
-    $ArticleObject->ArticleSearchIndexDelete(
+    # Delete related accounted time entries.
+    return if !$ArticleObject->ArticleAccountedTimeDelete(
         ArticleID => $Param{ArticleID},
         UserID    => $Param{UserID},
     );
 
-    $ArticleObject->ArticleAccountedTimeDelete(
-        ArticleID => $Param{ArticleID},
-        UserID    => $Param{UserID},
-    );
-
-    # delete article from article search index
+    # Delete article from article search index.
     return if !$ArticleObject->ArticleSearchIndexDelete(
         ArticleID => $Param{ArticleID},
         UserID    => $Param{UserID},
     );
 
     my $DBObject = $Kernel::OM->Get('Kernel::System::DB');
+
+    # Remove all associated data for the article.
     return if !$DBObject->Do(
         SQL  => 'DELETE FROM article_flag WHERE article_id = ?',
         Bind => [ \$Param{ArticleID} ],
@@ -598,6 +595,12 @@ sub _MetaArticleDelete {
         SQL  => 'DELETE FROM ticket_history WHERE article_id = ?',
         Bind => [ \$Param{ArticleID} ],
     );
+    return if !$DBObject->Do(
+        SQL  => 'DELETE FROM mail_queue WHERE article_id = ?',
+        Bind => [ \$Param{ArticleID} ],
+    );
+
+    # Finally, delete the meta article entry.
     return if !$DBObject->Do(
         SQL  => 'DELETE FROM article WHERE id = ?',
         Bind => [ \$Param{ArticleID} ],

@@ -42,7 +42,9 @@ sub Run {
         my $SettingName = $ParamObject->GetParam( Param => 'SettingName' ) || '';
 
         my %Setting = $SysConfigObject->SettingGet(
-            Name => $SettingName,
+            Name            => $SettingName,
+            OverriddenInXML => 1,
+            UserID          => $Self->{UserID},
         );
 
         my %Result;
@@ -55,11 +57,19 @@ sub Run {
 
         my $Guid;
         if ( !$LockStatus{Locked} ) {
-            $Guid = $SysConfigObject->SettingLock(
-                UserID    => $Self->{UserID},
-                DefaultID => $Setting{DefaultID},
-            );
-
+            if ( $Setting{IsValid} ) {
+                $Guid = $SysConfigObject->SettingLock(
+                    UserID    => $Self->{UserID},
+                    DefaultID => $Setting{DefaultID},
+                );
+            }
+            else {
+                # Setting can't be locked if it's disabled.
+                $Result{Error} = $Kernel::OM->Get('Kernel::Language')->Translate(
+                    "You need to enable the setting before locking!"
+                );
+                return $Self->_ReturnJSON( Response => \%Result );
+            }
             $Setting{Locked} = $Guid ? 2 : 0;
         }
         elsif ( $LockStatus{Locked} == 1 ) {
@@ -109,7 +119,9 @@ sub Run {
         my %Result;
 
         my %Setting = $SysConfigObject->SettingGet(
-            Name => $SettingName,
+            Name            => $SettingName,
+            OverriddenInXML => 1,
+            UserID          => $Self->{UserID},
         );
 
         my %LockStatus = $SysConfigObject->SettingLockCheck(
@@ -237,11 +249,35 @@ sub Run {
             );
         }
 
+        if (
+            grep { $_ eq 'reset-locally' } @Options
+            && $SysConfigObject->can('UserSettingValueDelete')    # OTRS Business Solution™
+            )
+        {
+
+            # Remove user's value
+            my $UserValueDeleted = $SysConfigObject->UserSettingValueDelete(
+                Name       => $SettingName,
+                ModifiedID => 'All',
+                UserID     => $Self->{UserID},
+            );
+
+            if ( !$UserValueDeleted ) {
+                $Kernel::OM->Get('Kernel::System::Log')->Log(
+                    Priority => 'error',
+                    Message =>
+                        "System was not able to delete setting values for users!"
+                );
+            }
+        }
+
         %Setting = $SysConfigObject->SettingGet(
-            Name => $SettingName,
+            Name            => $SettingName,
+            OverriddenInXML => 1,
+            UserID          => $Self->{UserID},
         );
 
-        # Send only useful setting attributes to reduce ammount of data transfered in the AJAX call.
+        # Send only useful setting attributes to reduce amount of data transfered in the AJAX call.
         for my $Key (qw(IsModified IsDirty IsLocked ExclusiveLockGUID IsValid UserModificationActive)) {
             $Result{Data}->{SettingData}->{$Key} = $Setting{$Key};
         }
@@ -362,7 +398,9 @@ sub Run {
         }
 
         my %UpdatedSetting = $SysConfigObject->SettingGet(
-            Name => $SettingName,
+            Name            => $SettingName,
+            OverriddenInXML => 1,
+            UserID          => $Self->{UserID},
         );
 
         $Result{Data}->{HTMLStrg} = $SysConfigObject->SettingRender(
@@ -395,9 +433,11 @@ sub Run {
 
         # Get all settings by navigation group
         my @SettingList = $SysConfigObject->ConfigurationListGet(
-            Navigation => $RootNavigation,
-            Translate  => 0,
-            Category   => $Category,
+            Navigation      => $RootNavigation,
+            Translate       => 0,
+            Category        => $Category,
+            OverriddenInXML => 1,
+            UserID          => $Self->{UserID},
         );
 
         # get favorites from user preferences
@@ -445,7 +485,8 @@ sub Run {
         my $Output = $LayoutObject->Output(
             TemplateFile => 'SystemConfiguration/SettingsList',
             Data         => {
-                SettingList => \@SettingList,
+                SettingList             => \@SettingList,
+                OTRSBusinessIsInstalled => $Kernel::OM->Get('Kernel::System::OTRSBusiness')->OTRSBusinessIsInstalled(),
             },
         );
 
@@ -587,7 +628,9 @@ sub Run {
         for my $Setting (@UpdatedSettingsList) {
 
             my %UpdatedSetting = $SysConfigObject->SettingGet(
-                Name => $Setting->{SettingName},
+                Name            => $Setting->{SettingName},
+                OverriddenInXML => 1,
+                UserID          => $Self->{UserID},
             );
 
             my %Item;
@@ -633,9 +676,11 @@ sub Run {
 
     # Get all settings by navigation group
     my @SettingList = $SysConfigObject->ConfigurationListGet(
-        Navigation => $RootNavigation,
-        Translate  => 0,
-        Category   => $Category,
+        Navigation      => $RootNavigation,
+        Translate       => 0,
+        Category        => $Category,
+        OverriddenInXML => 1,
+        UserID          => $Self->{UserID},
     );
 
     # get favorites from user preferences
@@ -681,12 +726,13 @@ sub Run {
     $Output .= $LayoutObject->Output(
         TemplateFile => 'AdminSystemConfigurationGroup',
         Data         => {
-            Tree            => \%Tree,
-            Path            => \@Path,
-            RootNavigation  => $RootNavigation,
-            SettingList     => \@SettingList,
-            CategoriesStrg  => $Self->_GetCategoriesStrg(),
-            InvalidSettings => $Self->_CheckInvalidSettings(),
+            Tree                    => \%Tree,
+            Path                    => \@Path,
+            RootNavigation          => $RootNavigation,
+            SettingList             => \@SettingList,
+            CategoriesStrg          => $Self->_GetCategoriesStrg(),
+            InvalidSettings         => $Self->_CheckInvalidSettings(),
+            OTRSBusinessIsInstalled => $Kernel::OM->Get('Kernel::System::OTRSBusiness')->OTRSBusinessIsInstalled(),
         },
     );
     $Output .= $LayoutObject->Footer();
