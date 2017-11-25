@@ -15,6 +15,8 @@ use vars (qw($Self));
 
 use Kernel::Config;
 
+use Kernel::System::VariableCheck qw(:all);
+
 $Kernel::OM->ObjectParamAdd(
     'Kernel::System::UnitTest::Helper' => {
         RestoreDatabase => 1,
@@ -68,6 +70,20 @@ my $PreModifiedSettings = [
         Name           => 'ProductName',
         EffectiveValue => 'UnitTestModified',
     },
+    {
+        Name           => 'Frontend::NavigationModule###AdminCustomerUser',
+        EffectiveValue => {
+            'Name'        => 'Customer User',
+            'Description' => 'Create and manage customer users (changed).',
+            'Group'       => [
+                'admin',
+                'users',
+            ],
+            'Block'  => 'Customer',
+            'Module' => 'Kernel::Output::HTML::NavBar::ModuleAdmin',
+            'Prio'   => '300',
+        },
+    },
 ];
 
 my $SysConfigObject = $Kernel::OM->Get('Kernel::System::SysConfig');
@@ -95,11 +111,21 @@ for my $Settings ( @{$PreModifiedSettings} ) {
     my %Setting = $SysConfigObject->SettingGet(
         Name => $Settings->{Name},
     );
-    $Self->Is(
-        $Setting{EffectiveValue},
-        $Settings->{EffectiveValue},
-        'Test Setting ' . $Setting{Name} . ' was modified.',
-    );
+
+    if ( IsArrayRefWithData( $Settings->{EffectiveValue} ) || IsHashRefWithData( $Settings->{EffectiveValue} ) ) {
+        $Self->IsDeeply(
+            $Setting{EffectiveValue},
+            $Settings->{EffectiveValue},
+            'Test Setting ' . $Setting{Name} . ' was modified.',
+        );
+    }
+    else {
+        $Self->Is(
+            $Setting{EffectiveValue},
+            $Settings->{EffectiveValue},
+            'Test Setting ' . $Setting{Name} . ' was modified.',
+        );
+    }
 }
 
 # migrate package setting
@@ -168,7 +194,7 @@ if ( ref $Success eq 'HASH' ) {
         {
             Name        => 'AllSettingsCount',
             IsValue     => $AllSettingsCount,
-            ShouldValue => 47,
+            ShouldValue => 50,
         },
         {
             Name        => 'DisabledSettingsCount',
@@ -250,6 +276,126 @@ my @Tests = (
         Name     => 'Disabled setting with two sub levels',
         Key      => 'Ticket::Frontend::AgentTicketSearch###Defaults###Fulltext',
     },
+    {
+        TestType => 'Disabled',
+        Name     => 'Disabled nav bar item setting',
+        Key      => 'Frontend::Navigation###AgentTicketEscalationView###002-Ticket',
+    },
+    {
+        TestType       => 'EffectiveValue',
+        Name           => 'Effective Value',
+        Key            => 'Frontend::NavigationModule###AdminDynamicField',
+        EffectiveValue => {
+            'Block'       => 'Ticket',
+            'Description' => 'Create and manage dynamic fields (other description).',
+            'Group'       => [
+                'admin',
+                'users',
+            ],
+            'GroupRo'   => [],
+            'IconBig'   => 'fa-align-left',
+            'IconSmall' => '',
+            'Module'    => 'Kernel::Output::HTML::NavBar::ModuleAdmin',
+            'Name'      => 'Dynamic Fields',
+            'Prio'      => '1000',
+        },
+    },
+    {
+        TestType       => 'EffectiveValue',
+        Name           => 'Effective Value',
+        Key            => 'Frontend::Navigation###AdminDynamicField###002-Ticket',
+        EffectiveValue => [
+            {
+                'AccessKey' => '',
+                'Group'     => [
+                    'admin',
+                    'users',
+                ],
+                'GroupRo'     => [],
+                'AccessKey'   => '',
+                'Block'       => 'ItemArea',
+                'Description' => 'Changed the dynamic field.',
+                'Link'        => 'Action=AdminDynamicField;Nav=Agent',
+                'LinkOption'  => '',
+                'Name'        => 'Dynamic Field Administration',
+                'NavBar'      => 'Ticket',
+                'Prio'        => '9000',
+                'Type'        => ''
+            },
+        ],
+    },
+    {
+        TestType       => 'EffectiveValue',
+        Name           => 'Effective Value',
+        Key            => 'Frontend::Navigation###AdminCustomerUser###001-Framework',
+        EffectiveValue => [
+            {
+                'AccessKey' => '',
+                'Group'     => [
+                    'admin',
+                    'users',
+                ],
+                'GroupRo'     => [],
+                'Block'       => 'ItemArea',
+                'Description' => 'Changed the description.',
+                'Link'        => 'Action=AdminCustomerUser;Nav=Agent',
+                'LinkOption'  => '',
+                'Name'        => 'Customer User Administration',
+                'NavBar'      => 'Customers',
+                'Prio'        => '9000',
+                'Type'        => ''
+            },
+        ],
+    },
+    {
+        TestType       => 'EffectiveValue',
+        Name           => 'Effective Value',
+        Key            => 'PostMaster::PreFilterModule###1-Match',
+        EffectiveValue => {
+            Match => {
+                From => 'noreply@',
+            },
+            Module => 'Kernel::System::PostMaster::Filter::Match',
+            Set    => {
+                'X-OTRS-IsVisibleForCustomer'          => '0',
+                'X-OTRS-FollowUp-IsVisibleForCustomer' => '1',
+                'X-OTRS-Ignore'                        => 'yes',
+            },
+        },
+    },
+    {
+        TestType       => 'EffectiveValue',
+        Name           => 'Effective Value',
+        Key            => 'PostMaster::PreCreateFilterModule###000-FollowUpArticleVisibilityCheck',
+        EffectiveValue => {
+            'Module'                      => 'Kernel::System::PostMaster::Filter::FollowUpArticleVisibilityCheck',
+            'IsVisibleForCustomer'        => '0',
+            'SenderType'                  => 'customer',
+            'X-OTRS-IsVisibleForCustomer' => '0',
+            'X-OTRS-FollowUp-IsVisibleForCustomer' => '1',
+        },
+    },
+    {
+        TestType       => 'EffectiveValue',
+        Name           => 'Effective Value',
+        Key            => 'PostMaster::CheckFollowUpModule###0100-Subject',
+        EffectiveValue => {
+            'Module' => 'Kernel::System::PostMaster::FollowUpCheck::Subject',
+            ,
+            'IsVisibleForCustomer'                 => '1',
+            'SenderType'                           => 'customer',
+            'X-OTRS-IsVisibleForCustomer'          => '0',
+            'X-OTRS-FollowUp-IsVisibleForCustomer' => '1',
+        },
+    },
+
+    # Check if UTF-8 strings are migrated correctly.
+    {
+        TestType       => 'EffectiveValue',
+        Name           => 'Effective Value',
+        Key            => 'TimeZone::Calendar9Name',
+        EffectiveValue => 'カレンダー9',
+    },
 
     # There are other renamed settings, this are included AllSetings,
     #   and should not add any results in the MissingSettings above.
@@ -296,6 +442,15 @@ for my $TestData (@Tests) {
             $Setting{IsValid},
             0,
             "TEST $TestData->{Name}: Setting is disabled."
+        );
+    }
+    elsif ( $TestData->{TestType} eq 'EffectiveValue' ) {
+        my %Setting = $Kernel::OM->Get('Kernel::System::SysConfig')->SettingGet( Name => $TestData->{Key} );
+
+        $Self->IsDeeply(
+            $Setting{EffectiveValue},
+            $TestData->{EffectiveValue},
+            "TEST $TestData->{Name}: Check effective value."
         );
     }
 }

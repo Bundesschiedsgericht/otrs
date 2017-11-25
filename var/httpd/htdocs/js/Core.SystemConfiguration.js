@@ -164,6 +164,10 @@ var Core = Core || {};
             UserModificationActive : UserModificationActive
         };
 
+        if (Core.Config.Get('Action') == 'AgentPreferences') {
+            Data.Action = 'AgentPreferences';
+        }
+
         // if there are only the base categories available, hide the selection
         // and use 'All' as default.
         if ($('#Category option').length <= 2) {
@@ -296,7 +300,8 @@ var Core = Core || {};
             ValidationError,
             IsValid,
             UserModificationActive,
-            Item;
+            Item,
+            $InvalidElement;
 
         // if there are still hash items within the current Widget
         // for which a key field has been added but no value has been
@@ -330,11 +335,15 @@ var Core = Core || {};
 
             // run element validation
             if (!Core.Form.Validate.ValidateElement($(this))) {
+
+                // Highlight error
                 ValidationError = 1;
-                Core.Form.Validate.HighlightError($(this), "Error");
+                Core.Form.Validate.HighlightError(this, "Error");
                 $(this).on("change", function() {
-                    Core.Form.Validate.UnHighlightError($(this));
+                    Core.Form.Validate.UnHighlightError(this);
                 });
+
+                // Continue, check for other errors as well.
                 return;
             }
 
@@ -407,6 +416,13 @@ var Core = Core || {};
         });
 
         if (ValidationError) {
+            $InvalidElement = $Widget.find('.Error:first');
+
+            $('html, body').animate({scrollTop: $InvalidElement.offset().top -100 }, 'slow');
+
+            // Focus first error element.
+            $InvalidElement.focus();
+
             return;
         }
 
@@ -1262,6 +1278,12 @@ var Core = Core || {};
             // setting is valid
             $Widget.find(".Icon .fa-check-circle-o").removeClass("Hidden");
         }
+
+        $Widget.find("input:checkbox")
+        .off("change")
+        .on("change", function() {
+            TargetNS.CheckboxValueSet($(this));
+        });
     }
 
     /**

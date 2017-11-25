@@ -11,9 +11,12 @@ package Kernel::System::Crypt::PGP;
 use strict;
 use warnings;
 
+use Kernel::System::VariableCheck qw(:all);
+
 our @ObjectDependencies = (
     'Kernel::Config',
     'Kernel::System::DateTime',
+    'Kernel::System::CheckItem',
     'Kernel::System::Encode',
     'Kernel::System::FileTemp',
     'Kernel::System::Log',
@@ -106,7 +109,6 @@ crypt a message
 sub Crypt {
     my ( $Self, %Param ) = @_;
 
-    # check needed stuff
     for my $Needed (qw( Message Key )) {
         if ( !$Param{$Needed} ) {
             $Kernel::OM->Get('Kernel::System::Log')->Log(
@@ -119,10 +121,14 @@ sub Crypt {
 
     my @PublicKeys;
     if ( ref $Param{Key} eq 'ARRAY' ) {
-        @PublicKeys = @{ $Param{Key} };
+        for my $Key ( @{ $Param{Key} } ) {
+            my $QuotedKey = $Self->_QuoteShellArgument($Key);
+            push @PublicKeys, $QuotedKey;
+        }
     }
     elsif ( ref $Param{Key} eq '' ) {
-        push @PublicKeys, $Param{Key};
+        my $QuotedKey = $Self->_QuoteShellArgument( $Param{Key} );
+        push @PublicKeys, $QuotedKey;
     }
 
     if ( !@PublicKeys ) {
@@ -175,7 +181,6 @@ The returned hash %Result has the following keys:
 sub Decrypt {
     my ( $Self, %Param ) = @_;
 
-    # check needed stuff
     for (qw(Message)) {
         if ( !defined( $Param{$_} ) ) {
             $Kernel::OM->Get('Kernel::System::Log')->Log(
@@ -229,7 +234,6 @@ sign a message
 sub Sign {
     my ( $Self, %Param ) = @_;
 
-    # check needed stuff
     for (qw(Message Key)) {
         if ( !$Param{$_} ) {
             $Kernel::OM->Get('Kernel::System::Log')->Log(
@@ -270,8 +274,24 @@ sub Sign {
     my ( $FHPhrase, $FilePhrase ) = $FileTempObject->TempFile();
     print $FHPhrase $Pw;
     close $FHPhrase;
-    my $GPGOptions = qq{--passphrase-fd 0 --default-key $Param{Key} -o $FileSign $SigType $DigestAlgorithm $Filename};
-    my $LogMessage = qx{$Self->{GPGBin} $GPGOptions <$FilePhrase 2>&1};
+
+    # Quote the key parameter before passing it to the shell.
+    my $QuotedKey = $Self->_QuoteShellArgument( $Param{Key} );
+
+    my $Quiet = '';
+
+    # GnuPG 2.1 (and higher) may send info messages about used default keys to STDERR, which leads to problems.
+    if (
+        IsHashRefWithData( $Self->{Version} )
+        && sprintf( "%.3d%.3d", $Self->{Version}->{Major}, $Self->{Version}->{Minor} ) >= 2_001
+        )
+    {
+        $Quiet = '--quiet --batch --pinentry-mode=loopback';
+    }
+
+    my $GPGOptions
+        = qq{$Quiet --passphrase-fd 0 -o $FileSign --default-key $QuotedKey $SigType $DigestAlgorithm $Filename};
+    my $LogMessage = qx{$Self->{GPGBin} $GPGOptions < $FilePhrase 2>&1};
 
     # error
     if ($LogMessage) {
@@ -322,7 +342,6 @@ The returned hash %Result has the following keys:
 sub Verify {
     my ( $Self, %Param ) = @_;
 
-    # check needed stuff
     if ( !$Param{Message} ) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
@@ -667,7 +686,7 @@ returns an array with search result (private keys)
 sub PrivateKeySearch {
     my ( $Self, %Param ) = @_;
 
-    my $Search         = $Param{Search} || '';
+    my $Search         = $Self->_QuoteShellArgument( $Param{Search} ) || '';
     my $GPGOptions     = "--list-secret-keys --with-fingerprint --with-colons $Search";
     my @GPGOutputLines = qx{$Self->{GPGBin} $GPGOptions 2>&1};
 
@@ -687,7 +706,7 @@ returns an array with search result (public keys)
 sub PublicKeySearch {
     my ( $Self, %Param ) = @_;
 
-    my $Search         = $Param{Search} || '';
+    my $Search         = $Self->_QuoteShellArgument( $Param{Search} ) || '';
     my $GPGOptions     = "--list-keys --with-fingerprint --with-colons $Search";
     my @GPGOutputLines = qx{$Self->{GPGBin} $GPGOptions 2>&1};
 
@@ -707,8 +726,8 @@ returns public key in ascii
 sub PublicKeyGet {
     my ( $Self, %Param ) = @_;
 
-    my $Key = quotemeta( $Param{Key} || '' );
-    my $LogMessage = qx{$Self->{GPGBin} --export --armor $Key 2>&1};
+    my $QuotedKey = $Self->_QuoteShellArgument( $Param{Key} ) || '';
+    my $LogMessage = qx{$Self->{GPGBin} --export --armor $QuotedKey 2>&1};
     my $PublicKey;
     if ( $LogMessage =~ /nothing exported/i ) {
         $LogMessage =~ s/\n//g;
@@ -748,10 +767,34 @@ returns secret key in ascii
 sub SecretKeyGet {
     my ( $Self, %Param ) = @_;
 
-    my $Key = quotemeta( $Param{Key} || '' );
+    my $LogMessage = '';
 
-    my $LogMessage = qx{$Self->{GPGBin} --export-secret-keys --armor $Key 2>&1};
-    my $SecretKey  = '';
+    # GnuPG 2.1 (and higher) asks via pinentry for the key passphrase. We suppress that behavior by passing the phrase
+    # via STDIN from temporary file (--passphrase-fd 0 / file descriptor 0).
+    if (
+        IsHashRefWithData( $Self->{Version} )
+        && sprintf( "%.3d%.3d", $Self->{Version}->{Major}, $Self->{Version}->{Minor} ) >= 2_001
+        )
+    {
+        my %PasswordHash = %{ $Kernel::OM->Get('Kernel::Config')->Get('PGP::Key::Password') };
+        my $Key          = quotemeta( $Param{Key} || '' );
+        my $Password     = $PasswordHash{$Key} || '';
+
+        my ( $FH, $Filename ) = $Kernel::OM->Get('Kernel::System::FileTemp')->TempFile();
+        print $FH $Password;
+        close $FH;
+
+        $LogMessage
+            = qx{$Self->{GPGBin} --batch --pinentry-mode=loopback --export-secret-keys --passphrase-fd 0 --armor --decrypt <$Filename 2>&1};
+    }
+
+    # GnuPG 2.0 (and lower)
+    else {
+        my $QuotedKey = $Self->_QuoteShellArgument( $Param{Key} ) || '';
+        $LogMessage = qx{$Self->{GPGBin} --export-secret-keys --armor $QuotedKey 2>&1};
+    }
+
+    my $SecretKey = '';
 
     if ( $LogMessage =~ /nothing exported/i ) {
         $LogMessage =~ s/\n//g;
@@ -789,7 +832,6 @@ remove public key from key ring
 sub PublicKeyDelete {
     my ( $Self, %Param ) = @_;
 
-    # check needed stuff
     if ( !$Param{Key} ) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
@@ -798,9 +840,9 @@ sub PublicKeyDelete {
         return;
     }
 
-    my $Key        = quotemeta( $Param{Key} || '' );
+    my $QuotedKey  = $Self->_QuoteShellArgument( $Param{Key} ) || '';
     my $GPGOptions = '--status-fd 1';
-    my $Message    = qx{$Self->{GPGBin} $GPGOptions --delete-key $Key 2>&1};
+    my $Message    = qx{$Self->{GPGBin} $GPGOptions --delete-key $QuotedKey 2>&1};
 
     my %LogMessage = $Self->_HandleLog( LogString => $Message );
 
@@ -829,7 +871,6 @@ remove secret key from key ring
 sub SecretKeyDelete {
     my ( $Self, %Param ) = @_;
 
-    # check needed stuff
     if ( !$Param{Key} ) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
@@ -885,7 +926,6 @@ add key to key ring
 sub KeyAdd {
     my ( $Self, %Param ) = @_;
 
-    # check needed stuff
     if ( !$Param{Key} ) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
@@ -936,13 +976,28 @@ sub _Init {
         $Self->{GPGBin} = "LC_MESSAGES=POSIX $Self->{GPGBin} $Self->{Options}";
     }
 
+    # determine active GnuPG version
+    my $VersionString = '';
+
+    eval {
+        $VersionString = `$Self->{GPGBin} --version`;
+    };
+
+    if ( $VersionString =~ m{ gpg [ ]+ \(.+?\) [ ]+ (\d+)\.(\d+)\.(\d+) }smx ) {
+        $Self->{Version} = {
+            Major  => $1,
+            Minor  => $2,
+            Patch  => $3,
+            String => $1 . '.' . $2 . '.' . $3,
+        };
+    }
+
     return $Self;
 }
 
 sub _DecryptPart {
     my ( $Self, %Param ) = @_;
 
-    # check needed stuff
     for (qw(Key Password Filename)) {
         if ( !defined( $Param{$_} ) ) {
             $Kernel::OM->Get('Kernel::System::Log')->Log(
@@ -953,16 +1008,39 @@ sub _DecryptPart {
         }
     }
 
-    # get temp file object
     my $FileTempObject = $Kernel::OM->Get('Kernel::System::FileTemp');
 
+    # temp file for decrypted message
     my ( $FHDecrypt, $FileDecrypt ) = $FileTempObject->TempFile();
     close $FHDecrypt;
+
+    # temp file for passphrase
     my ( $FHPhrase, $FilePhrase ) = $FileTempObject->TempFile();
     print $FHPhrase $Param{Password};
     close $FHPhrase;
-    my $GPGOptions = qq{--batch --passphrase-fd 0 --yes --decrypt -o $FileDecrypt $Param{Filename}};
-    my $LogMessage = qx{$Self->{GPGBin} $GPGOptions <$FilePhrase 2>&1};
+
+    # Quote the filename parameter before passing it to the shell.
+    my $QuotedFilename = $Self->_QuoteShellArgument( $Param{Filename} );
+
+    my $LogMessage = '';
+
+    # GnuPG 2.1 (and higher)
+    if (
+        IsHashRefWithData( $Self->{Version} )
+        && sprintf( "%.3d%.3d", $Self->{Version}->{Major}, $Self->{Version}->{Minor} ) >= 2_001
+        )
+    {
+        my $GPGOptions
+            = qq{--batch --pinentry-mode=loopback --passphrase-fd 0 --armor -o $FileDecrypt --decrypt $QuotedFilename};
+        $LogMessage = qx{$Self->{GPGBin} $GPGOptions < $FilePhrase 2>&1};
+    }
+
+    # GnuPG 2.0 (and lower)
+    else {
+        my $GPGOptions = qq{--batch --passphrase-fd 0 --yes --decrypt -o $FileDecrypt $QuotedFilename};
+        $LogMessage = qx{$Self->{GPGBin} $GPGOptions <$FilePhrase 2>&1};
+    }
+
     if ( $LogMessage =~ /failed/i ) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'notice',
@@ -997,7 +1075,6 @@ Clean and build the log
 sub _HandleLog {
     my ( $Self, %Param ) = @_;
 
-    # check needed stuff
     for (qw(LogString)) {
         if ( !defined( $Param{$_} ) ) {
             $Kernel::OM->Get('Kernel::System::Log')->Log(
@@ -1139,7 +1216,11 @@ sub _ParseGPGKeyList {
             # only use last 8 chars of key-ID in order to be compatible with previous parser
             $Key{KeyPrivate} = substr( $Fields[4], -8, 8 );
         }
-        elsif ( $Type eq 'fpr' ) {
+
+        # The public and secret key information will be exposed at first. Since GnugPG 2 (and higher)
+        # the sub-key fingerprint will be displayed as well (--list-keys --with-colons), which leads
+        # to overwriting of the main information. Therefore we just collect the first fingerprint.
+        elsif ( $Type eq 'fpr' && !$Key{Fingerprint} && !$Key{Fingerprint} ) {
             $Key{FingerprintShort} = $Fields[9];
 
             # add fingerprint in standard format, too
@@ -1184,7 +1265,6 @@ sub _ParseGPGKeyList {
 sub _CryptedWithKey {
     my ( $Self, %Param ) = @_;
 
-    # check needed stuff
     if ( !$Param{File} ) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
@@ -1192,6 +1272,9 @@ sub _CryptedWithKey {
         );
         return;
     }
+
+    # Quote the file parameter before passing it to the shell.
+    my $QuotedFile = $Self->_QuoteShellArgument( $Param{File} );
 
     # This is a bit tricky: all we actually want is the list of keys that this message has been
     # encrypted for, but gpg does not seem to offer a way to just get these.
@@ -1201,7 +1284,7 @@ sub _CryptedWithKey {
     my ( $FHPhrase, $FilePhrase ) = $Kernel::OM->Get('Kernel::System::FileTemp')->TempFile();
     print $FHPhrase '_no_this_is_not_the_@correct@_passphrase_';
     close $FHPhrase;
-    my $GPGOptions     = qq{--batch --passphrase-fd 0 --always-trust --yes --decrypt $Param{File}};
+    my $GPGOptions     = qq{--batch --passphrase-fd 0 --always-trust --yes --decrypt $QuotedFile};
     my @GPGOutputLines = qx{$Self->{GPGBin} $GPGOptions <$FilePhrase 2>&1};
 
     my @Keys;
@@ -1216,6 +1299,39 @@ sub _CryptedWithKey {
     }
 
     return @Keys;
+}
+
+=head2 _QuoteShellArgument()
+
+Quote passed string to be safe to use as a shell argument.
+
+    my $Result = $Self->_QuoteShellArgument(
+        "Safe string for 'shell arguments'."   # string to quote
+    );
+
+Returns quoted string if supplied or undef otherwise:
+
+    $Result = <<'EOS';
+'Safe string for '"'"'shell arguments'"'"'.'
+EOS
+
+=cut
+
+sub _QuoteShellArgument {
+    my ( $Self, $String ) = @_;
+
+    # Only continue with quoting if we received a valid string.
+    if ( IsStringWithData($String) ) {
+
+        # Encase any single quotes in double quotes, and glue them together with single quotes.
+        #   Please see https://stackoverflow.com/a/1250279 for more information.
+        $String =~ s/'/'"'"'/g;
+
+        # Enclose the string in single quotes.
+        return "'$String'";
+    }
+
+    return;
 }
 
 1;

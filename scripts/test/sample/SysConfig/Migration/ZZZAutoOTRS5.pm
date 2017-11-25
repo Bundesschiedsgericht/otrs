@@ -166,7 +166,8 @@ $Self->{'PreferencesGroups'}->{'DynamicFieldsOverviewPageShown'} =  {
 $Self->{'Frontend::Module'}->{'AdminDynamicField'} =  {
   'Description' => 'This module is part of the admin area of OTRS.',
   'Group' => [
-    'admin'
+    'admin',
+    'users'
   ],
   'Loader' => {
     'CSS' => [
@@ -176,15 +177,80 @@ $Self->{'Frontend::Module'}->{'AdminDynamicField'} =  {
       'Core.Agent.Admin.DynamicField.js'
     ]
   },
+  'NavBar' => [
+    {
+      'AccessKey' => '',
+      'Block' => 'ItemArea',
+      'Description' => 'Changed the dynamic field.',
+      'Link' => 'Action=AdminDynamicField;Nav=Agent',
+      'LinkOption' => '',
+      'Name' => 'Dynamic Field Administration',
+      'NavBar' => 'Ticket',
+      'Prio' => '9000',
+      'Type' => ''
+    }
+  ],
   'NavBarModule' => {
     'Block' => 'Ticket',
-    'Description' => 'Create and manage dynamic fields.',
+    'Description' => 'Create and manage dynamic fields (other description).',
     'Module' => 'Kernel::Output::HTML::NavBar::ModuleAdmin',
     'Name' => 'Dynamic Fields',
     'Prio' => '1000'
   },
   'NavBarName' => 'Admin',
   'Title' => 'Dynamic Fields GUI'
+};
+# frontend module with disabled nav bar item
+$Self->{'Frontend::Module'}->{'AgentTicketEscalationView'} =  {
+  'Description' => 'Overview of all escalated tickets.',
+  'Loader' => {
+    'CSS' => [
+      'Core.AllocationList.css'
+    ],
+    'JavaScript' => [
+      'Core.UI.AllocationList.js',
+      'Core.Agent.TableFilters.js'
+    ]
+  },
+  'NavBar' => [],
+  'NavBarName' => 'Ticket',
+  'Title' => 'Escalation view'
+};
+# frontend module with already changed nav bar module
+$Self->{'Frontend::Module'}->{'AdminCustomerUser'} =  {
+  'Description' => 'Edit Customer Users.',
+  'Group' => [
+    'admin',
+    'users'
+  ],
+  'GroupRo' => [],
+  'Loader' => {
+    'JavaScript' => [
+      'Core.Agent.TicketAction.js'
+    ]
+  },
+  'NavBar' => [
+    {
+      'AccessKey' => '',
+      'Block' => 'ItemArea',
+      'Description' => 'Changed the description.',
+      'Link' => 'Action=AdminCustomerUser;Nav=Agent',
+      'LinkOption' => '',
+      'Name' => 'Customer User Administration',
+      'NavBar' => 'Customers',
+      'Prio' => '9000',
+      'Type' => ''
+    }
+  ],
+  'NavBarModule' => {
+    'Block' => 'Customer',
+    'Description' => 'Create and manage customer users.',
+    'Module' => 'Kernel::Output::HTML::NavBar::ModuleAdmin',
+    'Name' => 'Customer User',
+    'Prio' => '300'
+  },
+  'NavBarName' => 'Customers',
+  'Title' => 'Customer Users'
 };
 # yes/no
 $Self->{'Ticket::Frontend::ZoomRichTextForce'} =  '1';
@@ -591,7 +657,7 @@ $Self->{'TimeVacationDays::Calendar9'} =  {
 };
 $Self->{'CalendarWeekDayStart::Calendar9'} =  '1';
 $Self->{'TimeZone::Calendar9'} =  '0';
-$Self->{'TimeZone::Calendar9Name'} =  'Calendar Name 9';
+$Self->{'TimeZone::Calendar9Name'} =  'カレンダー9';
 $Self->{'CustomerCompany::EventModulePost'}->{'100-UpdateCustomerUsers'} =  {
   'Event' => 'CustomerCompanyUpdate',
   'Module' => 'Kernel::System::CustomerCompany::Event::CustomerUserUpdate',
@@ -779,7 +845,32 @@ $Self->{'Frontend::ToolBarModule'}->{'14-CICSearchCustomerUser'} =  {
   'Priority' => '1990040'
 };
 $Self->{'Ticket::Frontend::OverviewSmall'}->{'ColumnHeader'} =  'LastCustomerSubject';
-##+;
+$Self->{'PostMaster::PreFilterModule'}->{'1-Match'} =  {
+  'Match' => {
+    'From' => 'noreply@'
+  },
+  'Module' => 'Kernel::System::PostMaster::Filter::Match',
+  'Set' => {
+    'X-OTRS-ArticleType' => 'email-internal',
+    'X-OTRS-FollowUp-ArticleType' => 'email-external',
+    'X-OTRS-Ignore' => 'yes'
+  },
+};
+$Self->{'PostMaster::PreCreateFilterModule'}->{'000-FollowUpArticleTypeCheck'} =  {
+  'ArticleType' => 'email-internal',
+  'Module' => 'Kernel::System::PostMaster::Filter::FollowUpArticleTypeCheck',
+  'SenderType' => 'customer',
+  'X-OTRS-ArticleType' => 'email-internal',
+  'X-OTRS-FollowUp-ArticleType' => 'email-external'
+};
+$Self->{'PostMaster::CheckFollowUpModule'}->{'0100-Subject'} =  {
+  'ArticleType' => 'email-external',
+  'Module' => 'Kernel::System::PostMaster::FollowUpCheck::Subject',
+  'SenderType' => 'customer',
+  'X-OTRS-ArticleType' => 'email-internal',
+  'X-OTRS-FollowUp-ArticleType' => 'email-external'
+};
 
 }
+
 1;

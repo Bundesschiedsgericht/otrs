@@ -28,6 +28,36 @@ $Selenium->RunTest(
             Value => 'link'
         );
 
+        $Helper->ConfigSettingChange(
+            Valid => 1,
+            Key   => 'Ticket::Frontend::AgentTicketMove###Note',
+            Value => '1'
+        );
+
+        $Helper->ConfigSettingChange(
+            Valid => 1,
+            Key   => 'Ticket::Frontend::AgentTicketMove###NoteMandatory',
+            Value => '1'
+        );
+
+        $Helper->ConfigSettingChange(
+            Valid => 1,
+            Key   => 'Ticket::Frontend::AgentTicketMove###Subject',
+            Value => 'test subject'
+        );
+
+        $Helper->ConfigSettingChange(
+            Valid => 1,
+            Key   => 'Ticket::Frontend::AgentTicketMove###Body',
+            Value => 'test body'
+        );
+
+        $Helper->ConfigSettingChange(
+            Valid => 1,
+            Key   => 'Frontend::RichText',
+            Value => '0'
+        );
+
         # create two test queues to use as 'Junk' and 'Delete' queue
         my @QueueNames;
         my @QueueIDs;
@@ -217,7 +247,7 @@ $Selenium->RunTest(
         # ACL restriction on queue which is destination queue for 'Spam' menu in AgentTicketZoom
         # get error message
         my $ErrorMessage
-            = 'We are sorry, you do not have permissions anymore to access this ticket in its current state';
+            = "This ticket does not exist, or you don't have permissions to access it in its current state.";
 
         # click on 'Delete' and check for ACL error message
         $Selenium->find_element("//a[contains(\@title, 'Delete this ticket')]")->VerifiedClick();
@@ -241,6 +271,18 @@ $Selenium->RunTest(
             Valid => 1,
             Key   => 'Ticket::Frontend::MoveType',
             Value => 'form'
+        );
+
+        $Helper->ConfigSettingChange(
+            Valid => 1,
+            Key   => 'Ticket::Frontend::AgentTicketMove###Note',
+            Value => '0'
+        );
+
+        $Helper->ConfigSettingChange(
+            Valid => 1,
+            Key   => 'Ticket::Frontend::AgentTicketMove###NoteMandatory',
+            Value => '0'
         );
 
         # Reload the page, to get the new sys config option.

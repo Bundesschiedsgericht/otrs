@@ -1489,7 +1489,7 @@ sub SettingEffectiveValueCheck {
     if ( $Value->[0]->{Item} || $Value->[0]->{ValueType} ) {
 
         # get ValueType from parent or use default
-        my $ValueType = $Parameters{ValueType} || 'String';
+        my $ValueType = $Parameters{ValueType} || $Value->[0]->{ValueType} || 'String';
 
         # ValueType is defined explicitly(override parent definition)
         if (
@@ -2601,7 +2601,9 @@ sub ConfigurationXML2DB {
         if ( @DefaultSetting && IsHashRefWithData( $DefaultSetting[0] ) ) {
 
             # Compare new Setting XML with the old one (skip if there is no difference).
-            my $Updated = $Settings{$SettingName}->{XMLContentRaw} eq $DefaultSetting[0]->{XMLContentRaw} ? 0 : 1;
+            my $Updated = $Settings{$SettingName}->{XMLContentRaw} ne $DefaultSetting[0]->{XMLContentRaw};
+            $Updated ||= $Settings{$SettingName}->{XMLFilename} ne $DefaultSetting[0]->{XMLFilename};
+
             next SETTING if !$Updated;
 
             # Create a local clone of the value to prevent any modification.
@@ -3477,7 +3479,8 @@ sub ConfigurationDeploy {
 
         my $HandleSettingsSuccess = $Self->_HandleSettingsToDeploy(
             %Param,
-            DeploymentTimeStamp => $TimeStamp,
+            DeploymentExclusiveLockGUID => $ExclusiveLockGUID,
+            DeploymentTimeStamp         => $TimeStamp,
         );
 
         my $DeploymentID;
@@ -4364,7 +4367,7 @@ sub ConfigurationCategoriesGet {
     # Set framework files.
     my %Result = (
         All => {
-            DisplayName => 'All Settings',
+            DisplayName => Translatable('All Settings'),
             Files       => [],
         },
         OTRSFree => {
@@ -4685,8 +4688,15 @@ sub OverriddenFileNameGet {
         }
     }
 
+    my $EffectiveValue = $Param{EffectiveValue};
+
+    # Replace config variables in effective values.
+    # NOTE: First level only, make sure to update this code once same mechanism has been improved in Defaults.pm.
+    #   Please see bug#12916 and bug#13376 for more information.
+    $EffectiveValue =~ s/\<OTRS_CONFIG_(.+?)\>/$ConfigObject->{$1}/g;
+
     my $IsOverridden = DataIsDifferent(
-        Data1 => $Param{EffectiveValue},
+        Data1 => $EffectiveValue,
         Data2 => $LoadedEffectiveValue,
     );
 
@@ -5695,10 +5705,12 @@ Creates modified versions of dirty settings to deploy and removed the dirty flag
     AllSettings:   Create a version for all dirty settings and removed dirty flags for all default and modified settings
     DirtySettings: Create a version and remove dirty fag for the modified settings in the list, remove dirty flag for all default settings
 
-    my $Success = $SysConfigObject->_GetSettingsToDeploy(
-        NotDirty      => 1,                                         # optional - exclusive (1||0)
-        AllSettings   => 1,                                         # optional - exclusive (1||0)
-        DirtySettings => [ 'SettingName1', 'SettingName2' ],        # optional - exclusive
+    my $Success = $SysConfigObject->_HandleSettingsToDeploy(
+        NotDirty            => 1,                                         # optional - exclusive (1||0)
+        AllSettings         => 1,                                         # optional - exclusive (1||0)
+        DirtySettings       => [ 'SettingName1', 'SettingName2' ],        # optional - exclusive
+        DeploymentTimeStamp => 2017-12-12 12:00:00'
+        UserID              => 123,
     );
 
 Returns:
@@ -5815,9 +5827,10 @@ sub _HandleSettingsToDeploy {
         }
 
         for my $Setting (@ModifiedDeleted) {
-            my $Success = $SysConfigDBObject->ModifiedAdd(
+            my $Success = $SysConfigDBObject->ModifiedSettingAdd(
                 %{$Setting},
-                UserID => $Setting->{ChangeBy},
+                DeploymentExclusiveLockGUID => $Param{DeploymentExclusiveLockGUID},
+                UserID                      => $Setting->{ChangeBy},
             );
         }
 

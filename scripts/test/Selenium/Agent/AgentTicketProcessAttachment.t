@@ -22,6 +22,13 @@ $Selenium->RunTest(
         my $ConfigObject  = $Kernel::OM->Get('Kernel::Config');
         my $ProcessObject = $Kernel::OM->Get('Kernel::System::ProcessManagement::DB::Process');
 
+        # Do not check RichText.
+        $Helper->ConfigSettingChange(
+            Valid => 1,
+            Key   => 'Frontend::RichText',
+            Value => 0,
+        );
+
         # Create test user.
         my $TestUserLogin = $Helper->TestUserCreate(
             Groups => [ 'admin', 'users' ],
@@ -144,19 +151,15 @@ $Selenium->RunTest(
             "'Main-Test1.txt' - uploaded"
         );
 
-        # Delete the attachment.
-        $Selenium->execute_script(
-            "\$('.AttachmentList tbody tr:contains(Main-Test1.txt)').find('a.AttachmentDelete').trigger('click')"
-        );
-
-        # Wait until attachment is deleted.
-        $Selenium->WaitFor(
-            JavaScript =>
-                'return typeof($) === "function" && $(".fa.fa-spinner.fa-spin:visible").length === 0;'
-        );
+        $Selenium->find_element( "#Subject",  'css' )->send_keys('Test');
+        $Selenium->find_element( "#RichText", 'css' )->send_keys('Test');
 
         # Submit.
         $Selenium->find_element("//button[\@type='submit']")->VerifiedClick();
+        $Selenium->WaitFor(
+            JavaScript =>
+                'return typeof($) === "function" && $(".TicketZoom").length;'
+        );
 
         my $Url = $Selenium->get_current_url();
 
@@ -258,11 +261,20 @@ $Selenium->RunTest(
             "Process deleted - $Process->{Name},",
         );
 
+        my $TicketObject = $Kernel::OM->Get('Kernel::System::Ticket');
+
         # Delete test ticket.
-        $Success = $Kernel::OM->Get('Kernel::System::Ticket')->TicketDelete(
+        $Success = $TicketObject->TicketDelete(
             TicketID => $TicketID,
             UserID   => $TestUserID,
         );
+        if ( !$Success ) {
+            sleep 3;
+            $Success = $TicketObject->TicketDelete(
+                TicketID => $TicketID,
+                UserID   => $TestUserID,
+            );
+        }
         $Self->True(
             $Success,
             "Delete ticket - $TicketID"
