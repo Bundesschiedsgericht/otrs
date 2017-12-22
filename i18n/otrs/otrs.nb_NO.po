@@ -6,13 +6,14 @@
 # LarsMagnusHerland <lars.magnus@herland.priv.no>, 2014,2016
 # Lars Åge Kamfjord <lars-transifex@kamfjord.org>, 2014
 # Peter Værlien <pvarlien@online.no>, 2017
+# Stein-Aksel Basma <stabasm@hotmail.com>, 2017
 # Tor Houghton <th-transifex@bogus.net>, 2016
 # Trond Botnen <trond@dataservice.no>, 2016
 msgid ""
 msgstr ""
 "Project-Id-Version: OTRS\n"
-"POT-Creation-Date: 2017-11-13 23:49+0000\n"
-"PO-Revision-Date: 2017-11-13 23:52+0000\n"
+"POT-Creation-Date: 2017-12-11 23:26+0000\n"
+"PO-Revision-Date: 2017-12-11 23:28+0000\n"
 "Last-Translator: Carlos Rodríguez <carlos.rodriguez@otrs.com>\n"
 "Language-Team: Norwegian Bokmål (Norway) (http://www.transifex.com/otrs/OTRS/language/nb_NO/)\n"
 "MIME-Version: 1.0\n"
@@ -51,13 +52,13 @@ msgstr "Bare start å skrive, for å filtrere..."
 
 #. Template: AdminACL
 msgid "Configuration Import"
-msgstr ""
+msgstr "Import av konfigurasjon"
 
 #. Template: AdminACL
 msgid ""
 "Here you can upload a configuration file to import ACLs to your system. The "
 "file needs to be in .yml format as exported by the ACL editor module."
-msgstr ""
+msgstr "Her kan du laste opp en konfigurasjonsfil for å importere ACLer til systemet ditt. Filen må være på .yml format som eksportert av ACL editor modulen."
 
 #. Template: AdminACL
 msgid "This field is required."
@@ -83,14 +84,14 @@ msgstr "Beskrivelse"
 msgid ""
 "To create a new ACL you can either import ACLs which were exported from "
 "another system or create a complete new one."
-msgstr ""
+msgstr "For å opprette en ny ACL kan du enten importere ACLer som ble eksportert fra et annet system eller opprettet en helt ny ACL."
 
 #. Template: AdminACL
 msgid ""
 "Changes to the ACLs here only affect the behavior of the system, if you "
 "deploy the ACL data afterwards. By deploying the ACL data, the newly made "
 "changes will be written to the configuration."
-msgstr ""
+msgstr "Endringer i ACLene her påvirker bare systemets oppførsel dersom du distribuerer ACL-dataene etterpå. Ved å distribuere ACL-dataene, vil de nye endringene bli skrevet til konfigurasjonen."
 
 #. Template: AdminACL
 msgid "ACLs"
@@ -133,11 +134,11 @@ msgstr "Ingen treff funnet"
 
 #. Template: AdminACLEdit
 msgid "Edit ACL %s"
-msgstr ""
+msgstr "Endre ACL %s"
 
 #. Template: AdminACLEdit
 msgid "Edit ACL"
-msgstr ""
+msgstr "Endre ACL"
 
 #. Template: AdminACLEdit
 msgid "Go to overview"
@@ -186,7 +187,7 @@ msgstr "Vis eller skjul innholdet"
 
 #. Template: AdminACLEdit
 msgid "Edit ACL Information"
-msgstr ""
+msgstr "Endre ACL informasjon"
 
 #. Template: AdminACLEdit
 msgid "Name"
@@ -198,11 +199,11 @@ msgstr "Stopp ved treff"
 
 #. Template: AdminACLEdit
 msgid "Edit ACL Structure"
-msgstr ""
+msgstr "Endre ACL struktur"
 
 #. Template: AdminACLEdit
 msgid "Save ACL"
-msgstr ""
+msgstr "Lagre ACL"
 
 #. Template: AdminACLEdit
 msgid "Save"
@@ -240,7 +241,7 @@ msgstr "Legg til kalender"
 
 #. Template: AdminAppointmentCalendarManage
 msgid "Edit Calendar"
-msgstr ""
+msgstr "Endre kalender"
 
 #. Template: AdminAppointmentCalendarManage
 msgid "Go back"
@@ -397,7 +398,7 @@ msgstr "Køer"
 
 #. Template: AdminAppointmentCalendarManage
 msgid "Please select a valid queue."
-msgstr ""
+msgstr "Vennligst velg en gyldig kø."
 
 #. Template: AdminAppointmentCalendarManage
 msgid "Search attributes"
@@ -445,7 +446,7 @@ msgstr "Last opp"
 
 #. Template: AdminAppointmentImport
 msgid "Update existing appointments?"
-msgstr ""
+msgstr "Oppdater eksisterende avtaler?"
 
 #. Template: AdminAppointmentImport
 msgid ""
@@ -479,15 +480,15 @@ msgstr "Legg til varsling"
 
 #. Template: AdminAppointmentNotificationEvent
 msgid "Export Notifications"
-msgstr ""
+msgstr "Eksporter varslinger"
 
 #. Template: AdminAppointmentNotificationEvent
 msgid "Filter for Notifications"
-msgstr ""
+msgstr "Filter for varslinger"
 
 #. Template: AdminAppointmentNotificationEvent
 msgid "Filter for notifications"
-msgstr ""
+msgstr "Filter for varslinger"
 
 #. Template: AdminAppointmentNotificationEvent
 msgid ""
@@ -498,7 +499,7 @@ msgstr ""
 
 #. Template: AdminAppointmentNotificationEvent
 msgid "Overwrite existing notifications?"
-msgstr ""
+msgstr "Overskriv eksisterende varslinger?"
 
 #. Template: AdminAppointmentNotificationEvent
 msgid "Upload Notification configuration"
@@ -631,7 +632,7 @@ msgstr ""
 
 #. Template: AdminAppointmentNotificationEvent
 msgid "Transport"
-msgstr ""
+msgstr "Transport"
 
 #. Template: AdminAppointmentNotificationEvent
 msgid "At least one method is needed per notification."
@@ -692,7 +693,7 @@ msgstr "Tekst"
 
 #. Template: AdminAppointmentNotificationEvent
 msgid "Message body"
-msgstr ""
+msgstr "Meldingstekst"
 
 #. Template: AdminAppointmentNotificationEvent
 msgid "Add new notification language"
@@ -3729,13 +3730,13 @@ msgid "Do you really want to delete this web service?"
 msgstr "Vil du virkelig fjerne denne webtjenesten?"
 
 #. Template: AdminGenericInterfaceWebservice
-msgid "Ready-to-run Web Services"
+msgid "Ready2Adopt Web Services"
 msgstr ""
 
 #. Template: AdminGenericInterfaceWebservice
 msgid ""
-"Here you can activate ready-to-run web services showcasing our best "
-"practices that are a part of %s."
+"Here you can activate Ready2Adopt web services showcasing our best practices"
+" that are a part of %s."
 msgstr ""
 
 #. Template: AdminGenericInterfaceWebservice
@@ -3746,13 +3747,13 @@ msgid ""
 msgstr ""
 
 #. Template: AdminGenericInterfaceWebservice
-msgid "Import ready-to-run web service"
+msgid "Import Ready2Adopt web service"
 msgstr ""
 
 #. Template: AdminGenericInterfaceWebservice
 msgid ""
 "Would you like to benefit from web services created by experts? Upgrade to "
-"%s to import some sophisticated ready-to-run web services."
+"%s to import some sophisticated Ready2Adopt web services."
 msgstr ""
 
 #. Template: AdminGenericInterfaceWebservice
@@ -5008,23 +5009,23 @@ msgid "Import process configuration"
 msgstr "Importer prosess konfigurasjon"
 
 #. Template: AdminProcessManagement
-msgid "Ready-to-run Processes"
+msgid "Ready2Adopt Processes"
 msgstr ""
 
 #. Template: AdminProcessManagement
 msgid ""
-"Here you can activate ready-to-run processes showcasing our best practices. "
+"Here you can activate Ready2Adopt processes showcasing our best practices. "
 "Please note that some additional configuration may be required."
 msgstr ""
 
 #. Template: AdminProcessManagement
 msgid ""
 "Would you like to benefit from processes created by experts? Upgrade to %s "
-"to import some sophisticated ready-to-run processes."
+"to import some sophisticated Ready2Adopt processes."
 msgstr ""
 
 #. Template: AdminProcessManagement
-msgid "Import ready-to-run process"
+msgid "Import Ready2Adopt process"
 msgstr ""
 
 #. Template: AdminProcessManagement
@@ -5674,7 +5675,7 @@ msgstr ""
 
 #. Template: AdminRegistration
 msgid "Edit System Registration"
-msgstr ""
+msgstr "Endre systemregistrering"
 
 #. Template: AdminRegistration
 msgid "System Registration Overview"
@@ -6881,6 +6882,10 @@ msgid "Login message"
 msgstr "Innloggingsmelding"
 
 #. Template: AdminSystemMaintenanceEdit
+msgid "This field must have less then 250 characters."
+msgstr ""
+
+#. Template: AdminSystemMaintenanceEdit
 msgid "Show login message"
 msgstr "Vis innloggingsmelding"
 
@@ -7569,6 +7574,10 @@ msgstr "%s åpne sak(er) av %s"
 #. Template: AgentDashboardCustomerIDList
 msgid "%s closed ticket(s) of %s"
 msgstr "%s lukkede sak(er) av %s"
+
+#. Template: AgentDashboardCustomerIDList
+msgid "Edit customer ID"
+msgstr ""
 
 #. Template: AgentDashboardCustomerIDStatus
 msgid "Escalated tickets"
@@ -8846,7 +8855,7 @@ msgid "Load blocked content."
 msgstr "Last inn blokkert innhold"
 
 #. Template: Breadcrumb
-msgid "Back to Dashboard"
+msgid "Home"
 msgstr ""
 
 #. Template: Breadcrumb
@@ -10179,15 +10188,15 @@ msgstr ""
 
 #. JS Template: UploadContainer
 msgid "Click to select files or just drop them here."
-msgstr ""
+msgstr "Klikk for å velge filer eller bare slipp dem her."
 
 #. JS Template: UploadContainer
 msgid "Click to select a file or just drop it here."
-msgstr ""
+msgstr "Klikk for å velge en fil eller bare slipp den her."
 
 #. JS Template: UploadContainer
 msgid "Uploading..."
-msgstr ""
+msgstr "Laster opp..."
 
 #. JS Template: InformationDialog
 msgid "Process state"
@@ -10470,15 +10479,15 @@ msgstr ""
 
 #. Perl Module: Kernel/Modules/AdminAppointmentCalendarManage.pm
 msgid "+5 minutes"
-msgstr ""
+msgstr "+5 minutter"
 
 #. Perl Module: Kernel/Modules/AdminAppointmentCalendarManage.pm
 msgid "+15 minutes"
-msgstr ""
+msgstr "+15 minutter"
 
 #. Perl Module: Kernel/Modules/AdminAppointmentCalendarManage.pm
 msgid "+30 minutes"
-msgstr ""
+msgstr "+30 minutter"
 
 #. Perl Module: Kernel/Modules/AdminAppointmentCalendarManage.pm
 msgid "+1 hour"
@@ -10788,6 +10797,10 @@ msgid "Need %s"
 msgstr ""
 
 #. Perl Module: Kernel/Modules/AdminDynamicFieldCheckbox.pm
+msgid "Add %s field"
+msgstr ""
+
+#. Perl Module: Kernel/Modules/AdminDynamicFieldCheckbox.pm
 msgid "The field does not contain only ASCII letters and numbers."
 msgstr ""
 
@@ -10813,6 +10826,10 @@ msgstr ""
 
 #. Perl Module: Kernel/Modules/AdminDynamicFieldCheckbox.pm
 msgid "Could not get data for dynamic field %s"
+msgstr ""
+
+#. Perl Module: Kernel/Modules/AdminDynamicFieldCheckbox.pm
+msgid "Change %s field"
 msgstr ""
 
 #. Perl Module: Kernel/Modules/AdminDynamicFieldCheckbox.pm
@@ -10977,22 +10994,22 @@ msgstr ""
 #. Perl Module:
 #. Kernel/Modules/AdminGenericInterfaceErrorHandlingRequestRetry.pm
 msgid "2 minutes"
-msgstr ""
+msgstr " 2 minutter"
 
 #. Perl Module:
 #. Kernel/Modules/AdminGenericInterfaceErrorHandlingRequestRetry.pm
 msgid "3 minutes"
-msgstr ""
+msgstr "3 minutter"
 
 #. Perl Module:
 #. Kernel/Modules/AdminGenericInterfaceErrorHandlingRequestRetry.pm
 msgid "4 minutes"
-msgstr ""
+msgstr "4 minutter"
 
 #. Perl Module:
 #. Kernel/Modules/AdminGenericInterfaceErrorHandlingRequestRetry.pm
 msgid "5 minutes"
-msgstr ""
+msgstr " 5 minutter"
 
 #. Perl Module:
 #. Kernel/Modules/AdminGenericInterfaceErrorHandlingRequestRetry.pm
@@ -11007,7 +11024,7 @@ msgstr "15 minutter"
 #. Perl Module:
 #. Kernel/Modules/AdminGenericInterfaceErrorHandlingRequestRetry.pm
 msgid "30 minutes"
-msgstr ""
+msgstr "30 minutter"
 
 #. Perl Module:
 #. Kernel/Modules/AdminGenericInterfaceErrorHandlingRequestRetry.pm
@@ -11948,6 +11965,16 @@ msgstr ""
 
 #. Perl Module: Kernel/Modules/AdminSystemConfiguration.pm
 msgid "The following settings could not be found: %s"
+msgstr ""
+
+#. Perl Module: Kernel/Modules/AdminSystemConfiguration.pm
+msgid "Import not allowed!"
+msgstr ""
+
+#. Perl Module: Kernel/Modules/AdminSystemConfiguration.pm
+msgid ""
+"System Configuration could not be imported due to an unknown error, please "
+"check OTRS logs for more information."
 msgstr ""
 
 #. Perl Module: Kernel/Modules/AdminSystemConfiguration.pm
@@ -13581,7 +13608,7 @@ msgstr "Vist"
 
 #. Perl Module: Kernel/Output/HTML/Dashboard/AppointmentCalendar.pm
 msgid "Refresh (minutes)"
-msgstr ""
+msgstr "Oppfrisk (minutter)"
 
 #. Perl Module: Kernel/Output/HTML/Dashboard/AppointmentCalendar.pm
 msgid "off"
@@ -14669,8 +14696,8 @@ msgstr "Tjener databasetegnsett"
 
 #. Perl Module:
 #. Kernel/System/SupportDataCollector/Plugin/Database/mysql/Charset.pm
-msgid "Setting character_set_database needs to be UNICODE or UTF8."
-msgstr "Innstillingen character_set_database må være UNICODE eller UTF8."
+msgid "The setting character_set_database needs to be 'utf8'."
+msgstr ""
 
 #. Perl Module:
 #. Kernel/System/SupportDataCollector/Plugin/Database/mysql/Charset.pm
@@ -14679,8 +14706,8 @@ msgstr "Tabel tegnsett"
 
 #. Perl Module:
 #. Kernel/System/SupportDataCollector/Plugin/Database/mysql/Charset.pm
-msgid "There were tables found which do not have utf8 as charset."
-msgstr "Det ble funnet tabeller som ikke er satt som utf8"
+msgid "There were tables found which do not have 'utf8' as charset."
+msgstr ""
 
 #. Perl Module:
 #. Kernel/System/SupportDataCollector/Plugin/Database/mysql/InnoDBLogFileSize.pm
@@ -16151,7 +16178,7 @@ msgid ""
 msgstr ""
 
 #. JS File: Core.Agent.Admin.PackageManager
-msgid "Upgrade all packages"
+msgid "Update all packages"
 msgstr ""
 
 #. JS File: Core.Agent.Admin.PackageManager
@@ -16159,7 +16186,7 @@ msgid "Dismiss"
 msgstr ""
 
 #. JS File: Core.Agent.Admin.PackageManager
-msgid "Upgrade All Packages"
+msgid "Update All Packages"
 msgstr ""
 
 #. JS File: Core.Agent.Admin.PackageManager
@@ -16168,6 +16195,11 @@ msgstr ""
 
 #. JS File: Core.Agent.Admin.PackageManager
 msgid "This is currently disabled because of an ongoing package upgrade."
+msgstr ""
+
+#. JS File: Core.Agent.Admin.PackageManager
+msgid ""
+"This option is currently disabled because the OTRS Daemon is not running."
 msgstr ""
 
 #. JS File: Core.Agent.Admin.PackageManager
@@ -16952,7 +16984,7 @@ msgstr ""
 
 #. SysConfig
 msgid "10 Minutes"
-msgstr ""
+msgstr "10 minutter"
 
 #. SysConfig
 msgid "100 (Expert)"
@@ -16960,7 +16992,7 @@ msgstr ""
 
 #. SysConfig
 msgid "15 Minutes"
-msgstr ""
+msgstr "15 minutter"
 
 #. SysConfig
 msgid "2 - Enabled and required"
@@ -16976,7 +17008,7 @@ msgstr ""
 
 #. SysConfig
 msgid "2 Minutes"
-msgstr ""
+msgstr " 2 minutter"
 
 #. SysConfig
 msgid "200 (Advanced)"
@@ -16984,7 +17016,7 @@ msgstr ""
 
 #. SysConfig
 msgid "30 Minutes"
-msgstr ""
+msgstr "30 minutter"
 
 #. SysConfig
 msgid "300 (Beginner)"
@@ -16992,7 +17024,7 @@ msgstr ""
 
 #. SysConfig
 msgid "5 Minutes"
-msgstr ""
+msgstr " 5 minutter"
 
 #. SysConfig
 msgid "A TicketWatcher Module."
@@ -17026,12 +17058,6 @@ msgstr ""
 
 #. SysConfig
 msgid "AccountedTime"
-msgstr ""
-
-#. SysConfig
-msgid ""
-"Activate this if you trust in all your public and private pgp keys, even if "
-"they are not certified with a trusted signature."
 msgstr ""
 
 #. SysConfig
@@ -17305,6 +17331,10 @@ msgstr ""
 
 #. SysConfig
 msgid "All CustomerIDs of a customer user."
+msgstr ""
+
+#. SysConfig
+msgid "All attachments (OTRS Business Solution™)"
 msgstr ""
 
 #. SysConfig
@@ -17886,8 +17916,8 @@ msgstr ""
 
 #. SysConfig
 msgid ""
-"Checks the SystemID in ticket number detection for follow-ups (if inactive, "
-"SystemID will be changed after using the system)."
+"Checks the SystemID in ticket number detection for follow-ups. If not "
+"enabled, SystemID will be changed after using the system."
 msgstr ""
 
 #. SysConfig
@@ -18129,6 +18159,12 @@ msgstr "Gir kunder mulighet til å sortere sakene sine."
 msgid ""
 "Controls if more than one from entry can be set in the new phone ticket in "
 "the agent interface."
+msgstr ""
+
+#. SysConfig
+msgid ""
+"Controls if the admin is allowed to import a saved system configuration in "
+"SysConfig."
 msgstr ""
 
 #. SysConfig
@@ -19074,17 +19110,17 @@ msgstr ""
 #. SysConfig
 msgid ""
 "Defines if the values for filters should be retrieved from all available "
-"tickets. If active, only values which are actually used in any ticket will "
+"tickets. If enabled, only values which are actually used in any ticket will "
 "be available for filtering. Please note: The list of customers will always "
 "be retrieved like this."
 msgstr ""
 
 #. SysConfig
 msgid ""
-"Defines if time accounting is mandatory in the agent interface. If "
-"activated, a note must be entered for all ticket actions (no matter if the "
-"note itself is configured as active or is originally mandatory for the "
-"individual ticket action screen)."
+"Defines if time accounting is mandatory in the agent interface. If enabled, "
+"a note must be entered for all ticket actions (no matter if the note itself "
+"is configured as active or is originally mandatory for the individual ticket"
+" action screen)."
 msgstr ""
 
 #. SysConfig
@@ -20946,14 +20982,14 @@ msgstr ""
 #. SysConfig
 msgid ""
 "Disables sending reminder notifications to the responsible agent of a ticket"
-" (Ticket::Responsible needs to be activated)."
+" (Ticket::Responsible needs to be enabled)."
 msgstr ""
 
 #. SysConfig
 msgid ""
 "Disables the communication between this system and OTRS Group servers that "
-"provides cloud services. If active, some functionality will be lost such as "
-"system registration, support data sending, upgrading to and use of OTRS "
+"provides cloud services. If enabled, some functionality will be lost such as"
+" system registration, support data sending, upgrading to and use of OTRS "
 "Business Solution™, OTRS Verify™, OTRS News and product News dashboard "
 "widgets, among others."
 msgstr ""
@@ -20967,9 +21003,9 @@ msgstr ""
 #. SysConfig
 msgid ""
 "Disables the web installer (http://yourhost.example.com/otrs/installer.pl), "
-"to prevent the system from being hijacked. If inactive, the system can be "
-"reinstalled and the current basic configuration will be used to pre-populate"
-" the questions within the installer script. If not inactive, it also "
+"to prevent the system from being hijacked. If not enabled, the system can be"
+" reinstalled and the current basic configuration will be used to pre-"
+"populate the questions within the installer script. If enabled, it also "
 "disables the GenericAgent, PackageManager and SQL Box."
 msgstr ""
 
@@ -21273,6 +21309,12 @@ msgstr ""
 
 #. SysConfig
 msgid "Enable keep-alive connection header for SOAP responses."
+msgstr ""
+
+#. SysConfig
+msgid ""
+"Enable this if you trust in all your public and private pgp keys, even if "
+"they are not certified with a trusted signature."
 msgstr ""
 
 #. SysConfig
@@ -22062,14 +22104,6 @@ msgid ""
 msgstr ""
 
 #. SysConfig
-msgid "If active the cache data be held in memory."
-msgstr ""
-
-#. SysConfig
-msgid "If active the cache data will be stored in cache backend."
-msgstr ""
-
-#. SysConfig
 msgid ""
 "If active, none of the regular expressions may match the user's email "
 "address to allow registration."
@@ -22152,6 +22186,14 @@ msgid ""
 msgstr ""
 
 #. SysConfig
+msgid "If enabled, the cache data be held in memory."
+msgstr ""
+
+#. SysConfig
+msgid "If enabled, the cache data will be stored in cache backend."
+msgstr ""
+
+#. SysConfig
 msgid ""
 "If enabled, the customer can search for tickets in all services (regardless "
 "what services are assigned to the customer)."
@@ -22200,9 +22242,9 @@ msgstr ""
 
 #. SysConfig
 msgid ""
-"If this option is active, tickets created via the web interface, via "
+"If this option is enabled, tickets created via the web interface, via "
 "Customers or Agents, will receive an autoresponse if configured. If this "
-"option is inactive, no autoresponses will be sent."
+"option is not enabled, no autoresponses will be sent."
 msgstr ""
 
 #. SysConfig
@@ -22211,7 +22253,7 @@ msgstr "Hvis denne Regulær-uttrykk-setningen slår til vil ikke autosvar bli se
 
 #. SysConfig
 msgid ""
-"If this setting is active, local modifications will not be highlighted as "
+"If this setting is enabled, local modifications will not be highlighted as "
 "errors in the package manager and support data collector."
 msgstr ""
 
@@ -23711,7 +23753,7 @@ msgstr ""
 #. SysConfig
 msgid ""
 "Renew existing SMIME certificates from customer backend. Note: SMIME and "
-"SMIME::FetchFromCustomer needs to be active in SysConfig and customer "
+"SMIME::FetchFromCustomer needs to be enabled in SysConfig and customer "
 "backend needs to be configured to fetch UserSMIMECertificate attribute."
 msgstr ""
 
@@ -23896,8 +23938,8 @@ msgstr ""
 
 #. SysConfig
 msgid ""
-"Runs the system in \"Demo\" mode. If active, agents can change preferences, "
-"such as selection of language and theme via the agent web interface. These "
+"Runs the system in \"Demo\" mode. If enabled, agents can change preferences,"
+" such as selection of language and theme via the agent web interface. These "
 "changes are only valid for the current session. It will not be possible for "
 "agents to change their passwords."
 msgstr ""
@@ -24595,43 +24637,43 @@ msgstr ""
 #. SysConfig
 msgid ""
 "Sets the service in the close ticket screen of the agent interface "
-"(Ticket::Service needs to be activated)."
+"(Ticket::Service needs to be enabled)."
 msgstr ""
 
 #. SysConfig
 msgid ""
 "Sets the service in the ticket free text screen of the agent interface "
-"(Ticket::Service needs to be activated)."
+"(Ticket::Service needs to be enabled)."
 msgstr ""
 
 #. SysConfig
 msgid ""
 "Sets the service in the ticket note screen of the agent interface "
-"(Ticket::Service needs to be activated)."
+"(Ticket::Service needs to be enabled)."
 msgstr ""
 
 #. SysConfig
 msgid ""
 "Sets the service in the ticket owner screen of a zoomed ticket in the agent "
-"interface (Ticket::Service needs to be activated)."
+"interface (Ticket::Service needs to be enabled)."
 msgstr ""
 
 #. SysConfig
 msgid ""
 "Sets the service in the ticket pending screen of a zoomed ticket in the "
-"agent interface (Ticket::Service needs to be activated)."
+"agent interface (Ticket::Service needs to be enabled)."
 msgstr ""
 
 #. SysConfig
 msgid ""
 "Sets the service in the ticket priority screen of a zoomed ticket in the "
-"agent interface (Ticket::Service needs to be activated)."
+"agent interface (Ticket::Service needs to be enabled)."
 msgstr ""
 
 #. SysConfig
 msgid ""
 "Sets the service in the ticket responsible screen of the agent interface "
-"(Ticket::Service needs to be activated)."
+"(Ticket::Service needs to be enabled)."
 msgstr ""
 
 #. SysConfig
@@ -24731,7 +24773,7 @@ msgstr ""
 #. SysConfig
 msgid ""
 "Sets the ticket type in the close ticket screen of the agent interface "
-"(Ticket::Type needs to be activated)."
+"(Ticket::Type needs to be enabled)."
 msgstr ""
 
 #. SysConfig
@@ -24741,37 +24783,37 @@ msgstr ""
 #. SysConfig
 msgid ""
 "Sets the ticket type in the ticket free text screen of the agent interface "
-"(Ticket::Type needs to be activated)."
+"(Ticket::Type needs to be enabled)."
 msgstr ""
 
 #. SysConfig
 msgid ""
 "Sets the ticket type in the ticket note screen of the agent interface "
-"(Ticket::Type needs to be activated)."
+"(Ticket::Type needs to be enabled)."
 msgstr ""
 
 #. SysConfig
 msgid ""
 "Sets the ticket type in the ticket owner screen of a zoomed ticket in the "
-"agent interface (Ticket::Type needs to be activated)."
+"agent interface (Ticket::Type needs to be enabled)."
 msgstr ""
 
 #. SysConfig
 msgid ""
 "Sets the ticket type in the ticket pending screen of a zoomed ticket in the "
-"agent interface (Ticket::Type needs to be activated)."
+"agent interface (Ticket::Type needs to be enabled)."
 msgstr ""
 
 #. SysConfig
 msgid ""
 "Sets the ticket type in the ticket priority screen of a zoomed ticket in the"
-" agent interface (Ticket::Type needs to be activated)."
+" agent interface (Ticket::Type needs to be enabled)."
 msgstr ""
 
 #. SysConfig
 msgid ""
 "Sets the ticket type in the ticket responsible screen of the agent interface"
-" (Ticket::Type needs to be activated)."
+" (Ticket::Type needs to be enabled)."
 msgstr ""
 
 #. SysConfig
@@ -25295,12 +25337,6 @@ msgstr ""
 
 #. SysConfig
 msgid ""
-"Shows the activated ticket attributes in the customer interface (0 = "
-"Disabled and 1 = Enabled)."
-msgstr "Viser de aktiverte saksattributtene i kundeportalen (0 = Av og 1 = På)"
-
-#. SysConfig
-msgid ""
 "Shows the articles sorted normally or in reverse, under ticket zoom in the "
 "agent interface."
 msgstr "Viser artiklene sortert normalt eller reversert i saksvisning i agentdelen."
@@ -25309,6 +25345,12 @@ msgstr "Viser artiklene sortert normalt eller reversert i saksvisning i agentdel
 msgid ""
 "Shows the customer user information (phone and email) in the compose screen."
 msgstr "Viser kundens brukerinformasjon (telefon og e-post) når man komponerer en sak"
+
+#. SysConfig
+msgid ""
+"Shows the enabled ticket attributes in the customer interface (0 = Disabled "
+"and 1 = Enabled)."
+msgstr ""
 
 #. SysConfig
 msgid ""
@@ -25422,14 +25464,14 @@ msgstr ""
 
 #. SysConfig
 msgid ""
-"Shows time in long format (days, hours, minutes), if active; or in short "
-"format (days, hours), if inactive."
+"Shows time in long format (days, hours, minutes), if enabled; or in short "
+"format (days, hours), if not enabled."
 msgstr ""
 
 #. SysConfig
 msgid ""
-"Shows time use complete description (days, hours, minutes), if active; or "
-"just first letter (d, h, m), if inactive."
+"Shows time use complete description (days, hours, minutes), if enabled; or "
+"just first letter (d, h, m), if not enabled."
 msgstr ""
 
 #. SysConfig
@@ -26230,7 +26272,7 @@ msgstr ""
 
 #. SysConfig
 msgid ""
-"Turns on the remote ip address check. It should not be active if the "
+"Turns on the remote ip address check. It should not be enabled if the "
 "application is used, for example, via a proxy farm or a dialup connection, "
 "because the remote ip address is mostly different for the requests."
 msgstr ""
@@ -26420,7 +26462,7 @@ msgstr ""
 msgid ""
 "Whether to force redirect all requests from http to https protocol. Please "
 "check that your web server is configured correctly for https protocol before"
-" activating this option."
+" enable this option."
 msgstr ""
 
 #. SysConfig
