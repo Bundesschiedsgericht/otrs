@@ -799,14 +799,6 @@ sub LoadDefaults {
     # (Delete session's witch are requested and to old?) [0|1]
     $Self->{SessionDeleteIfTimeToOld} = 1;
 
-    # SessionUseCookie
-    # (Should the session management use html cookies?
-    # It's more comfortable to send links -==> if you have a valid
-    # session, you don't have to login again.) [0|1]
-    # Note: If the client browser disabled html cookies, the system
-    # will work as usual, append SessionID to links!
-    $Self->{SessionUseCookie} = 1;
-
     # SessionUseCookieAfterBrowserClose
     # (store cookies in browser after closing a browser) [0|1]
     $Self->{SessionUseCookieAfterBrowserClose} = 0;
@@ -1502,7 +1494,7 @@ via the Preferences button after logging in.
         CustomerCompanySupport => 1,
         # cache time to live in sec. - cache any database queries
         CacheTTL => 60 * 60 * 24,
-#        # just a read only source
+#        # Consider this source read only.
 #        ReadOnly => 1,
         Map => [
 
@@ -1599,8 +1591,6 @@ via the Preferences button after logging in.
 #        AdminSetPreferences => 0,
 #        # cache time to live in sec. - cache any ldap queries
 #        CacheTTL => 0,
-#        # just a read only source
-#        ReadOnly => 1,
 #        Map => [
 #            # note: Login, Email and CustomerID needed!
 #            # var, frontend, storage, shown (1=always,2=lite), required, storage-type, http-link, readonly, http-link-target, link class(es)
@@ -1614,12 +1604,12 @@ via the Preferences button after logging in.
 #            [ 'UserPhone',       Translatable('Phone'),               'telephonenumber',     1, 0, 'var', '', 1, undef, undef ],
 #            [ 'UserAddress',     Translatable('Address'),             'postaladdress',       1, 0, 'var', '', 1, undef, undef ],
 #            [ 'UserComment',     Translatable('Comment'),             'description',         1, 0, 'var', '', 1, undef, undef ],
-
+#
 #            # this is needed, if "SMIME::FetchFromCustomer" is active
 #            # [ 'UserSMIMECertificate', 'SMIMECertificate', 'userSMIMECertificate', 0, 1, 'var', '', 1, undef, undef ],
-
-             # Dynamic field example
-#             [ 'DynamicField_Name_X', undef, 'Name_X', 0, 0, 'dynamic_field', undef, 0, undef, undef ],
+#
+#            # Dynamic field example
+#            # [ 'DynamicField_Name_X', undef, 'Name_X', 0, 0, 'dynamic_field', undef, 0, undef, undef ],
 #        ],
 #    };
 
@@ -1745,21 +1735,23 @@ via the Preferences button after logging in.
             'Core.Agent.TableFilters.js',
         ],
     };
-    $Self->{'Frontend::Navigation'}->{Admin}->{1} = {
-        Group       => [
-            'admin',
-        ],
-        GroupRo     => [],
-        AccessKey   => 'a',
-        Block       => 'ItemArea',
-        Description => '',
-        Link        => 'Action=Admin',
-        LinkOption  => '',
-        Name        => 'Admin',
-        NavBar      => 'Admin',
-        Prio        => '10000',
-        Type        => 'Menu',
-    };
+    $Self->{'Frontend::Navigation'}->{Admin}->{'001-Framework'} = [
+        {
+            Group       => [
+                'admin',
+            ],
+            GroupRo     => [],
+            AccessKey   => 'a',
+            Block       => 'ItemArea',
+            Description => '',
+            Link        => 'Action=Admin',
+            LinkOption  => '',
+            Name        => 'Admin',
+            NavBar      => 'Admin',
+            Prio        => '10000',
+            Type        => 'Menu',
+        },
+    ];
     $Self->{'Frontend::NavigationModule'}->{Admin} = {
         Group       => [
             'admin',

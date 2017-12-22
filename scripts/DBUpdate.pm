@@ -228,6 +228,9 @@ sub _TasksGet {
             Message => 'Initialize default cron jobs',
             Module  => 'InitializeDefaultCronjobs',
         },
+
+        # ...
+
         {
             Message => 'Uninstall Merged Feature Add-Ons',
             Module  => 'UninstallMergedFeatureAddOns',

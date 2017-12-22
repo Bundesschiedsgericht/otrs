@@ -389,13 +389,13 @@ sub Run {
         $Error{DestQueue} = 1;
     }
 
-    # check if destination queue is restricted by ACL
-    my %QueueList = $TicketObject->TicketMoveList(
+    # Check if destination queue is restricted by ACL.
+    my $DestQueues = $Self->_GetQueues(
+        %GetParam,
+        %ACLCompatGetParam,
         TicketID => $Self->{TicketID},
-        UserID   => $Self->{UserID},
-        Type     => 'move_into',
     );
-    if ( $GetParam{DestQueueID} && !exists $QueueList{ $GetParam{DestQueueID} } ) {
+    if ( $GetParam{DestQueueID} && !exists $DestQueues->{ $GetParam{DestQueueID} } ) {
         return $LayoutObject->NoPermission( WithHeader => 'yes' );
     }
 
@@ -434,11 +434,6 @@ sub Run {
             %ACLCompatGetParam,
             TicketID => $Self->{TicketID},
             QueueID  => $GetParam{DestQueueID} || 1,
-        );
-        my $DestQueues = $Self->_GetQueues(
-            %GetParam,
-            %ACLCompatGetParam,
-            TicketID => $Self->{TicketID},
         );
 
         # update Dynamc Fields Possible Values via AJAX
@@ -1185,7 +1180,8 @@ sub Run {
             );
         }
 
-        $ArticleID = $ArticleObject->ArticleCreate(
+        my $InternalArticleBackendObject = $ArticleObject->BackendForChannel( ChannelName => 'Internal' );
+        $ArticleID = $InternalArticleBackendObject->ArticleCreate(
             TicketID             => $Self->{TicketID},
             IsVisibleForCustomer => 0,
             SenderType           => 'agent',
@@ -1205,7 +1201,7 @@ sub Run {
 
         # write attachments
         for my $Attachment (@AttachmentData) {
-            $ArticleObject->ArticleWriteAttachment(
+            $InternalArticleBackendObject->ArticleWriteAttachment(
                 %{$Attachment},
                 ArticleID => $ArticleID,
                 UserID    => $Self->{UserID},

@@ -30,11 +30,6 @@ sub Run {
 
     my $LayoutObject = $Kernel::OM->Get('Kernel::Output::HTML::Layout');
 
-    my $Session = '';
-    if ( !$LayoutObject->{SessionIDCookie} ) {
-        $Session = ';' . $LayoutObject->{SessionName} . '='
-            . $LayoutObject->{SessionID};
-    }
     my $Title = $Kernel::OM->Get('Kernel::Config')->Get('ProductName');
     $Title .= ' - ' . $LayoutObject->{LanguageObject}->Translate('Customer');
     $Title .= ' (' . $Kernel::OM->Get('Kernel::Config')->Get('Ticket::Hook') . ')';
@@ -45,7 +40,7 @@ sub Run {
             Type  => 'application/opensearchdescription+xml',
             Title => $Title,
             Href  => $LayoutObject->{Baselink} . 'Action=' . $Param{Config}->{Action}
-                . ';Subaction=OpenSearchDescription' . $Session,
+                . ';Subaction=OpenSearchDescription',
         },
     );
 

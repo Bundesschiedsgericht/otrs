@@ -13,6 +13,7 @@ use warnings;
 
 our $ObjectManagerDisabled = 1;
 
+use Kernel::System::VariableCheck qw(:all);
 use Kernel::Language qw(Translatable);
 
 sub new {
@@ -286,6 +287,19 @@ sub Run {
             );
         }
 
+        my %Setting = $SysConfigObject->SettingGet(
+            Name      => $SettingName,
+            Translate => 0,
+            UserID    => 1,
+        );
+        my $DataIsDifferent = DataIsDifferent(
+            Data1 => $EffectiveValue,
+            Data2 => $Setting{EffectiveValue},
+        );
+        if ( !$DataIsDifferent ) {
+            return $Self->_SettingReset( SettingName => $SettingName );
+        }
+
         my %Result;
 
         my %UpdateResult = $SysConfigObject->SettingUpdate(
@@ -366,68 +380,7 @@ sub Run {
 
         my $SettingName = $ParamObject->GetParam( Param => 'SettingName' ) || '';
 
-        my %Result;
-
-        my %Setting = $SysConfigObject->SettingGet(
-            Name         => $SettingName,
-            TargetUserID => $Self->{CurrentUserID},
-            Translate    => 0,
-        );
-
-        if ( !%Setting ) {
-            $Result{Error} = $LayoutObject->{LanguageObject}->Translate("Setting not found!");
-        }
-        elsif ( !$SysConfigObject->can('UserSettingValueDelete') ) {    # OTRS Business Solution™
-            $Result{Data}->{Error} = $Kernel::OM->Get('Kernel::Language')->Translate(
-                "This feature is part of the %s Please contact us at %s for an upgrade."
-                , 'OTRS Business Solution™'
-                , 'sales@otrs.com'
-            );
-        }
-        elsif ( $Setting{ModifiedID} ) {
-
-            # Remove user's value
-            my $UserValueDeleted = $SysConfigObject->UserSettingValueDelete(
-                Name       => $SettingName,
-                ModifiedID => $Setting{ModifiedID},
-                UserID     => $Self->{UserID},
-            );
-
-            if ($UserValueDeleted) {
-
-                # Get setting value after reset
-                %Setting = $SysConfigObject->SettingGet(
-                    Name         => $SettingName,
-                    TargetUserID => $Self->{CurrentUserID},
-                    Translate    => 0,
-                );
-
-                $Result{Data}->{HTMLStrg} = $SysConfigObject->SettingRender(
-                    Setting => \%Setting,
-                    RW      => 1,
-                    UserID  => $Self->{UserID},
-                );
-                $Result{Data}->{SettingData}->{IsModified}   = 0;
-                $Result{Data}->{SettingData}->{IsLockedByMe} = 1;
-            }
-            else {
-                $Result{Error} = $LayoutObject->{LanguageObject}->Translate(
-                    "System was unable to reset the setting!",
-                );
-            }
-        }
-
-        # JSON response
-        my $JSON = $Kernel::OM->Get('Kernel::System::JSON')->Encode(
-            Data => \%Result,
-        );
-
-        return $LayoutObject->Attachment(
-            ContentType => 'application/json; charset=' . $LayoutObject->{Charset},
-            Content     => $JSON,
-            Type        => 'inline',
-            NoCache     => 1,
-        );
+        return $Self->_SettingReset( SettingName => $SettingName );
     }
 
     elsif ( $Self->{Subaction} eq 'SettingList' ) {
@@ -504,6 +457,37 @@ sub Run {
         $Output .= $LayoutObject->Footer();
 
         return $Output;
+    }
+
+    # ------------------------------------------------------------ #
+    # show AJAX navigation tree
+    # ------------------------------------------------------------ #
+    if ( $Self->{Subaction} eq 'AJAXNavigationTree' ) {
+
+        my $Category = $ParamObject->GetParam( Param => 'Category' ) || '';
+        my $UserModificationActive = $ParamObject->GetParam( Param => 'UserModificationActive' ) || '0';
+        my $IsValid = $ParamObject->GetParam( Param => 'IsValid' ) // undef;
+
+        my %Tree = $Kernel::OM->Get('Kernel::System::SysConfig')->ConfigurationNavigationTree(
+            Category               => $Category,
+            UserModificationActive => $UserModificationActive,
+            IsValid                => $IsValid,
+        );
+
+        my $Output = $LayoutObject->Output(
+            TemplateFile => 'SystemConfiguration/NavigationTree',
+            Data         => {
+                Tree => \%Tree,
+            },
+        );
+
+        return $LayoutObject->Attachment(
+            NoCache     => 1,
+            ContentType => 'text/html',
+            Charset     => $LayoutObject->{UserCharset},
+            Content     => $Output || '',
+            Type        => 'inline',
+        );
     }
 
     # ------------------------------------------------------------ #
@@ -778,7 +762,7 @@ sub _GetCategoriesStrg {
         SelectedID   => $Category || 'All',
         PossibleNone => 0,
         Translation  => 1,
-        Sort         => 'AlfaNumericKey',
+        Sort         => 'AlphaNumericKey',
         Class        => 'Modernize',
         Title        => $Kernel::OM->Get('Kernel::Language')->Translate('Category Search'),
     );
@@ -808,6 +792,79 @@ sub _CheckEditPreferencesPermission {
     }
 
     return 0;
+}
+
+sub _SettingReset {
+    my ( $Self, %Param ) = @_;
+
+    my $SettingName = $Param{SettingName};
+
+    my $SysConfigObject = $Kernel::OM->Get('Kernel::System::SysConfig');
+
+    my %Setting = $SysConfigObject->SettingGet(
+        Name         => $SettingName,
+        TargetUserID => $Self->{CurrentUserID},
+        Translate    => 0,
+    );
+
+    my $LayoutObject = $Kernel::OM->Get('Kernel::Output::HTML::Layout');
+
+    my %Result;
+
+    if ( !%Setting ) {
+        $Result{Error} = $LayoutObject->{LanguageObject}->Translate("Setting not found!");
+    }
+    elsif ( !$SysConfigObject->can('UserSettingValueDelete') ) {    # OTRS Business Solution™
+        $Result{Data}->{Error} = $LayoutObject->{LanguageObject}->Translate(
+            "This feature is part of the %s Please contact us at %s for an upgrade."
+            , 'OTRS Business Solution™'
+            , 'sales@otrs.com'
+        );
+    }
+    elsif ( $Setting{ModifiedID} ) {
+
+        # Remove user's value
+        my $UserValueDeleted = $SysConfigObject->UserSettingValueDelete(
+            Name       => $SettingName,
+            ModifiedID => $Setting{ModifiedID},
+            UserID     => $Self->{UserID},
+        );
+
+        if ($UserValueDeleted) {
+
+            # Get setting value after reset
+            %Setting = $SysConfigObject->SettingGet(
+                Name         => $SettingName,
+                TargetUserID => $Self->{CurrentUserID},
+                Translate    => 0,
+            );
+
+            $Result{Data}->{HTMLStrg} = $SysConfigObject->SettingRender(
+                Setting => \%Setting,
+                RW      => 1,
+                UserID  => $Self->{UserID},
+            );
+            $Result{Data}->{SettingData}->{IsModified}   = 0;
+            $Result{Data}->{SettingData}->{IsLockedByMe} = 1;
+        }
+        else {
+            $Result{Error} = $LayoutObject->{LanguageObject}->Translate(
+                "System was unable to reset the setting!",
+            );
+        }
+    }
+
+    # JSON response
+    my $JSON = $Kernel::OM->Get('Kernel::System::JSON')->Encode(
+        Data => \%Result,
+    );
+
+    return $LayoutObject->Attachment(
+        ContentType => 'application/json; charset=' . $LayoutObject->{Charset},
+        Content     => $JSON,
+        Type        => 'inline',
+        NoCache     => 1,
+    );
 }
 
 1;

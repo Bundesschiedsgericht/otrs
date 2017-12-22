@@ -167,16 +167,12 @@ Core.AJAX = (function (TargetNS) {
      * @name GetSessionInformation
      * @memberof Core.AJAX
      * @function
-     * @returns {Object} Hash with session data, if needed.
+     * @returns {Object} Hash with session data.
      * @description
      *      Collects session data in a hash if available.
      */
     function GetSessionInformation() {
         var Data = {};
-        if (!Core.Config.Get('SessionIDCookie')) {
-            Data[Core.Config.Get('SessionName')] = Core.Config.Get('SessionID');
-            Data[Core.Config.Get('CustomerPanelSessionName')] = Core.Config.Get('SessionID');
-        }
         Data.ChallengeToken = Core.Config.Get('ChallengeToken');
         return Data;
     }
@@ -402,7 +398,7 @@ Core.AJAX = (function (TargetNS) {
             OldUrl = location.href,
             NewUrl = Core.Config.Get('Baselink') + "RequestedURL=" + encodeURIComponent(OldUrl);
 
-        if (Headers.match(/X-OTRS-Login: /)) {
+        if (Headers.match(/X-OTRS-Login: /i)) {
             location.href = NewUrl;
             return true;
         }

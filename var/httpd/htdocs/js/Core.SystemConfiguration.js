@@ -76,7 +76,7 @@ var Core = Core || {};
             return false;
         });
 
-        $("input:checkbox").on("change", function() {
+        $("input:checkbox").on("click", function() {
             TargetNS.CheckboxValueSet($(this));
         });
 
@@ -163,6 +163,10 @@ var Core = Core || {};
             Category  : Category || $('#Category').val(),
             UserModificationActive : UserModificationActive
         };
+
+        if (Core.Config.Get('Action') == 'AgentPreferences') {
+            Data.Action = 'AgentPreferences';
+        }
 
         // if there are only the base categories available, hide the selection
         // and use 'All' as default.
@@ -296,7 +300,8 @@ var Core = Core || {};
             ValidationError,
             IsValid,
             UserModificationActive,
-            Item;
+            Item,
+            $InvalidElement;
 
         // if there are still hash items within the current Widget
         // for which a key field has been added but no value has been
@@ -330,11 +335,15 @@ var Core = Core || {};
 
             // run element validation
             if (!Core.Form.Validate.ValidateElement($(this))) {
+
+                // Highlight error
                 ValidationError = 1;
-                Core.Form.Validate.HighlightError($(this), "Error");
+                Core.Form.Validate.HighlightError(this, "Error");
                 $(this).on("change", function() {
-                    Core.Form.Validate.UnHighlightError($(this));
+                    Core.Form.Validate.UnHighlightError(this);
                 });
+
+                // Continue, check for other errors as well.
                 return;
             }
 
@@ -407,6 +416,13 @@ var Core = Core || {};
         });
 
         if (ValidationError) {
+            $InvalidElement = $Widget.find('.Error:first');
+
+            $('html, body').animate({scrollTop: $InvalidElement.offset().top -100 }, 'slow');
+
+            // Focus first error element.
+            $InvalidElement.focus();
+
             return;
         }
 
@@ -1262,6 +1278,12 @@ var Core = Core || {};
             // setting is valid
             $Widget.find(".Icon .fa-check-circle-o").removeClass("Hidden");
         }
+
+        $Widget.find("input:checkbox")
+        .off("change")
+        .on("change", function() {
+            TargetNS.CheckboxValueSet($(this));
+        });
     }
 
     /**
@@ -1435,44 +1457,56 @@ var Core = Core || {};
 
                     $ClosestItem = $ClosestItem.parent().closest(".HashItem");
                 }
-            }
-            if (ID.indexOf("_Array") > 0) {
-                // put placeholders
-                while (ID.indexOf("_Array") > 0) {
-                    SubString = ID.match(/(_Array\d+)/)[1];
-                    ID = ID.replace(SubString, "_PLACEHOLDER" + Count);
-                    Count++;
+
+                // set new id
+                if ($(this).hasClass("Entry")) {
+                    $(this).attr("id", ID);
                 }
-
-                $ClosestItem = $(this).closest(".ArrayItem");
-
-                while (Count > 0) {
-                    Count--;
-
-                    // get index
-                    Key = $ClosestItem.index() + 1;
-
-                    // update id
-                    ID = ID.replace("_PLACEHOLDER" + Count, "_Array" + Key);
-
-                    $ClosestItem = $ClosestItem.parent().closest(".ArrayItem");
+                else {
+                    $(this).attr("data-suffix", ID);
                 }
             }
+            if (ID.indexOf("_Array") >= 0) {
+                $(this).closest('.Array').find(".ArrayItem").each(function() {
+                    Count = 0;
 
-            if (ValueType != null) {
+                    $(this).find(
+                        ".SettingContent input:visible:not(.InputField_Search), " +
+                        ".SettingContent select:visible, .SettingContent select.Modernize, " +
+                        ".SettingContent textarea:visible"
+                    ).each(function() {
+                        var OldID = $(this).attr('id');
 
-                // Run dedicated CheckID() for this ValueType (in a Core.SystemConfiguration.ValueTypeX.js).
-                if (window["Core"]["SystemConfiguration"][ValueType]["CheckID"]) {
-                    window["Core"]["SystemConfiguration"][ValueType]["CheckID"]($(this), ID);
-                }
-            }
+                        ID = OldID;
 
-            // set new id
-            if ($(this).hasClass("Entry")) {
-                $(this).attr("id", ID);
-            }
-            else {
-                $(this).attr("data-suffix", ID);
+                        while (ID.indexOf("_Array") >= 0) {
+                            SubString = ID.match(/(_Array\d+)/)[1];
+                            ID = ID.replace(SubString, "_PLACEHOLDER" + Count);
+                            Count++;
+                        }
+
+                        $ClosestItem = $(this).closest('.ArrayItem');
+
+                        while (Count > 0) {
+                            Count--;
+
+                            Key = $ClosestItem.index() + 1;
+                            ID = ID.replace("_PLACEHOLDER" + Count, "_Array" + Key);
+                            // update id
+                            $(this).attr('id', ID);
+
+                            $ClosestItem = $ClosestItem.parent().closest(".ArrayItem");
+                        }
+
+                        if (OldID != ID && ValueType) {
+
+                            // Run dedicated CheckID() for this ValueType (in a Core.SystemConfiguration.ValueTypeX.js).
+                            if (window["Core"]["SystemConfiguration"][ValueType]["CheckID"]) {
+                                window["Core"]["SystemConfiguration"][ValueType]["CheckID"]($(this), OldID);
+                            }
+                        }
+                    });
+                });
             }
         });
     }

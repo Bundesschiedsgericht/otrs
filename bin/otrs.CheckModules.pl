@@ -125,18 +125,12 @@ GetOptions(
 
 # check needed params
 if ($Help) {
-    print "otrs.CheckModules.pl - OTRS CheckModules\n";
-    print "Copyright (C) 2001-2017 OTRS AG, http://otrs.com/\n";
-    print "usage: otrs.CheckModules.pl [-list|all] \n";
-    print "
-   otrs.CheckModules.pl
-       Returns all required and optional packages of OTRS.\n";
-    print "
-   otrs.CheckModules.pl -list
-       Returns a install command with all required packages.\n";
-    print "
-   otrs.CheckModules.pl -all
-       Returns all required, optional and bundled packages of OTRS.\n";
+    print "\nReturn all required and optional packages of OTRS.\n\n";
+    print "Usage:\n";
+    print " otrs.CheckModules.pl [-list|all]\n\n";
+    print "Options:\n";
+    printf " %-22s - %s", '[-list]', 'Return an install command with all required packages.' . "\n";
+    printf " %-22s - %s", '[-all]',  'Return all required, optional and bundled packages of OTRS.' . "\n\n";
     exit 1;
 }
 
@@ -495,8 +489,8 @@ my @NeededModules = (
     },
     {
         Module    => 'XML::LibXML',
-        Required  => 0,
-        Comment   => 'Required for Generic Interface XSLT mapping module.',
+        Required  => 1,
+        Comment   => 'Required for XML processing.',
         InstTypes => {
             aptget => 'libxml-libxml-perl',
             zypper => 'perl-XML-LibXML',
@@ -516,7 +510,7 @@ my @NeededModules = (
     {
         Module    => 'XML::Parser',
         Required  => 0,
-        Comment   => 'Recommended for faster xml handling.',
+        Comment   => 'Recommended for XML processing.',
         InstTypes => {
             aptget => 'libxml-parser-perl',
             emerge => 'dev-perl/XML-Parser',
@@ -527,7 +521,7 @@ my @NeededModules = (
     {
         Module    => 'YAML::XS',
         Required  => 1,
-        Comment   => 'Very important',
+        Comment   => 'Required for fast YAML processing.',
         InstTypes => {
             aptget => 'libyaml-libyaml-perl',
             emerge => 'dev-perl/YAML-LibYAML',

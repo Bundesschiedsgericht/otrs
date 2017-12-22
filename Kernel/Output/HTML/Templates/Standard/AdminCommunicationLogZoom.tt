@@ -7,7 +7,7 @@
 # --
 
 <div class="MainBox ARIARoleMain LayoutFixedSidebar SidebarFirst">
-    <h1>
+    <h1 class="InvisibleText">
         [% Translate("Communication Log") | html %] &ndash;
         [% Data.CommunicationLog.StartTime = Data.CommunicationLog.StartTime | Localize("TimeLong") %]
         [% Translate("Detail view for %s communication started at %s", Data.CommunicationLog.Direction.lower, Data.CommunicationLog.StartTime) | html %]
@@ -19,7 +19,7 @@
                 Link => Env("Action"),
             },
             {
-                Name => Translate('Detail View'),
+                Name => Translate("Detail view for %s communication started at %s", Data.CommunicationLog.Direction.lower, Data.CommunicationLog.StartTime),
             },
         ]
     %]
@@ -130,14 +130,12 @@
                             </td>
                             <td class="Direction">
                                 [% IF Data.Direction == 'Incoming' %]
-                                <span class=" Direction Incoming" title="[% Data.Direction | html %]">
+                                <span class="Direction Incoming" title="[% Data.Direction | html %]">
                                     <i class="fa fa-long-arrow-left"></i>
-                                    <i class="fa fa-square-o"></i>
                                 </span>
                                 [% ELSE %]
-                                <span class=" Direction Outgoing" title="[% Data.Direction | html %]">
+                                <span class="Direction Outgoing" title="[% Data.Direction | html %]">
                                     <i class="fa fa-long-arrow-right"></i>
-                                    <i class="fa fa-square-o"></i>
                                 </span>
                                 [% END %]
                             </td>

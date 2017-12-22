@@ -28,7 +28,6 @@ our @ObjectDependencies = (
     'Kernel::System::Package',
     'Kernel::System::Storable',
     'Kernel::System::SysConfig::DB',
-    'Kernel::System::SysConfig::Migration',
     'Kernel::System::SysConfig::XML',
     'Kernel::System::User',
     'Kernel::System::YAML',
@@ -1489,7 +1488,7 @@ sub SettingEffectiveValueCheck {
     if ( $Value->[0]->{Item} || $Value->[0]->{ValueType} ) {
 
         # get ValueType from parent or use default
-        my $ValueType = $Parameters{ValueType} || 'String';
+        my $ValueType = $Parameters{ValueType} || $Value->[0]->{ValueType} || 'String';
 
         # ValueType is defined explicitly(override parent definition)
         if (
@@ -2279,7 +2278,6 @@ sub ConfigurationEntitiesGet {
 
     my @EntitySettings = $SysConfigDBObject->DefaultSettingSearch(
         Search => 'ValueEntityType',
-        Valid  => 1,
     );
 
     SETTING:
@@ -2565,18 +2563,6 @@ sub ConfigurationXML2DB {
         $Self->_DBCleanUp( Settings => \%Settings );
     }
 
-    # Get current time + 5 minutes which will be used as ExclusiveLockExpiryTime for all DefaultSettingAdd() calls.
-    my $DateTimeObject = $Kernel::OM->Create(
-        'Kernel::System::DateTime',
-    );
-    $DateTimeObject->Add(
-        Minutes => 5,
-    );
-
-    my $ExclusiveLockExpiryTime = $DateTimeObject->ToString();
-
-    my $CleanUpNeeded;
-
     # Lock all settings to be able to update them if needed.
     my $ExclusiveLockGUID = $SysConfigDBObject->DefaultSettingLock(
         UserID  => $Param{UserID},
@@ -2592,133 +2578,152 @@ sub ConfigurationXML2DB {
 
     my @SettingList = $Self->ConfigurationList();
 
-    # Create/Update settings in DB.
-    SETTING:
-    for my $SettingName ( sort keys %Settings ) {
+    my $StorableObject = $Kernel::OM->Get('Kernel::System::Storable');
 
-        my @DefaultSetting = grep { $_->{Name} eq $SettingName } @SettingList;
+    if ( !@SettingList ) {
+        my $Success = $Self->_DefaultSettingAddBulk(
+            Settings    => \%Settings,
+            SettingList => \@SettingList,
+            UserID      => $Param{UserID},
+        );
 
-        if ( @DefaultSetting && IsHashRefWithData( $DefaultSetting[0] ) ) {
+        return if !$Success;
+    }
+    else {
 
-            # Compare new Setting XML with the old one (skip if there is no difference).
-            my $Updated = $Settings{$SettingName}->{XMLContentRaw} eq $DefaultSetting[0]->{XMLContentRaw} ? 0 : 1;
-            next SETTING if !$Updated;
+        my %DefaultSettingsAdd;
 
-            # Create a local clone of the value to prevent any modification.
-            my $Value = $Kernel::OM->Get('Kernel::System::Storable')->Clone(
-                Data => $Settings{$SettingName}->{XMLContentParsed}->{Value},
-            );
+        # Create/Update settings in DB.
+        SETTING:
+        for my $SettingName ( sort keys %Settings ) {
 
-            my $EffectiveValue = $Self->SettingEffectiveValueGet(
-                Value => $Value,
-            );
+            my @DefaultSetting = grep { $_->{Name} eq $SettingName } @SettingList;
 
-            # Update default setting.
-            my $Success = $SysConfigDBObject->DefaultSettingUpdate(
-                DefaultID      => $DefaultSetting[0]->{DefaultID},
-                Name           => $Settings{$SettingName}->{XMLContentParsed}->{Name},
-                Description    => $Settings{$SettingName}->{XMLContentParsed}->{Description}->[0]->{Content} || '',
-                Navigation     => $Settings{$SettingName}->{XMLContentParsed}->{Navigation}->[0]->{Content} || '',
-                IsInvisible    => $Settings{$SettingName}->{XMLContentParsed}->{Invisible} || 0,
-                IsReadonly     => $Settings{$SettingName}->{XMLContentParsed}->{ReadOnly} || 0,
-                IsRequired     => $Settings{$SettingName}->{XMLContentParsed}->{Required} || 0,
-                IsValid        => $Settings{$SettingName}->{XMLContentParsed}->{Valid} || 0,
-                HasConfigLevel => $Settings{$SettingName}->{XMLContentParsed}->{ConfigLevel} || 100,
-                UserModificationPossible => $Settings{$SettingName}->{XMLContentParsed}->{UserModificationPossible}
-                    || 0,
-                UserModificationActive => $Settings{$SettingName}->{XMLContentParsed}->{UserModificationActive} || 0,
-                UserPreferencesGroup   => $Settings{$SettingName}->{XMLContentParsed}->{UserPreferencesGroup},
-                XMLContentRaw          => $Settings{$SettingName}->{XMLContentRaw},
-                XMLContentParsed       => $Settings{$SettingName}->{XMLContentParsed},
-                XMLFilename            => $Settings{$SettingName}->{XMLFilename},
-                EffectiveValue         => $EffectiveValue,
-                UserID                 => $Param{UserID},
-                ExclusiveLockGUID      => $ExclusiveLockGUID,
-            );
-            if ( !$Success ) {
-                $Kernel::OM->Get('Kernel::System::Log')->Log(
-                    Priority => 'error',
-                    Message =>
-                        "DefaultSettingUpdate failed for Config Item: $SettingName!",
-                );
-            }
+            if ( @DefaultSetting && IsHashRefWithData( $DefaultSetting[0] ) ) {
 
-            my @ModifiedList = $SysConfigDBObject->ModifiedSettingListGet(
-                Name => $Settings{$SettingName}->{XMLContentParsed}->{Name},
-            );
+                # Compare new Setting XML with the old one (skip if there is no difference).
+                my $Updated = $Settings{$SettingName}->{XMLContentRaw} ne $DefaultSetting[0]->{XMLContentRaw};
+                $Updated ||= $Settings{$SettingName}->{XMLFilename} ne $DefaultSetting[0]->{XMLFilename};
 
-            for my $ModifiedSetting (@ModifiedList) {
+                next SETTING if !$Updated;
 
-                # So far everything is OK, if the structure or values does
-                # not match anymore, modified values must be deleted.
-                my %ValueCheckResult = $Self->SettingEffectiveValueCheck(
-                    EffectiveValue   => $ModifiedSetting->{EffectiveValue},
-                    XMLContentParsed => $Settings{$SettingName}->{XMLContentParsed},
-                    SettingUID       => $ModifiedSetting->{SettingUID},
-                    StoreCache       => 1,
-                    UserID           => $Param{UserID},
+                # Create a local clone of the value to prevent any modification.
+                my $Value = $StorableObject->Clone(
+                    Data => $Settings{$SettingName}->{XMLContentParsed}->{Value},
                 );
 
-                if ( !$ValueCheckResult{Success} ) {
+                my $EffectiveValue = $Self->SettingEffectiveValueGet(
+                    Value => $Value,
+                );
 
-                    $SysConfigDBObject->ModifiedSettingDelete(
-                        ModifiedID => $ModifiedSetting->{ModifiedID},
-                    );
-
+                # Update default setting.
+                my $Success = $SysConfigDBObject->DefaultSettingUpdate(
+                    DefaultID      => $DefaultSetting[0]->{DefaultID},
+                    Name           => $Settings{$SettingName}->{XMLContentParsed}->{Name},
+                    Description    => $Settings{$SettingName}->{XMLContentParsed}->{Description}->[0]->{Content} || '',
+                    Navigation     => $Settings{$SettingName}->{XMLContentParsed}->{Navigation}->[0]->{Content} || '',
+                    IsInvisible    => $Settings{$SettingName}->{XMLContentParsed}->{Invisible} || 0,
+                    IsReadonly     => $Settings{$SettingName}->{XMLContentParsed}->{ReadOnly} || 0,
+                    IsRequired     => $Settings{$SettingName}->{XMLContentParsed}->{Required} || 0,
+                    IsValid        => $Settings{$SettingName}->{XMLContentParsed}->{Valid} || 0,
+                    HasConfigLevel => $Settings{$SettingName}->{XMLContentParsed}->{ConfigLevel} || 100,
+                    UserModificationPossible => $Settings{$SettingName}->{XMLContentParsed}->{UserModificationPossible}
+                        || 0,
+                    UserModificationActive => $Settings{$SettingName}->{XMLContentParsed}->{UserModificationActive}
+                        || 0,
+                    UserPreferencesGroup => $Settings{$SettingName}->{XMLContentParsed}->{UserPreferencesGroup},
+                    XMLContentRaw        => $Settings{$SettingName}->{XMLContentRaw},
+                    XMLContentParsed     => $Settings{$SettingName}->{XMLContentParsed},
+                    XMLFilename          => $Settings{$SettingName}->{XMLFilename},
+                    EffectiveValue       => $EffectiveValue,
+                    UserID               => $Param{UserID},
+                    ExclusiveLockGUID    => $ExclusiveLockGUID,
+                );
+                if ( !$Success ) {
                     $Kernel::OM->Get('Kernel::System::Log')->Log(
                         Priority => 'error',
-                        Message  => $ValueCheckResult{Error},
+                        Message =>
+                            "DefaultSettingUpdate failed for Config Item: $SettingName!",
                     );
                 }
+
+                my @ModifiedList = $SysConfigDBObject->ModifiedSettingListGet(
+                    Name => $Settings{$SettingName}->{XMLContentParsed}->{Name},
+                );
+
+                for my $ModifiedSetting (@ModifiedList) {
+
+                    # So far everything is OK, if the structure or values does
+                    # not match anymore, modified values must be deleted.
+                    my %ValueCheckResult = $Self->SettingEffectiveValueCheck(
+                        EffectiveValue   => $ModifiedSetting->{EffectiveValue},
+                        XMLContentParsed => $Settings{$SettingName}->{XMLContentParsed},
+                        SettingUID       => $ModifiedSetting->{SettingUID},
+                        StoreCache       => 1,
+                        UserID           => $Param{UserID},
+                    );
+
+                    if ( !$ValueCheckResult{Success} ) {
+
+                        $SysConfigDBObject->ModifiedSettingDelete(
+                            ModifiedID => $ModifiedSetting->{ModifiedID},
+                        );
+
+                        $Kernel::OM->Get('Kernel::System::Log')->Log(
+                            Priority => 'error',
+                            Message  => $ValueCheckResult{Error},
+                        );
+                    }
+                }
             }
-        }
-        else {
+            else {
 
-            # Create a local clone of the value to prevent any modification.
-            my $Value = $Kernel::OM->Get('Kernel::System::Storable')->Clone(
-                Data => $Settings{$SettingName}->{XMLContentParsed}->{Value},
-            );
+                # Create a local clone of the value to prevent any modification.
+                my $Value = $StorableObject->Clone(
+                    Data => $Settings{$SettingName}->{XMLContentParsed}->{Value},
+                );
 
-            my $EffectiveValue = $Self->SettingEffectiveValueGet(
-                Value => $Value,
-            );
+                my $EffectiveValue = $Self->SettingEffectiveValueGet(
+                    Value => $Value,
+                );
 
-            # Create default setting.
-            my $DefaultID = $SysConfigDBObject->DefaultSettingAdd(
-                Name           => $Settings{$SettingName}->{XMLContentParsed}->{Name},
-                Description    => $Settings{$SettingName}->{XMLContentParsed}->{Description}->[0]->{Content} || '',
-                Navigation     => $Settings{$SettingName}->{XMLContentParsed}->{Navigation}->[0]->{Content} || '',
-                IsInvisible    => $Settings{$SettingName}->{XMLContentParsed}->{Invisible} || 0,
-                IsReadonly     => $Settings{$SettingName}->{XMLContentParsed}->{ReadOnly} || 0,
-                IsRequired     => $Settings{$SettingName}->{XMLContentParsed}->{Required} || 0,
-                IsValid        => $Settings{$SettingName}->{XMLContentParsed}->{Valid} || 0,
-                HasConfigLevel => $Settings{$SettingName}->{XMLContentParsed}->{ConfigLevel} || 100,
-                UserModificationPossible => $Settings{$SettingName}->{XMLContentParsed}->{UserModificationPossible}
-                    || 0,
-                UserModificationActive => $Settings{$SettingName}->{XMLContentParsed}->{UserModificationActive} || 0,
-                UserPreferencesGroup   => $Settings{$SettingName}->{XMLContentParsed}->{UserPreferencesGroup},
-                XMLContentRaw          => $Settings{$SettingName}->{XMLContentRaw},
-                XMLContentParsed       => $Settings{$SettingName}->{XMLContentParsed},
-                XMLFilename            => $Settings{$SettingName}->{XMLFilename},
-                EffectiveValue         => $EffectiveValue,
-                ExclusiveLockExpiryTime => $ExclusiveLockExpiryTime,
-                NoCleanup               => 1,
-                UserID                  => $Param{UserID},
-            );
-            if ( !$DefaultID ) {
-                $Kernel::OM->Get('Kernel::System::Log')->Log(
-                    Priority => 'error',
-                    Message =>
-                        "DefaultSettingAdd failed for Config Item: $Settings{$SettingName}->{XMLContentParsed}->{Name}!",
+                $DefaultSettingsAdd{ $Settings{$SettingName}->{XMLContentParsed}->{Name} } = {
+                    Name           => $Settings{$SettingName}->{XMLContentParsed}->{Name},
+                    Description    => $Settings{$SettingName}->{XMLContentParsed}->{Description}->[0]->{Content} || '',
+                    Navigation     => $Settings{$SettingName}->{XMLContentParsed}->{Navigation}->[0]->{Content} || '',
+                    IsInvisible    => $Settings{$SettingName}->{XMLContentParsed}->{Invisible} || 0,
+                    IsReadonly     => $Settings{$SettingName}->{XMLContentParsed}->{ReadOnly} || 0,
+                    IsRequired     => $Settings{$SettingName}->{XMLContentParsed}->{Required} || 0,
+                    IsValid        => $Settings{$SettingName}->{XMLContentParsed}->{Valid} || 0,
+                    HasConfigLevel => $Settings{$SettingName}->{XMLContentParsed}->{ConfigLevel} || 100,
+                    UserModificationPossible => $Settings{$SettingName}->{XMLContentParsed}->{UserModificationPossible}
+                        || 0,
+                    UserModificationActive => $Settings{$SettingName}->{XMLContentParsed}->{UserModificationActive}
+                        || 0,
+                    UserPreferencesGroup => $Settings{$SettingName}->{XMLContentParsed}->{UserPreferencesGroup},
+                    XMLContentRaw        => $Settings{$SettingName}->{XMLContentRaw},
+                    XMLContentParsed     => $Settings{$SettingName}->{XMLContentParsed},
+                    XMLFilename          => $Settings{$SettingName}->{XMLFilename},
+                    EffectiveValue       => $EffectiveValue,
+                    NoCleanup            => 1,
+                    UserID               => $Param{UserID},
+                };
+
+                # Delete individual cache.
+                $CacheObject->Delete(
+                    Type => 'SysConfigDefault',
+                    Key  => 'DefaultSettingGet::' . $Settings{$SettingName}->{XMLContentParsed}->{Name},
                 );
             }
+        }
 
-            # Delete individual cache.
-            $CacheObject->Delete(
-                Type => 'SysConfigDefault',
-                Key  => 'DefaultSettingGet::' . $Settings{$SettingName}->{XMLContentParsed}->{Name},
+        if (%DefaultSettingsAdd) {
+            my $Success = $Self->_DefaultSettingAddBulk(
+                Settings    => \%DefaultSettingsAdd,
+                SettingList => \@SettingList,
+                UserID      => $Param{UserID},
             );
-            $CleanUpNeeded = 1;
+            return if !$Success;
         }
     }
 
@@ -2726,34 +2731,6 @@ sub ConfigurationXML2DB {
     $SysConfigDBObject->DefaultSettingUnlock(
         UnlockAll => 1,
     );
-
-    if ($CleanUpNeeded) {
-
-        # IMPORTANT - Since NoCleanup parameter is used, cache is not cleared,
-        # so we need to do it here (we do it here once and not 1800+ times).
-        $CacheObject->CleanUp(
-            Type => 'SysConfigDefaultListGet',
-        );
-        $CacheObject->Delete(
-            Type => 'SysConfigDefaultList',
-            Key  => 'DefaultSettingList',
-        );
-        $CacheObject->CleanUp(
-            Type => 'SysConfigNavigation',
-        );
-        $CacheObject->CleanUp(
-            Type => 'SysConfigEntities',
-        );
-        $CacheObject->CleanUp(
-            Type => 'SysConfigIsDirty',
-        );
-        $CacheObject->CleanUp(
-            Type => 'SysConfigDefaultVersion',
-        );
-        $CacheObject->CleanUp(
-            Type => 'SysConfigDefaultVersionList',
-        );
-    }
 
     return 1;
 }
@@ -3477,7 +3454,8 @@ sub ConfigurationDeploy {
 
         my $HandleSettingsSuccess = $Self->_HandleSettingsToDeploy(
             %Param,
-            DeploymentTimeStamp => $TimeStamp,
+            DeploymentExclusiveLockGUID => $ExclusiveLockGUID,
+            DeploymentTimeStamp         => $TimeStamp,
         );
 
         my $DeploymentID;
@@ -4135,7 +4113,7 @@ sub ConfigurationLoad {
 
             my %Result = $Self->SettingUpdate(
                 Name                   => $SettingName,
-                IsValid                => $CurrentSetting{IsValid},
+                IsValid                => $Configuration{$Section}->{$SettingName}->{IsValid},
                 EffectiveValue         => $Configuration{$Section}->{$SettingName}->{EffectiveValue},
                 UserModificationActive => $UserModificationActive,
                 TargetUserID           => $TargetUserID,
@@ -4364,7 +4342,7 @@ sub ConfigurationCategoriesGet {
     # Set framework files.
     my %Result = (
         All => {
-            DisplayName => 'All Settings',
+            DisplayName => Translatable('All Settings'),
             Files       => [],
         },
         OTRSFree => {
@@ -4685,8 +4663,15 @@ sub OverriddenFileNameGet {
         }
     }
 
+    my $EffectiveValue = $Param{EffectiveValue};
+
+    # Replace config variables in effective values.
+    # NOTE: First level only, make sure to update this code once same mechanism has been improved in Defaults.pm.
+    #   Please see bug#12916 and bug#13376 for more information.
+    $EffectiveValue =~ s/\<OTRS_CONFIG_(.+?)\>/$ConfigObject->{$1}/g;
+
     my $IsOverridden = DataIsDifferent(
-        Data1 => $Param{EffectiveValue},
+        Data1 => $EffectiveValue,
         Data2 => $LoadedEffectiveValue,
     );
 
@@ -5695,10 +5680,12 @@ Creates modified versions of dirty settings to deploy and removed the dirty flag
     AllSettings:   Create a version for all dirty settings and removed dirty flags for all default and modified settings
     DirtySettings: Create a version and remove dirty fag for the modified settings in the list, remove dirty flag for all default settings
 
-    my $Success = $SysConfigObject->_GetSettingsToDeploy(
-        NotDirty      => 1,                                         # optional - exclusive (1||0)
-        AllSettings   => 1,                                         # optional - exclusive (1||0)
-        DirtySettings => [ 'SettingName1', 'SettingName2' ],        # optional - exclusive
+    my $Success = $SysConfigObject->_HandleSettingsToDeploy(
+        NotDirty            => 1,                                         # optional - exclusive (1||0)
+        AllSettings         => 1,                                         # optional - exclusive (1||0)
+        DirtySettings       => [ 'SettingName1', 'SettingName2' ],        # optional - exclusive
+        DeploymentTimeStamp => 2017-12-12 12:00:00'
+        UserID              => 123,
     );
 
 Returns:
@@ -5815,9 +5802,10 @@ sub _HandleSettingsToDeploy {
         }
 
         for my $Setting (@ModifiedDeleted) {
-            my $Success = $SysConfigDBObject->ModifiedAdd(
+            my $Success = $SysConfigDBObject->ModifiedSettingAdd(
                 %{$Setting},
-                UserID => $Setting->{ChangeBy},
+                DeploymentExclusiveLockGUID => $Param{DeploymentExclusiveLockGUID},
+                UserID                      => $Setting->{ChangeBy},
             );
         }
 
@@ -6006,6 +5994,109 @@ sub _ValueTypesList {
     );
 
     return @Result;
+}
+
+=head2 _DefaultSettingAddBulk()
+
+Helper method for ConfigurationXML2DB() - bulk insert.
+
+    my $Success = $SysConfigObject->_DefaultSettingAddBulk(
+        Settings => {                   # (required) Hash of settings to insert
+            'SettingName' => {
+
+            },
+            ...
+        },
+        SettingList => [                # (required) List of settings
+            ...
+        ],
+        UserID => 1,                    # (required) UserID
+    );
+
+=cut
+
+sub _DefaultSettingAddBulk {
+    my ( $Self, %Param ) = @_;
+
+    # Check needed stuff.
+    for my $Needed (qw(Settings SettingList UserID)) {
+        if ( !$Param{$Needed} ) {
+            $Kernel::OM->Get('Kernel::System::Log')->Log(
+                Priority => 'error',
+                Message  => "Need $Needed!",
+            );
+            return;
+        }
+    }
+
+    # Check needed stuff.
+    if ( ref $Param{Settings} ne 'HASH' ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => "Settings must be a HASH ref!",
+        );
+        return;
+    }
+
+    my $StorableObject    = $Kernel::OM->Get('Kernel::System::Storable');
+    my $SysConfigDBObject = $Kernel::OM->Get('Kernel::System::SysConfig::DB');
+    my $YAMLObject        = $Kernel::OM->Get('Kernel::System::YAML');
+
+    my %Settings    = %{ $Param{Settings} };
+    my @SettingList = @{ $Param{SettingList} };
+
+    for my $SettingName ( sort keys %{ $Param{Settings} } ) {
+
+        # Create a local clone of the value to prevent any modification.
+        my $Value = $StorableObject->Clone(
+            Data => $Settings{$SettingName}->{XMLContentParsed}->{Value},
+        );
+
+        $Settings{$SettingName}->{EffectiveValue} = $Self->SettingEffectiveValueGet(
+            Value => $Value,
+        );
+
+        # Serialize values that doesn't have string representation.
+        $Settings{$SettingName}->{EffectiveValue} = $YAMLObject->Dump(
+            Data => $Settings{$SettingName}->{EffectiveValue},
+        );
+        $Settings{$SettingName}->{XMLContentParsedYAML} = $YAMLObject->Dump(
+            Data => $Settings{$SettingName}->{XMLContentParsed},
+        );
+    }
+
+    my $Success = $SysConfigDBObject->DefaultSettingBulkAdd(
+        Settings    => \%Settings,
+        SettingList => \@SettingList,
+        UserID      => $Param{UserID},
+    );
+
+    if ( !$Success ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => "System was unable to rebuild config!"
+        );
+        return;
+    }
+
+    # Get again all settings.
+    @SettingList = $Self->ConfigurationList();
+
+    $Success = $SysConfigDBObject->DefaultSettingVersionBulkAdd(
+        Settings    => \%Settings,
+        SettingList => \@SettingList,
+        UserID      => $Param{UserID},
+    );
+
+    if ( !$Success ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => "System was unable to rebuild config!"
+        );
+        return;
+    }
+
+    return 1;
 }
 
 1;

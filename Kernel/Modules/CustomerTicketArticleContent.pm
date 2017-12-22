@@ -114,8 +114,8 @@ sub Run {
             Comment => Translatable('Please contact the administrator.'),
         );
         $LogObject->Log(
-            Message  => "HTML body attachment is missing! May be an attack!!!",
             Priority => 'error',
+            Message  => 'HTML body attachment is missing!',
         );
         $Output .= $LayoutObject->CustomerFooter();
         return $Output;
@@ -130,9 +130,9 @@ sub Run {
 
     my %Data = (
         Content            => $Content,
-        ContentAlternative => "",
-        ContentID          => "",
-        ContentType        => "text/html; charset=\"utf-8\"",
+        ContentAlternative => '',
+        ContentID          => '',
+        ContentType        => 'text/html; charset="utf-8"',
         Disposition        => "inline",
         FilesizeRaw        => bytes::length($Content),
     );
@@ -142,14 +142,6 @@ sub Run {
         Key   => 'AttachmentDownloadType',
         Value => 'inline'
     );
-
-    # just return for non-html attachment (e. g. images)
-    if ( $Data{ContentType} !~ /text\/html/i ) {
-        return $LayoutObject->Attachment(
-            %Data,
-            Sandbox => 1,
-        );
-    }
 
     my $TicketNumber = $Kernel::OM->Get('Kernel::System::Ticket')->TicketNumberLookup(
         TicketID => $TicketID,
@@ -168,7 +160,7 @@ sub Run {
 
     # generate base url
     my $URL = 'Action=CustomerTicketAttachment;Subaction=HTMLView'
-        . ";ArticleID=$ArticleID;FileID=";
+        . ";TicketID=$TicketID;ArticleID=$ArticleID;FileID=";
 
     # replace links to inline images in html content
     my %AtmBox = $ArticleBackendObject->ArticleAttachmentIndex(
@@ -189,7 +181,6 @@ sub Run {
         %Data,
         Sandbox => 1,
     );
-
 }
 
 1;

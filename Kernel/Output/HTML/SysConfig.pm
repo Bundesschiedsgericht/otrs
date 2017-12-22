@@ -298,19 +298,19 @@ sub SettingAddItem {
 
         STRUCTURE:
         for my $StructureItem (@SettingStructure) {
+
+            # NOTE: Array elements must contain same structure.
             if ( $StructureItem eq 'Hash' ) {
+
+                # Check original XML structure and search for the element with the same key.
+                # If found, system will use this structure.
+
                 my $HashKey = $Structure[$Index];
 
                 my ($Item) = grep { $HashKey eq $_->{Key} } @{ $DedicatedDefaultItem->{Item} };
                 last STRUCTURE if !$Item;
 
                 $DedicatedDefaultItem = $Item->{Hash}->[0];
-            }
-            else {
-                my $ArrayIndex = $Structure[$Index];
-
-                last STRUCTURE if !$DedicatedDefaultItem->{Item}->{$ArrayIndex};
-                $DedicatedDefaultItem = $DedicatedDefaultItem->{Item}->[$ArrayIndex]->{Array}->[0];
             }
 
             $Index++;
@@ -384,14 +384,23 @@ sub SettingAddItem {
             "Kernel::System::SysConfig::ValueType::$ValueType",
         );
 
-        $Result{Item} = "<div class='SettingContent'>\n";
+        # Check if ValueType should add SettingContent.
+        my $AddSettingContent = $BackendObject->AddSettingContent();
+
+        if ($AddSettingContent) {
+            $Result{Item} = "<div class='SettingContent'>\n";
+        }
+
         $Result{Item} .= $BackendObject->AddItem(
             Name        => $Setting{Name},
             DefaultItem => $DefaultItem,
             IDSuffix    => $Param{IDSuffix},
             UserID      => $Param{UserID},
         );
-        $Result{Item} .= '</div>';
+
+        if ($AddSettingContent) {
+            $Result{Item} .= '</div>';
+        }
     }
     else {
         $Result{Item} //= '';

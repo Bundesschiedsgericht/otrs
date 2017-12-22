@@ -88,7 +88,10 @@ sub ArticleRender {
         ArticleID        => $Param{ArticleID},
         ExcludePlainText => 1,
         ExcludeHTMLBody  => $RichTextEnabled,
-        ExcludeInline    => $RichTextEnabled,
+
+        # TODO: Hot-fix for bug#13353, do not exclude inline attachments at this point.
+        #   Make sure to analyze this issue further and fix ArticleAttachmentIndex behavior.
+        # ExcludeInline    => $RichTextEnabled,
     );
 
     my @ArticleAttachments;
@@ -164,6 +167,7 @@ sub ArticleRender {
             ChannelIcon          => $CommunicationChannel{DisplayIcon},
             BrowserLinkMessage   => $Param{ShowBrowserLinkMessage} && $ShowHTML,
             BodyHTMLLoad         => $Param{ArticleExpanded},
+            Age                  => $Param{ArticleAge},
         },
     );
 

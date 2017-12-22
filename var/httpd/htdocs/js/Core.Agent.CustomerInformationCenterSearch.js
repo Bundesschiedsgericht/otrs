@@ -49,11 +49,6 @@ Core.Agent.CustomerInformationCenterSearch = (function (TargetNS) {
         Event.stopPropagation();
         ShowWaitingDialog();
 
-        // add session data, if needed
-        if (!Core.Config.Get('SessionIDCookie')) {
-            Session = ';' + Core.Config.Get('SessionName') + '=' + Core.Config.Get('SessionID');
-        }
-
         window.location.href = Core.Config.Get('Baselink') + 'Action=AgentCustomerInformationCenter;CustomerID=' + encodeURIComponent(CustomerID) + Session;
     }
 
@@ -132,6 +127,11 @@ Core.Agent.CustomerInformationCenterSearch = (function (TargetNS) {
     TargetNS.Init = function () {
         TargetNS.InitAutocomplete($("#AgentCustomerInformationCenterSearchCustomerID"), 'SearchCustomerID');
         TargetNS.InitAutocomplete($("#AgentCustomerInformationCenterSearchCustomerUser"), 'SearchCustomerUser');
+
+        // Prevent form submit.
+        $("#AgentCustomerInformationCenterSearchForm").submit(function(Event) {
+          Event.preventDefault();
+        });
     };
 
     return TargetNS;

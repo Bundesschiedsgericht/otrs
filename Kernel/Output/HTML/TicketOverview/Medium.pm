@@ -120,14 +120,6 @@ sub ActionRow {
 
             if ( $Item->{Block} eq 'DocumentActionRowItem' ) {
 
-                # add session id if needed
-                if ( !$LayoutObject->{SessionIDCookie} && $Item->{Link} ) {
-                    $Item->{Link}
-                        .= ';'
-                        . $LayoutObject->{SessionName} . '='
-                        . $LayoutObject->{SessionID};
-                }
-
                 # create id
                 $Item->{ID} = $Item->{Name};
                 $Item->{ID} =~ s/(\s|&|;)//ig;
@@ -485,14 +477,6 @@ sub _Show {
             );
             next MENU if !$Item;
             next MENU if ref $Item ne 'HASH';
-
-            # add session id if needed
-            if ( !$LayoutObject->{SessionIDCookie} && $Item->{Link} ) {
-                $Item->{Link}
-                    .= ';'
-                    . $LayoutObject->{SessionName} . '='
-                    . $LayoutObject->{SessionID};
-            }
 
             # create id
             $Item->{ID} = $Item->{Name};

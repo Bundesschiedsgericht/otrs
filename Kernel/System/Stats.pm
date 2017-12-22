@@ -244,7 +244,15 @@ sub StatsGet {
 
     # time zone
     if ( defined $StatsXML->{TimeZone}->[1]->{Content} ) {
-        $Stat{TimeZone} = $StatsXML->{TimeZone}->[1]->{Content};
+
+        # Check if stored time zone is valid. It can happen stored time zone is still an old-style offset. Otherwise,
+        #   fall back to the system time zone. Please see bug#13373 for more information.
+        if ( Kernel::System::DateTime->IsTimeZoneValid( TimeZone => $StatsXML->{TimeZone}->[1]->{Content} ) ) {
+            $Stat{TimeZone} = $StatsXML->{TimeZone}->[1]->{Content};
+        }
+        else {
+            $Stat{TimeZone} = Kernel::System::DateTime->OTRSTimeZoneGet();
+        }
     }
 
     # process all arrays
@@ -1554,7 +1562,7 @@ sub StatsRun {
         if ( !$Param{$Needed} ) {
             $Kernel::OM->Get('Kernel::System::Log')->Log(
                 Priority => 'error',
-                Message  => "Need $Needed!"
+                Message  => "Need $Needed!",
             );
             return;
         }
@@ -1654,7 +1662,7 @@ sub StatsResultCacheCompute {
         if ( !$Param{$Needed} ) {
             $Kernel::OM->Get('Kernel::System::Log')->Log(
                 Priority => 'error',
-                Message  => "Need $Needed!"
+                Message  => "Need $Needed!",
             );
             return;
         }
@@ -1745,7 +1753,7 @@ sub StatsResultCacheGet {
         if ( !$Param{$Needed} ) {
             $Kernel::OM->Get('Kernel::System::Log')->Log(
                 Priority => 'error',
-                Message  => "Need $Needed!"
+                Message  => "Need $Needed!",
             );
             return;
         }
@@ -1909,7 +1917,7 @@ sub StatsInstall {
         if ( !$Param{$Needed} ) {
             $Kernel::OM->Get('Kernel::System::Log')->Log(
                 Priority => 'error',
-                Message  => "Need $Needed!"
+                Message  => "Need $Needed!",
             );
             return;
         }
@@ -1920,11 +1928,6 @@ sub StatsInstall {
 
     # start AutomaticSampleImport if no stats are installed
     $Self->GetStatsList(
-        UserID => $Param{UserID},
-    );
-
-    # cleanup stats
-    $Self->StatsCleanUp(
         UserID => $Param{UserID},
     );
 
@@ -1986,7 +1989,7 @@ sub StatsUninstall {
         if ( !$Param{$Needed} ) {
             $Kernel::OM->Get('Kernel::System::Log')->Log(
                 Priority => 'error',
-                Message  => "Need $Needed!"
+                Message  => "Need $Needed!",
             );
             return;
         }
@@ -2004,6 +2007,8 @@ sub StatsUninstall {
         Filter    => $Param{FilePrefix} . '*.xml.installed',
     );
 
+    my @UninstalledObjectNames;
+
     # delete the stats
     for my $File ( sort @StatsFileList ) {
 
@@ -2012,6 +2017,17 @@ sub StatsUninstall {
             Location => $File,
         );
 
+        my $Stat = $Self->StatsGet(
+            StatID             => ${$StatsIDRef},
+            NoObjectAttributes => 1,
+        );
+
+        # Add object name from the deleted statistic to the uninstalled object names.
+        if ( $Stat->{ObjectModule} ) {
+            my $ObjectName = [ split( m{::}, $Stat->{ObjectModule} ) ]->[-1];
+            push @UninstalledObjectNames, $ObjectName;
+        }
+
         # delete stats
         $Self->StatsDelete(
             StatID => ${$StatsIDRef},
@@ -2019,10 +2035,13 @@ sub StatsUninstall {
         );
     }
 
-    # cleanup stats
-    $Self->StatsCleanUp(
-        UserID => $Param{UserID},
-    );
+    # Cleanup for all uninstalled object names.
+    if (@UninstalledObjectNames) {
+        $Self->StatsCleanUp(
+            ObjectNames => \@UninstalledObjectNames,
+            UserID      => $Param{UserID},
+        );
+    }
 
     return 1;
 }
@@ -2031,7 +2050,13 @@ sub StatsUninstall {
 
 removed stats with not existing backend file
 
-    my $Result = $StatsObject->StatsCleanUp();
+    my $Result = $StatsObject->StatsCleanUp(
+        UserID => 1,
+
+        ObjectNames => [ 'Ticket', 'TicketList' ],
+        or
+        CheckAllObjects => 1,
+    );
 
 =cut
 
@@ -2042,10 +2067,18 @@ sub StatsCleanUp {
         if ( !$Param{$Needed} ) {
             $Kernel::OM->Get('Kernel::System::Log')->Log(
                 Priority => 'error',
-                Message  => "Need $Needed!"
+                Message  => "Need $Needed!",
             );
             return;
         }
+    }
+
+    if ( !$Param{CheckAllObjects} && !IsArrayRefWithData( $Param{ObjectNames} ) ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => "Need ObjectNames or the CheckAllObjects parameter!",
+        );
+        return;
     }
 
     # get a list of all stats
@@ -2059,6 +2092,11 @@ sub StatsCleanUp {
     # get main object
     my $MainObject = $Kernel::OM->Get('Kernel::System::Main');
 
+    my %LookupObjectNames;
+    if ( !$Param{CheckAllObjects} ) {
+        %LookupObjectNames = map { $_ => 1 } @{ $Param{ObjectNames} };
+    }
+
     STATSID:
     for my $StatsID ( @{$ListRef} ) {
 
@@ -2068,10 +2106,22 @@ sub StatsCleanUp {
             NoObjectAttributes => 1,
         );
 
-        next STATSID if $HashRef
-            && ref $HashRef eq 'HASH'
+        # Cleanup only files given in ObjectNames.
+        if ( !$Param{CheckAllObjects} ) {
+
+            my $ObjectName = [ split( m{::}, $HashRef->{ObjectModule} ) ]->[-1];
+
+            next STATSID if !$LookupObjectNames{$ObjectName};
+        }
+
+        if (
+            IsHashRefWithData($HashRef)
             && $HashRef->{ObjectModule}
-            && $MainObject->Require( $HashRef->{ObjectModule} );
+            && $MainObject->Require( $HashRef->{ObjectModule} )
+            )
+        {
+            next STATSID;
+        }
 
         # delete stats
         $Self->StatsDelete(
@@ -2258,7 +2308,7 @@ sub _GenerateDynamicStats {
                     if ( $Param{TimeZone} ) {
                         $DateTimeObject->ToTimeZone(
                             TimeZone => $Param{TimeZone},
-                            )
+                        );
                     }
 
                     my $DateTimeValues = $DateTimeObject->Get();
@@ -3707,7 +3757,7 @@ sub _SetResultCache {
         if ( !$Param{$Needed} ) {
             $Kernel::OM->Get('Kernel::System::Log')->Log(
                 Priority => 'error',
-                Message  => "Need $Needed!"
+                Message  => "Need $Needed!",
             );
             return;
         }
@@ -3796,7 +3846,7 @@ sub _AutomaticSampleImport {
         if ( !$Param{$Needed} ) {
             $Kernel::OM->Get('Kernel::System::Log')->Log(
                 Priority => 'error',
-                Message  => "Need $Needed!"
+                Message  => "Need $Needed!",
             );
             return;
         }
@@ -4262,11 +4312,17 @@ sub _MondayOfWeek {
 
     my $DateTimeValues = $DateTimeObject->Get();
     my $DaysToSubtract = $DateTimeValues->{DayOfWeek} - 1;
-    return $DateTimeValues->{Day} if !$DaysToSubtract;
 
-    $DateTimeObject->Subtract( Days => $DaysToSubtract );
-    $DateTimeValues = $DateTimeObject->Get();
-    return $DateTimeValues->{Day};
+    if ($DaysToSubtract) {
+        $DateTimeObject->Subtract( Days => $DaysToSubtract );
+        $DateTimeValues = $DateTimeObject->Get();
+    }
+
+    return (
+        $DateTimeValues->{Year},
+        $DateTimeValues->{Month},
+        $DateTimeValues->{Day},
+    );
 }
 
 =head2 _WeekOfYear()
